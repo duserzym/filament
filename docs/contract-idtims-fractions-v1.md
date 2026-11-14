@@ -1,7 +1,8 @@
 # Contract `idtims-fractions/1`: measured ratios from raw-data review to reduction
 
 Status: **agreed** on 2026-11-14 between the raw-data app (filament, writer) and the ID-TIMS
-reduction app (IDTIMS_UPbRPy, reader). The same text is kept in both repositories as
+reduction app (IDTIMS_UPbRPy, reader). Clarifications 1 to 6 were agreed the same day. They add one
+optional column and change no existing column or meaning, so the version stays /1. The same text is kept in both repositories as
 `docs/contract-idtims-fractions-v1.md`. This CSV text is the contract. Any class either side ships
 to read or write it is an implementation.
 
@@ -19,8 +20,9 @@ it too.
 - CSV, UTF-8 (a BOM is tolerated on read), comma separator, one header row, `.` decimal point, no
   comment lines.
 - Suggested file name: `<anything>.fractions.csv`. Readers must not depend on the name.
-- Numbers are written at full precision (Python `repr`, 17 significant digits) and never rounded for
-  display.
+- Numbers are written as the shortest text that reads back to the same float (Python `repr`), never
+  rounded for display. Readers parse them as IEEE doubles.
+- The writer ends lines with `\n`; readers accept both `\n` and `\r\n`.
 - An empty cell means missing.
 - Unknown extra columns are allowed. Readers ignore them and keep them on re-export.
 - Column order is free. Column names are exact; case and spacing matter.
@@ -99,11 +101,27 @@ What the ratios mean:
 - They are baseline corrected, detector corrected (dead time, Daly gain) and cycle-filtered.
 - They are **not** corrected for Pb or U mass fractionation and **not** spike-stripped. The
   reduction app does that.
-- The U ratios that involve 235 (`238U/235U`, `233U/235U`) are corrected for UO2 oxide (18O/16O) by
-  the writer, as Tripoli does today (BSU sheet header "238/235 oxide R18 0.00206"). `238U/233U`
-  needs no oxide correction. The writer records the 18O/16O it used in `U Oxide 18O/16O`.
-  - If that column is empty in a U block, the reduction app does not reduce U until the user
+- The U ratios are metal-equivalent ratios, corrected for UO2 oxide (18O/16O). Either the writer
+  applies the correction, or the instrument software already did (e.g. IonVantage user functions
+  named "238/235 oxide R18 0.00206").
+  - The writer records the 18O/16O in `U Oxide 18O/16O` and the formula in `U Oxide Formula`.
+  - If `U Oxide 18O/16O` is empty in a U block, the reduction app does not reduce U until the user
     supplies the value or confirms that no oxide correction applies.
+
+#### `U Oxide Formula`
+
+Required whenever `U Oxide 18O/16O` is filled. Each value is defined only by its formula, with r18 the
+18O/16O, r270/267 and r265/267 the measured oxide-mass ratios, and r238/233 = r238/235 / r233/235 in
+every case.
+
+| Value | Meaning |
+|---|---|
+| `tripoli_00dc941` | CIRDLES Tripoli at commit 00dc941: r238/235 = r270/267 / (1 − 2·r18·r270/267); r233/235 = r265/267 / (1 − 2·r18·r265/267) |
+| `et_redux` | ET_Redux, legacy Tripoli, Triton: r238/235 = r270/267 / (1 − 2·r18·r265/267); r233/235 = r265/267 / (1 − 2·r18·r265/267) |
+| `instrument` | The ratios arrived already oxide-corrected from the instrument software, and the writer did not recompute them. The formula is unknown. `U Oxide 18O/16O` holds the value parsed from the instrument function name. |
+
+The reader shows the formula in its issues list. It refuses to merge files whose U rows for one
+fraction use different formulas.
 - `206Pb/204Pb` and `206Pb/207Pb` are Tripoli's orientations. Readers derive 204/206 and 207/206
   from them, with the same relative error to first order. A writer may add `204Pb/206Pb` and
   `207Pb/206Pb` as well.
@@ -124,11 +142,12 @@ Optional, and strongly encouraged from the raw-data app.
 |---|---|
 | `Pb Raw File`, `U Raw File` | Raw file names |
 | `Pb Raw SHA256`, `U Raw SHA256` | Hex SHA-256 of each raw file as read |
-| `Pb Run Start`, `U Run Start` | ISO 8601 with offset |
+| `Pb Run Start`, `U Run Start` | ISO 8601 with offset, when the offset is known. Otherwise leave the column empty and put the instrument's local time text in `Notes`. |
 | `Instrument` | e.g. `IsotopX IsoprobeT (BSU)` |
-| `Pb Cycles Used`, `Pb Cycles Total`, `U Cycles Used`, `U Cycles Total` | Integers |
-| `Filter Rule` | Short text, e.g. `2-sigma iterative, Tripoli-equivalent` |
-| `U Oxide 18O/16O` | The 18O/16O value the writer used for the oxide correction |
+| `Pb Cycles Used`, `Pb Cycles Total`, `U Cycles Used`, `U Cycles Total` | Integers. Cycles Used counts the cycles accepted for every one of that element's exported ratios (the intersection). With synchronised rejection, this equals each ratio's n. |
+| `Filter Rule` | Short text, e.g. `2-sigma iterative, Tripoli-equivalent`. When both runs are present: `Pb: <text> \| U: <text>` |
+| `U Oxide 18O/16O` | The 18O/16O used for the oxide correction (see `U Oxide Formula`) |
+| `U Oxide Formula` | `tripoli_00dc941`, `et_redux` or `instrument` (see above) |
 | `Raw App` | Writer name and version, e.g. `filament 0.1.0` |
 | `Raw App Session`, `Raw App Session SHA256` | The writer's own session file (rejected block/cycle lists, dead time, Daly gain, baseline and interference settings); readers keep it as provenance |
 | `Exported At` | ISO 8601 with offset |

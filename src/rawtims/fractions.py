@@ -322,15 +322,19 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         if element == "U":
             r18_values = {e.oxide_r18 for e in mapped if e.ratio in ("238U/235U", "233U/235U") and e.oxide_r18 is not None}
             _require(len(r18_values) <= 1, f"fraction {fraction.fraction_id!r}: the U ratios name different 18O/16O values {sorted(r18_values)}")
+            sources = {e.source for e in mapped}
+            _require(not {"derived", "pass_through"} <= sources, f"fraction {fraction.fraction_id!r}: the U ratios mix oxide-corrected values from the instrument file and from {APP_NAME}")
+            if "derived" in sources:
+                formula = analysis.oxide.formula
+                notes.append(f"U: oxide correction by {APP_NAME} ({formula} formula)")
+            else:
+                formula = "instrument"
+                notes.append("U: oxide correction applied by the instrument software, formula not verified")
             if r18_values:
                 values["U Oxide 18O/16O"] = r18_values.pop()
+                values["U Oxide Formula"] = formula
             else:
                 notes.append("U: 18O/16O of the oxide correction not known (not in the function names)")
-            sources = {e.source for e in mapped}
-            if "derived" in sources:
-                notes.append(f"U: oxide correction by {APP_NAME} ({analysis.oxide.formula} formula)")
-            elif "pass_through" in sources:
-                notes.append("U: oxide correction applied in the instrument file")
     if fraction.collector is None and fraction.pb is not None:
         collectors = {e.collector for e in fraction.mapping("Pb").ratios.values()}  # type: ignore[union-attr]
         if len(collectors) == 1 and None not in collectors:

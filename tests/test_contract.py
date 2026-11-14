@@ -29,6 +29,8 @@ from rawtims.contract import (
     rho_column,
     se_column,
     write_csv,
+    FractionRow,
+    U_OXIDE_FORMULAS,
 )
 from rawtims.fractions import Fraction, SessionInfo, fraction_row
 from reader_fixtures import B998, FIXTURES, TIMSDP_FILES, read
@@ -102,6 +104,8 @@ def _doc_table_names() -> tuple[set[str], set[str]]:
         cells = [cell.strip() for cell in line.strip("|").split("|")]
         if cells[0] in ("Pb", "U"):
             continue
+        if cells[0].strip("`") in U_OXIDE_FORMULAS:  # rows of the `U Oxide Formula` value table
+            continue
         columns.update(re.findall(r"`([^`]+)`", cells[0]))
     for line in CONTRACT_DOC.read_text(encoding="utf-8").splitlines():
         if line.startswith(("| Pb |", "| U |")):
@@ -112,7 +116,7 @@ def _doc_table_names() -> tuple[set[str], set[str]]:
 def test_every_contract_table_column_is_known_and_every_known_column_is_in_the_contract():
     named, ratios = _doc_table_names()
     assert ratios == set(PB_RATIOS) | set(U_RATIOS)
-    assert len(named) == 34  # 8 identity, 8 setup, 18 provenance
+    assert len(named) == 35  # 8 identity, 8 setup, 19 provenance
     assert named <= set(COLUMN_NAMES)
     for name in COLUMN_NAMES:  # every non-ratio column comes from a contract table
         if name.endswith((" Mean", " % Standard Error")) or name.startswith("rho "):
@@ -279,3 +283,13 @@ def test_merge_conflict_names_fraction_column_and_both_files(ghr1_row):
 
 def test_se_columns_are_percent_names():
     assert se_column("238U/235U") == "238U/235U % Standard Error"
+
+
+def test_u_oxide_formula_required_with_r18_and_from_the_allowed_values():
+    row = FractionRow.from_csv({"Contract": CONTRACT_ID, "Fraction ID": "z1", "U Oxide 18O/16O": "0.00206"})
+    assert any("'U Oxide Formula' is required" in p for p in row.problems())
+    row.values["U Oxide Formula"] = "made_up"
+    assert any("is not one of" in p for p in row.problems())
+    for value in U_OXIDE_FORMULAS:
+        row.values["U Oxide Formula"] = value
+        assert not any("U Oxide Formula" in p for p in row.problems())

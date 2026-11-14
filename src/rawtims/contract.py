@@ -45,6 +45,9 @@ CONTRACT_NAME = "idtims-fractions"
 CONTRACT_MAJOR = 1
 CONTRACT_ID = f"{CONTRACT_NAME}/{CONTRACT_MAJOR}"
 
+# Allowed values of `U Oxide Formula` (contract clarification 6); each is defined by its formula there.
+U_OXIDE_FORMULAS = ("tripoli_00dc941", "et_redux", "instrument")
+
 PB_RATIOS: tuple[str, ...] = ("206Pb/204Pb", "206Pb/207Pb", "206Pb/205Pb", "207Pb/205Pb", "204Pb/205Pb", "208Pb/205Pb", "202Pb/205Pb")
 PB_REQUIRED_RATIOS: tuple[str, ...] = PB_RATIOS[:6]
 """Required whenever the Pb block is present; ``202Pb/205Pb`` is required too when ``Spike Type`` is 2535."""
@@ -122,6 +125,7 @@ def _build_columns() -> tuple[Column, ...]:
         ("Pb Cycles Used", "int"), ("Pb Cycles Total", "int"), ("U Cycles Used", "int"), ("U Cycles Total", "int"),
         ("Filter Rule", "text"),
         ("U Oxide 18O/16O", "float"),
+        ("U Oxide Formula", "text"),
         ("Raw App", "text"),
         ("Raw App Session", "text"), ("Raw App Session SHA256", "text"),
         ("Exported At", "text"),
@@ -272,6 +276,11 @@ class FractionRow:
                 for column in (mean_column(ratio), se_column(ratio)):
                     if column not in self.values:
                         found.append(f"fraction {label}: {element} block present but {column!r} is missing")
+        formula = self.values.get("U Oxide Formula")
+        if self.values.get("U Oxide 18O/16O") is not None and formula is None:
+            found.append(f"fraction {label}: 'U Oxide Formula' is required when 'U Oxide 18O/16O' is filled")
+        if formula is not None and formula not in U_OXIDE_FORMULAS:
+            found.append(f"fraction {label}: 'U Oxide Formula' = {formula!r} is not one of {U_OXIDE_FORMULAS}")
         for name, value in self.values.items():
             if name.startswith("rho ") and not -1.0 <= value <= 1.0:
                 found.append(f"fraction {label}: {name} = {value!r} is outside [-1, 1]")

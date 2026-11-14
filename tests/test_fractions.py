@@ -214,7 +214,8 @@ def test_inverted_mapping_through_fraction_row(tmp_path):
 
 def test_u_pass_through_and_missing_r18():
     row = fraction_row(Fraction("SYN U", u=Analysis(read(SYNTHETIC_U))), EXPORTED_AT)
-    assert row.values["U Oxide 18O/16O"] == 0.00206 and "applied in the instrument file" in row.values["Notes"]
+    assert row.values["U Oxide 18O/16O"] == 0.00206 and row.values["U Oxide Formula"] == "instrument"
+    assert "applied by the instrument software, formula not verified" in row.values["Notes"]
     assert set(U_RATIOS) <= {k.removesuffix(" Mean") for k in row.values}
 
 
@@ -240,3 +241,10 @@ def test_pairing_by_suggested_fraction_id():
     assert pairing.unplaced == []
     again = pair_analyses([analyses[0], Analysis(read(GHR1_PB_XLS))])
     assert len(again.fractions) == 1 and "already has a Pb run" in again.unplaced[0][1]
+
+
+def test_derived_oxide_correction_records_its_formula_and_r18():
+    row = fraction_row(ghr1_fraction(), EXPORTED_AT)
+    assert row.values["U Oxide Formula"] == "et_redux"
+    assert row.values["U Oxide 18O/16O"] == 0.00205
+    assert not row.problems()
