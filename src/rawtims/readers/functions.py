@@ -122,6 +122,16 @@ def kind_of(name: str) -> FunctionKind:
     return classify(name)["kind"]
 
 
+def ratio_descriptor(name: str) -> str | None:
+    """The text after the leading ``<species>/<species>`` of a ratio name, stripped; None for non-ratios.
+
+    ``"206/204 D"`` → ``"D"``, ``"Pb206+At206/Tl205 raw"`` → ``"raw"``,
+    ``"238/235 oxide R18 0.00206"`` → ``"oxide R18 0.00206"``, ``"206/204"`` → ``""``.
+    """
+    match = _RATIO.match(name.strip())
+    return match.group("rest").strip() if match else None
+
+
 def build_functions(names: list[str], extra: list[dict[str, Any]] | None = None, default_unit: str | None = None) -> tuple[Function, ...]:
     """Make :class:`Function` objects for column names, keyed uniquely and indexed by position.
 

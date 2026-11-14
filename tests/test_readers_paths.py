@@ -44,7 +44,9 @@ def test_open_paths_on_the_fixtures_folder():
             assert reasons[name] == "Tripoli report, not a raw run file"
         else:
             assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[name]
-    assert set(reasons) == set(oracles) | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE"}
+    # A fractions CSV (the vendored legacy MA1 file) is not a run file either.
+    assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons["MA1_zircon_CA-ID-TIMS.csv"]
+    assert set(reasons) == set(oracles) | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", "MA1_zircon_CA-ID-TIMS.csv"}
 
 
 def test_open_paths_ignores_hidden_and_temporary_files(tmp_path):

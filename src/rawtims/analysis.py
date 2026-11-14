@@ -223,8 +223,15 @@ class Analysis:
         )
 
     # ---------------------------------------------------------------- rules
-    def _proposal(self, rule: str, keys: Sequence[str] | None, scope: str, synced: bool | None, params: dict[str, Any]) -> _rules.RuleProposal:
-        keys = list(self.ratio_keys if keys is None else keys)
+    def _proposal(self, rule: str, keys: Sequence[str] | None, mapping: Any, scope: str, synced: bool | None, params: dict[str, Any]) -> _rules.RuleProposal:
+        mapped: set[str] = set()
+        if mapping is not None:
+            mapped = set(mapping.function_keys)
+        if keys is None:
+            keys = list(mapping.function_keys) if mapping is not None else self.ratio_keys
+            if not keys:
+                raise ValueError("the mapping has no functions to examine")
+        keys = list(keys)
         columns = [self.index(key) for key in keys]
         effective = self.effective
         return _rules.propose(
@@ -232,22 +239,28 @@ class Analysis:
             self.values[:, columns],
             effective[:, columns],
             keys,
-            [self.functions[c].is_ratio for c in columns],
+            # Mapped functions are contract ratios even when the file names them in shorthand (IsoLinx ``R64``).
+            [self.functions[c].is_ratio or self.functions[c].key in mapped for c in columns],
             self.run.block,
             scope=scope,  # type: ignore[arg-type]
             synced=self._settings.synced if synced is None else synced,
             **params,
         )
 
-    def propose_chauvenet(self, keys: Sequence[str] | None = None, *, scope: str = "run", synced: bool | None = None, log_ratios: bool = False) -> _rules.RuleProposal:
-        """Preview Chauvenet's criterion with the current settings. ``keys`` default to every ratio function."""
-        params = {"probability": self._settings.chauvenet_probability, "min_n": self._settings.chauvenet_min_n, "log_ratios": log_ratios}
-        return self._proposal("chauvenet", keys, scope, synced, params)
+    def propose_chauvenet(self, keys: Sequence[str] | None = None, *, mapping: Any = None, scope: str = "run", synced: bool | None = None, log_ratios: bool = False) -> _rules.RuleProposal:
+        """Preview Chauvenet's criterion with the current settings.
 
-    def propose_k_sigma(self, keys: Sequence[str] | None = None, *, scope: str = "run", synced: bool | None = None, log_ratios: bool = True) -> _rules.RuleProposal:
-        """Preview iterative k-σ rejection with the current settings. ``keys`` default to every ratio function."""
+        ``keys`` default to the functions mapped to contract ratios when a
+        ``mapping`` (:class:`rawtims.mapping.ElementMapping`) is given, else to
+        every ratio function. Explicit ``keys`` always win.
+        """
+        params = {"probability": self._settings.chauvenet_probability, "min_n": self._settings.chauvenet_min_n, "log_ratios": log_ratios}
+        return self._proposal("chauvenet", keys, mapping, scope, synced, params)
+
+    def propose_k_sigma(self, keys: Sequence[str] | None = None, *, mapping: Any = None, scope: str = "run", synced: bool | None = None, log_ratios: bool = True) -> _rules.RuleProposal:
+        """Preview iterative k-σ rejection with the current settings. ``keys`` default as in :meth:`propose_chauvenet`."""
         params = {"k": self._settings.k_sigma, "max_iterations": self._settings.k_sigma_max_iterations, "log_ratios": log_ratios}
-        return self._proposal("k_sigma", keys, scope, synced, params)
+        return self._proposal("k_sigma", keys, mapping, scope, synced, params)
 
     # ------------------------------------------------------------ operations
     def _rows(self, cycles: Iterable[int]) -> list[int]:
