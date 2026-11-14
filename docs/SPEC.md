@@ -154,6 +154,8 @@ citations are in [tripoli-research-notes.md](tripoli-research-notes.md). The ess
     cycle 1 (265/267 = 0.97291, 270/267 = 2.42704, r18 = 0.00205), gives 238/235oc = 2.45143. The
     R265_267 form used by ET_Redux, legacy Tripoli and the Thermo Triton equation gives 2.43676 for the same
     cycle, 0.6 % lower.
+  - Mechanism, how the gap depends on the sample/spike ratio, and real-file values:
+    [oxide-correction.md](oxide-correction.md).
 - **Fractionation, BaPO2 and Tl corrections:** current Tripoli applies none (`fracCorr` is always false and
   `meanAlphaPb` and `meanAlphaU` are always 0). Legacy C# Tripoli had them, all with a linear law:
   - Pb from 202/205: α = (1 − 202/205t ÷ 202/205m)/3, applied per amu;
