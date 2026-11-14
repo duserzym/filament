@@ -106,10 +106,21 @@ class RunMetadata:
 
     ``analysis_start`` is the instrument's wall-clock start time. The files carry
     no timezone, so the datetime is naive unless a reader learns the zone; the
-    text as written is always kept in ``analysis_start_raw``. ``aborted`` means
-    the run stopped before the planned blocks × cycles. ``cycles_per_block`` is
+    text as written is always kept in ``analysis_start_raw``. ``cycles_per_block`` is
     the number of cycle rows per block as written in the file (for IonVantage
     with beam interpolation on, the method's cycles per block + 1).
+
+    Three separate facts about how the run ended:
+
+    * ``complete``: the file has exactly the planned blocks × cycles per block
+      cycle rows (None when the plan is unknown);
+    * ``stopped_early``: not complete (fewer rows than planned; None when the
+      plan is unknown). Most real runs stop early because the operator ends
+      them once the precision is good enough, so this is not an error;
+    * ``aborted``: only on explicit evidence in the file, with the evidence in
+      ``aborted_reason``: IonVantage ``Run Terminated`` true or an ``IsoWorks
+      Error Message`` containing "abort"; an IsoLinx ``#END`` status other than
+      ``AnalysisCompleted``.
     """
 
     sample_id: str | None = None
@@ -121,7 +132,10 @@ class RunMetadata:
     analysis_start_raw: str | None = None
     blocks: int | None = None
     cycles_per_block: int | None = None
+    complete: bool | None = None
+    stopped_early: bool | None = None
     aborted: bool = False
+    aborted_reason: str | None = None
     rejection: dict[str, Any] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
 

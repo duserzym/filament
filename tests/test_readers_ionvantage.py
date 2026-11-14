@@ -14,12 +14,13 @@ from rawtims.readers import open_run, sniff
 from rawtims.readers._xls import open_xls
 from reader_fixtures import B998, GHR1_PB_XLS, GHR1_U_XLS, NBS981_XLS, read
 
-# path: (sample, serial, method, blocks, rows per block, method cycles per block, BI, n cycles, blocks measured, n functions, element, start, aborted)
+# path: (sample, serial, method, blocks, rows per block, method cycles per block, BI, n cycles, blocks measured, n functions, element, start, (complete, aborted))
+# The three KU and BSU runs that stopped early also carry IsoWorks' "Data processing ABORTED!" message, so they are aborted too.
 EXPECTED = {
-    B998: ("13223M02 iz1", "14973", "Pb 205 Daly 150 ratios", 10, 16, 15, True, 96, 6, 59, "Pb", datetime(2018, 7, 3, 7, 46, 32), True),
-    GHR1_PB_XLS: ("GHR1 20200827-11", "6590", "Pb-4-5-6-7-8 Daly 10-5-5-5-2 seconds", 100, 11, 10, True, 88, 8, 14, "Pb", datetime(2020, 8, 30, 18, 38, 8), True),
-    GHR1_U_XLS: ("GHR1 20200827-11 U", "6591", "UO2 Static 265-7-8-0 Faraday 272 Daly 18s BL 22s OP", 100, 110, 110, False, 624, 6, 7, "U", datetime(2020, 8, 30, 19, 54, 7), True),
-    NBS981_XLS: ("NBS981-500 20191208", "5563", "Pb-4-5-6-7-8 Daly 10-1-2-5-2 NoBI", 10, 15, 15, False, 150, 10, 5, "Pb", datetime(2019, 12, 9, 9, 50, 14), False),
+    B998: ("13223M02 iz1", "14973", "Pb 205 Daly 150 ratios", 10, 16, 15, True, 96, 6, 59, "Pb", datetime(2018, 7, 3, 7, 46, 32), (False, True)),
+    GHR1_PB_XLS: ("GHR1 20200827-11", "6590", "Pb-4-5-6-7-8 Daly 10-5-5-5-2 seconds", 100, 11, 10, True, 88, 8, 14, "Pb", datetime(2020, 8, 30, 18, 38, 8), (False, True)),
+    GHR1_U_XLS: ("GHR1 20200827-11 U", "6591", "UO2 Static 265-7-8-0 Faraday 272 Daly 18s BL 22s OP", 100, 110, 110, False, 624, 6, 7, "U", datetime(2020, 8, 30, 19, 54, 7), (False, True)),
+    NBS981_XLS: ("NBS981-500 20191208", "5563", "Pb-4-5-6-7-8 Daly 10-1-2-5-2 NoBI", 10, 15, 15, False, 150, 10, 5, "Pb", datetime(2019, 12, 9, 9, 50, 14), (True, False)),
 }
 
 FUNCTIONS = {
@@ -31,7 +32,7 @@ FUNCTIONS = {
 
 @pytest.mark.parametrize("path", sorted(EXPECTED), ids=lambda p: p.stem)
 def test_header_cycles_and_functions(path):
-    sample, serial, method, blocks, rows_per_block, method_cycles, bi, n_cycles, measured, n_functions, element, start, aborted = EXPECTED[path]
+    sample, serial, method, blocks, rows_per_block, method_cycles, bi, n_cycles, measured, n_functions, element, start, (complete, aborted) = EXPECTED[path]
     assert sniff(path).format == FORMAT_IONVANTAGE_XLS
     run = read(path)
     meta = run.metadata
@@ -41,7 +42,9 @@ def test_header_cycles_and_functions(path):
     assert (run.n_cycles, run.blocks_measured, run.n_functions) == (n_cycles, measured, n_functions)
     assert run.element == element
     assert meta.analysis_start == start and meta.software == "IonVantage"
-    assert meta.aborted is aborted
+    assert meta.complete is complete and meta.stopped_early is (not complete) and meta.aborted is aborted
+    assert complete is (n_cycles == blocks * rows_per_block)
+    assert (meta.aborted_reason is not None) is aborted
     assert run.raw.format == FORMAT_IONVANTAGE_XLS and run.raw.format_version == "4"
     assert np.array_equal(run.cycle, np.arange(1, n_cycles + 1))
     assert np.array_equal(run.block, (run.cycle - 1) // rows_per_block + 1)
@@ -56,7 +59,9 @@ def test_boise_state_aborted_run():
     meta = run.metadata
     assert run.n_cycles == 96 and meta.extra["Ratios so far"] == 96.0 and meta.extra["Total Ratios"] == 150.0
     assert run.blocks_measured == 6 and np.bincount(run.block)[1:].tolist() == [16] * 6
-    assert meta.aborted and meta.extra["IsoWorks Error Message"].startswith("Data processing ABORTED")
+    assert meta.aborted is True and meta.stopped_early is True and meta.complete is False
+    assert meta.extra["IsoWorks Error Message"].startswith("Data processing ABORTED")
+    assert meta.aborted_reason == "CTRL IsoWorks Error Message: Data processing ABORTED!"
     assert meta.rejection == {"percent": 5.0, "sigma": 2.0}
     assert meta.extra["Job Code"] == "B0998" and meta.extra["Apply Baselines"] is True
     assert meta.analysis_start_raw == "Tuesday 3 July 2018 7:46:32"

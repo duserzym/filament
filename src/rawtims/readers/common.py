@@ -114,6 +114,14 @@ def block_numbers(cycle: np.ndarray, cycles_per_block: int | None) -> np.ndarray
     return (cycle - 1) // cycles_per_block + 1
 
 
+def completion(n_rows: int, blocks: int | None, cycles_per_block: int | None) -> tuple[bool | None, bool | None]:
+    """``(complete, stopped_early)`` from the cycle-row count and the plan; ``(None, None)`` when the plan is unknown."""
+    if blocks is None or cycles_per_block is None:
+        return None, None
+    complete = n_rows == blocks * cycles_per_block
+    return complete, not complete
+
+
 def assemble_run(raw: RawFile, metadata: RunMetadata, functions: tuple[Function, ...], cycle: np.ndarray, time: np.ndarray, values: np.ndarray) -> Run:
     cycle = np.asarray(cycle, dtype=np.int64)
     values = np.asarray(values, dtype=np.float64).reshape(len(cycle), len(functions))

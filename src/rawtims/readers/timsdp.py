@@ -34,7 +34,7 @@ from typing import Any
 import numpy as np
 
 from rawtims.model import FORMAT_ISOLINX_TIMSDP, RawFile, Run, RunMetadata
-from rawtims.readers.common import assemble_run, parse_instrument_datetime, to_float, to_int
+from rawtims.readers.common import assemble_run, completion, parse_instrument_datetime, to_float, to_int
 from rawtims.readers.functions import build_functions
 
 REQUIRED_HEADER_KEYS = ("Version", "MethodName")
@@ -178,7 +178,9 @@ def read_timsdp(path: str | os.PathLike[str], data: bytes | None = None) -> Run:
     format_version = version_parts[1] if len(version_parts) > 1 and version_parts[1] else None
     cycles_per_block = to_int(header.get("CyclesToMeasure"))
     blocks = to_int(header.get("BlocksToMeasure"))
-    planned = None if blocks is None or cycles_per_block is None else blocks * cycles_per_block
+    complete, stopped_early = completion(len(cycles), blocks, cycles_per_block)
+    # A missing #END line is not evidence of an abort (the file may be cut short); a status other than completed is.
+    aborted_reason = None if end_status is None or end_status == "AnalysisCompleted" else f"#END status: {end_status}"
     rejection = {}
     if "RejectionSigma" in header:
         rejection["sigma"] = to_float(header["RejectionSigma"])
@@ -195,7 +197,10 @@ def read_timsdp(path: str | os.PathLike[str], data: bytes | None = None) -> Run:
         analysis_start_raw=start_raw,
         blocks=blocks,
         cycles_per_block=cycles_per_block,
-        aborted=planned is not None and len(cycles) < planned,
+        complete=complete,
+        stopped_early=stopped_early,
+        aborted=aborted_reason is not None,
+        aborted_reason=aborted_reason,
         rejection=rejection,
         extra={
             "header": header,

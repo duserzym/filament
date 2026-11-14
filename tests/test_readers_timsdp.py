@@ -12,16 +12,17 @@ from rawtims.model import FORMAT_ISOLINX_TIMSDP
 from rawtims.readers import open_run, sniff
 from reader_fixtures import TIMSDP_FILES, read
 
-# stem: (sample id, serial, method, blocks, cycles per block, n cycles, blocks measured, n functions, element, start, aborted, software)
+# stem: (sample id, serial, method, blocks, cycles per block, n cycles, blocks measured, n functions, element, start, complete, software)
+# Every file ends with #END,AnalysisCompleted, so none is aborted, although all but one stopped early.
 EXPECTED = {
-    "NBS981 210325b-392": ("NBS981 210325", "392", "PbNoBL-204-5-6-7-8 Daly 10-1-5-5-2.TIMSAM", 20, 10, 200, 20, 18, "Pb", datetime(2021, 4, 16, 17, 19, 34), False, "IsoLinx 1.2.31"),
-    "GHR1 230921 F08b-216": ("GHR1 230921 F08", "216", "Pb 4-5-6-7-8 Daly 10-5-5-5-2 secBL5.TIMSAM", 100, 10, 99, 10, 18, "Pb", datetime(2023, 9, 26, 12, 53, 31), True, "IsoLinx 2.1.16"),
-    "GHR1 230921F03 U-239": ("GHR1 230921F01 U", "239", "UO2 Static 265-7-8-0 Faraday 272 Daly 18s BL 22s OP FewPlot.TIMSAM", 100, 110, 770, 7, 8, "U", datetime(2023, 10, 5, 12, 44, 38), True, "IsoLinx 2.1.16"),
-    "NBS981 230024a-145": ("NBS981 230024a", "145", "Pb NBS981 204-5-6-7-8 Daly 14-1-5-5-2 sec.TIMSAM", 100, 12, 159, 14, 17, "Pb", datetime(2023, 8, 25, 13, 18, 11), True, "IsoLinx 2.1.16"),
-    "WH205 z4 Pb-654": ("WH205 z4", "654", "PbDaly_205_45678_Quick.TIMSAM", 15, 10, 70, 7, 11, "Pb", datetime(2022, 11, 28, 6, 30, 5), True, "IsoLinx 2.0.11"),
-    "WH205 z41 U-655": ("WH205 z4", "655", "UO2_Faraday_265_267_268_270_272_AllFaraday.TIMSAM", 50, 15, 45, 3, 6, "U", datetime(2022, 11, 28, 7, 43, 25), True, "IsoLinx 2.0.11"),
-    "WH233B z1 U-671": ("WH233B z1", "671", "UO2_Faraday_265_267_268_270_272_AllFaraday.TIMSAM", 50, 15, 75, 5, 6, "U", datetime(2022, 11, 29, 5, 47, 38), True, "IsoLinx 2.0.11"),
-    "WH233B z3 Pb-678": ("WH233B z3", "678", "PbDaly_205_45678_Quick.TIMSAM", 10, 10, 20, 2, 11, "Pb", datetime(2022, 11, 29, 8, 24, 43), True, "IsoLinx 2.0.11"),
+    "NBS981 210325b-392": ("NBS981 210325", "392", "PbNoBL-204-5-6-7-8 Daly 10-1-5-5-2.TIMSAM", 20, 10, 200, 20, 18, "Pb", datetime(2021, 4, 16, 17, 19, 34), True, "IsoLinx 1.2.31"),
+    "GHR1 230921 F08b-216": ("GHR1 230921 F08", "216", "Pb 4-5-6-7-8 Daly 10-5-5-5-2 secBL5.TIMSAM", 100, 10, 99, 10, 18, "Pb", datetime(2023, 9, 26, 12, 53, 31), False, "IsoLinx 2.1.16"),
+    "GHR1 230921F03 U-239": ("GHR1 230921F01 U", "239", "UO2 Static 265-7-8-0 Faraday 272 Daly 18s BL 22s OP FewPlot.TIMSAM", 100, 110, 770, 7, 8, "U", datetime(2023, 10, 5, 12, 44, 38), False, "IsoLinx 2.1.16"),
+    "NBS981 230024a-145": ("NBS981 230024a", "145", "Pb NBS981 204-5-6-7-8 Daly 14-1-5-5-2 sec.TIMSAM", 100, 12, 159, 14, 17, "Pb", datetime(2023, 8, 25, 13, 18, 11), False, "IsoLinx 2.1.16"),
+    "WH205 z4 Pb-654": ("WH205 z4", "654", "PbDaly_205_45678_Quick.TIMSAM", 15, 10, 70, 7, 11, "Pb", datetime(2022, 11, 28, 6, 30, 5), False, "IsoLinx 2.0.11"),
+    "WH205 z41 U-655": ("WH205 z4", "655", "UO2_Faraday_265_267_268_270_272_AllFaraday.TIMSAM", 50, 15, 45, 3, 6, "U", datetime(2022, 11, 28, 7, 43, 25), False, "IsoLinx 2.0.11"),
+    "WH233B z1 U-671": ("WH233B z1", "671", "UO2_Faraday_265_267_268_270_272_AllFaraday.TIMSAM", 50, 15, 75, 5, 6, "U", datetime(2022, 11, 29, 5, 47, 38), False, "IsoLinx 2.0.11"),
+    "WH233B z3 Pb-678": ("WH233B z3", "678", "PbDaly_205_45678_Quick.TIMSAM", 10, 10, 20, 2, 11, "Pb", datetime(2022, 11, 29, 8, 24, 43), False, "IsoLinx 2.0.11"),
 }
 
 
@@ -40,7 +41,7 @@ def _section(path: Path, name: str) -> list[str]:
 @pytest.mark.parametrize("stem", sorted(EXPECTED))
 def test_header_cycles_and_functions(stem):
     path = TIMSDP_FILES[stem]
-    sample, serial, method, blocks, cycles_per_block, n_cycles, measured, n_functions, element, start, aborted, software = EXPECTED[stem]
+    sample, serial, method, blocks, cycles_per_block, n_cycles, measured, n_functions, element, start, complete, software = EXPECTED[stem]
     assert sniff(path).format == FORMAT_ISOLINX_TIMSDP
     run = read(path)
     meta = run.metadata
@@ -50,7 +51,9 @@ def test_header_cycles_and_functions(stem):
     assert run.element == element
     assert meta.analysis_start == start and meta.analysis_start.tzinfo is None
     assert meta.analysis_start_raw == meta.extra["header"]["AnalysisStart"]
-    assert meta.aborted is aborted and meta.software == software
+    assert meta.complete is complete and meta.stopped_early is (not complete) and meta.software == software
+    assert complete is (n_cycles == blocks * cycles_per_block)
+    assert meta.aborted is False and meta.aborted_reason is None
     assert run.raw.format == FORMAT_ISOLINX_TIMSDP and run.raw.format_version == "1.20"
     assert run.raw.name == path.name and run.raw.size == path.stat().st_size and len(run.raw.sha256) == 64
     assert set(meta.rejection) == {"sigma", "percent"}

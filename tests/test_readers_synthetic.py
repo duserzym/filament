@@ -56,6 +56,7 @@ def test_bsu_u_oxide_workbook():
     meta = run.metadata
     assert run.element == "U"
     assert (meta.blocks, meta.cycles_per_block, run.n_cycles, run.blocks_measured, meta.aborted) == (12, 10, 120, 12, False)
+    assert meta.complete is True and meta.stopped_early is False
     assert run.names == ["265 F", "267 F", "270 F", "270/267", "265/267", "272/270",
                          "238/235 oxide R18 0.00206", "233/235 oxide R18 0.00206", "238/233 oxide"]
     oxide = run.function("238/235 oxide R18 0.00206")
@@ -78,6 +79,7 @@ def test_et2535_pb_workbook():
     assert run.element == "Pb"
     assert meta.extra["beam_interpolation"] is True and meta.extra["cycles_per_block_method"] == 15
     assert (meta.blocks, meta.cycles_per_block, run.n_cycles, run.blocks_measured, meta.aborted) == (10, 16, 160, 10, False)
+    assert meta.complete is True and meta.stopped_early is False
     assert {"202/205 D", "202 D", "206/204 D", "204/205 D"} <= set(run.names)
     assert run.keys.count("Daly/Faraday Gain #2") == 1
     assert run.function("202/205 D").collector == "D"

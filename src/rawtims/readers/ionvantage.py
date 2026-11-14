@@ -33,7 +33,7 @@ from xlrd.biffh import XL_CELL_BOOLEAN, XL_CELL_NUMBER, XL_CELL_TEXT
 
 from rawtims.model import FORMAT_IONVANTAGE_XLS, RawFile, Run, RunMetadata
 from rawtims.readers._xls import open_xls
-from rawtims.readers.common import assemble_run, parse_instrument_datetime, to_int
+from rawtims.readers.common import assemble_run, completion, parse_instrument_datetime, to_int
 from rawtims.readers.functions import build_functions
 
 CYCLE_SHEET = "CYCLE"
@@ -168,12 +168,12 @@ def read_ionvantage(path: str | os.PathLike[str], data: bytes | None = None) -> 
     cycles_per_block = None if method_cycles is None else method_cycles + (1 if beam_interpolation else 0)
     blocks = to_int(ctrl.get("Number of Blocks"))
     error_message = _text(ctrl.get("IsoWorks Error Message"))
-    planned = None if blocks is None or cycles_per_block is None else blocks * cycles_per_block
-    aborted = (
-        (planned is not None and len(cycle) < planned)
-        or _truthy(ctrl.get("Run Terminated"))
-        or bool(error_message and re.search(r"abort", error_message, re.IGNORECASE))
-    )
+    complete, stopped_early = completion(len(cycle), blocks, cycles_per_block)
+    aborted_reason = None
+    if _truthy(ctrl.get("Run Terminated")):
+        aborted_reason = "CTRL Run Terminated = 1"
+    elif error_message and re.search(r"abort", error_message, re.IGNORECASE):
+        aborted_reason = f"CTRL IsoWorks Error Message: {error_message}"
     start_raw = _text(ctrl.get("Analysis Start Time"))
     rejection = {}
     if ctrl.get("Rejection %") is not None:
@@ -193,7 +193,10 @@ def read_ionvantage(path: str | os.PathLike[str], data: bytes | None = None) -> 
         analysis_start_raw=start_raw,
         blocks=blocks,
         cycles_per_block=cycles_per_block,
-        aborted=bool(aborted),
+        complete=complete,
+        stopped_early=stopped_early,
+        aborted=aborted_reason is not None,
+        aborted_reason=aborted_reason,
         rejection=rejection,
         extra=extra,
     )
