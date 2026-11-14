@@ -116,8 +116,8 @@ every case.
 
 | Value | Meaning |
 |---|---|
-| `tripoli_00dc941` | CIRDLES Tripoli at commit 00dc941: r238/235 = r270/267 / (1 − 2·r18·r270/267); r233/235 = r265/267 / (1 − 2·r18·r265/267) |
-| `et_redux` | ET_Redux, legacy Tripoli, Triton: r238/235 = r270/267 / (1 − 2·r18·r265/267); r233/235 = r265/267 / (1 − 2·r18·r265/267) |
+| `isobar_233_18O` | Removes the 233U16O18O isobar from mass 267, which is 2·r18 times the 233U16O2 beam at mass 265: r238/235 = r270/267 / (1 − 2·r18·r265/267); r233/235 = r265/267 / (1 − 2·r18·r265/267). This is the form used by ET_Redux, legacy Tripoli and Triton. **Default.** |
+| `tripoli_java_00dc941` | The form in CIRDLES Tripoli (Java) at commit 00dc941: r238/235 = r270/267 / (1 − 2·r18·r270/267); r233/235 = r265/267 / (1 − 2·r18·r265/267). Its 238/235 correction grows with the sample-to-spike ratio. Kept only as a labelled comparison option; the reduction app shows a note on fractions imported with it. |
 | `instrument` | The ratios arrived already oxide-corrected from the instrument software, and the writer did not recompute them. The formula is unknown. `U Oxide 18O/16O` holds the value parsed from the instrument function name. |
 
 The reader shows the formula in its issues list. It refuses to merge files whose U rows for one
@@ -147,7 +147,7 @@ Optional, and strongly encouraged from the raw-data app.
 | `Pb Cycles Used`, `Pb Cycles Total`, `U Cycles Used`, `U Cycles Total` | Integers. Cycles Used counts the cycles accepted for every one of that element's exported ratios (the intersection). With synchronised rejection, this equals each ratio's n. |
 | `Filter Rule` | Short text, e.g. `2-sigma iterative, Tripoli-equivalent`. When both runs are present: `Pb: <text> \| U: <text>` |
 | `U Oxide 18O/16O` | The 18O/16O used for the oxide correction (see `U Oxide Formula`) |
-| `U Oxide Formula` | `tripoli_00dc941`, `et_redux` or `instrument` (see above) |
+| `U Oxide Formula` | `isobar_233_18O`, `tripoli_java_00dc941` or `instrument` (see above) |
 | `Raw App` | Writer name and version, e.g. `filament 0.1.0` |
 | `Raw App Session`, `Raw App Session SHA256` | The writer's own session file (rejected block/cycle lists, dead time, Daly gain, baseline and interference settings); readers keep it as provenance |
 | `Exported At` | ISO 8601 with offset |

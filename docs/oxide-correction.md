@@ -27,7 +27,7 @@ the form in:
 - Thermo Triton's own equation as written in its exports:
   `238/235 oc = (R3/R2)/((1/R2)-(2*R18))`, with R2 = 233/235 and R3 = 238/235.
 
-It is filament's default (`formula="et_redux"`).
+It is filament's default (`formula="isobar_233_18O"`).
 
 ## What current Java Tripoli does
 

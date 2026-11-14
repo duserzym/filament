@@ -14,7 +14,7 @@ Two documented differences:
   statistics (SPEC section 3). For those columns the test checks both: that
   filament excludes them by default, and that filament's arithmetic
   statistics over the same values Tripoli used reproduce Tripoli's numbers.
-* **Oxide columns** (``*oc``). With ``oxide_formula="tripoli_00dc941"`` they
+* **Oxide columns** (``*oc``). With ``oxide_formula="tripoli_java_00dc941"`` they
   match Tripoli; with the default ET_Redux form 233/235oc is the same (both
   forms share it) and 238/235oc and 238/233oc differ.
 """
@@ -49,7 +49,7 @@ SHORT_PAIRS = {
 }
 # Ratio columns in which Tripoli found values <= 0 and switched to arithmetic statistics.
 NONPOSITIVE = {("NBS981 210325b-392", "205/206"), ("NBS981 230024a-145", "205/206 Daly")}
-TRIPOLI_OXIDE = AnalysisSettings(oxide_formula="tripoli_00dc941", r18=0.00205)
+TRIPOLI_OXIDE = AnalysisSettings(oxide_formula="tripoli_java_00dc941", r18=0.00205)
 
 
 def _rel(actual: float, expected: float) -> float:
@@ -105,19 +105,19 @@ def test_filament_excludes_nonpositive_ratio_values_where_tripoli_goes_arithmeti
     assert stats.mean > 0
 
 
-def test_ku_ghr1_u239_oxide_columns_tripoli_form_matches_et_redux_differs():
+def test_ku_ghr1_u239_oxide_columns_tripoli_form_matches_isobar_233_18O_differs():
     report = {name: (mean, pct) for name, mean, pct in read_short_report(SHORT / "KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239.txt")}
     run = read(TIMSDP_FILES["GHR1 230921F03 U-239"])
     tripoli = Analysis(run, TRIPOLI_OXIDE)
-    et_redux = Analysis(run)
-    assert et_redux.settings.oxide_formula == "et_redux" and et_redux.settings.r18 == 0.00205
+    isobar_233_18O = Analysis(run)
+    assert isobar_233_18O.settings.oxide_formula == "isobar_233_18O" and isobar_233_18O.settings.r18 == 0.00205
     for name in ("233/235oc", "238/235oc", "238/233oc"):
         mean, pct = report[name]
         assert _rel(tripoli.stats(name).mean, mean) <= TOLERANCE and _rel(tripoli.stats(name).se_pct, pct) <= TOLERANCE
-    assert et_redux.stats("233/235oc").mean == tripoli.stats("233/235oc").mean  # identical formula in both forms
+    assert isobar_233_18O.stats("233/235oc").mean == tripoli.stats("233/235oc").mean  # identical formula in both forms
     for name in ("238/235oc", "238/233oc"):
-        assert _rel(et_redux.stats(name).mean, report[name][0]) > 5e-3  # about 0.6 % apart
-    assert et_redux.stats("238/235oc").mean == pytest.approx(2.43849557, rel=1e-8)
+        assert _rel(isobar_233_18O.stats(name).mean, report[name][0]) > 5e-3  # about 0.6 % apart
+    assert isobar_233_18O.stats("238/235oc").mean == pytest.approx(2.43849557, rel=1e-8)
     assert tripoli.stats("238/235oc").mean == pytest.approx(2.45317502478215, rel=1e-12)
 
 

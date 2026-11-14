@@ -20,18 +20,18 @@ def test_ku_ghr1_u239_cycle_one_pins_both_forms():
     run = read(U239)
     r265, r270 = run.column("265/267")[0], run.column("270/267")[0]
     assert (r265, r270) == (0.9729083814, 2.42703538)  # the file's exact values
-    _, tripoli, _ = correct(r265, r270, 0.00205, "tripoli_00dc941")
-    r233, et_redux, r238_233 = correct(r265, r270, 0.00205)
+    _, tripoli, _ = correct(r265, r270, 0.00205, "tripoli_java_00dc941")
+    r233, isobar_233_18O, r238_233 = correct(r265, r270, 0.00205)
     assert tripoli == pytest.approx(2.45143, abs=5e-6) and tripoli == pytest.approx(2.4514291718598384, rel=1e-15)
     # SPEC section 1.2 quotes 2.43675 (truncated); the value is 2.4367554.
-    assert et_redux == pytest.approx(2.4367554130355327, rel=1e-15) and et_redux == pytest.approx(2.42703538 / (1 - 2 * 0.00205 * 0.9729083814), rel=1e-15)
-    assert (tripoli - et_redux) / et_redux == pytest.approx(0.00602, abs=5e-5)
-    assert r233 == pytest.approx(0.9768047817927107, rel=1e-15) and r238_233 == pytest.approx(et_redux / r233, rel=1e-15)
+    assert isobar_233_18O == pytest.approx(2.4367554130355327, rel=1e-15) and isobar_233_18O == pytest.approx(2.42703538 / (1 - 2 * 0.00205 * 0.9729083814), rel=1e-15)
+    assert (tripoli - isobar_233_18O) / isobar_233_18O == pytest.approx(0.00602, abs=5e-5)
+    assert r233 == pytest.approx(0.9768047817927107, rel=1e-15) and r238_233 == pytest.approx(isobar_233_18O / r233, rel=1e-15)
 
 
 def test_tripoli_form_reproduces_every_oracle_cycle():
     report = read_cycle_report(ORACLE_CYCLES / "KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239-report.tsv")
-    result = oxide_correction(read(U239), 0.00205, "tripoli_00dc941")
+    result = oxide_correction(read(U239), 0.00205, "tripoli_java_00dc941")
     for name in ("233/235oc", "238/235oc", "238/233oc"):
         expected = report.values[:, report.names.index(name)]
         np.testing.assert_allclose(result.values[name], expected, rtol=1e-14, atol=0)
@@ -40,7 +40,7 @@ def test_tripoli_form_reproduces_every_oracle_cycle():
 def test_inputs_are_recorded_and_inverted_for_purdue():
     run = read(TIMSDP_FILES["WH205 z41 U-655"])
     result = oxide_correction(run)
-    assert result.status == "computed" and result.formula == "et_redux" and result.r18 == 0.00205
+    assert result.status == "computed" and result.formula == "isobar_233_18O" and result.r18 == 0.00205
     assert result.inputs == {"R265/267": "1 / 267/265", "R270/267": "270/267"}
     assert result.input_keys == ("267/265", "270/267")
     r265 = 1 / run.column("267/265")

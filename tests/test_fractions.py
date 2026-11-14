@@ -49,7 +49,7 @@ def test_ku_ghr1_pb_matches_the_tripoli_short_report():
 
 
 def test_ku_ghr1_u_oxide_plumbing_matches_tripoli_with_its_formula():
-    row = fraction_row(ghr1_fraction(AnalysisSettings(oxide_formula="tripoli_00dc941", r18=0.00205)), EXPORTED_AT)
+    row = fraction_row(ghr1_fraction(AnalysisSettings(oxide_formula="tripoli_java_00dc941", r18=0.00205)), EXPORTED_AT)
     oracle = _oracle("Oracle-GHR1 230921F03 U-239.txt")
     for ratio, name in U_ORACLE.items():
         mean, pct = oracle[name]
@@ -58,7 +58,7 @@ def test_ku_ghr1_u_oxide_plumbing_matches_tripoli_with_its_formula():
     assert row.values["U Oxide 18O/16O"] == 0.00205 and row.values["U Cycles Used"] == 770
 
 
-def test_ku_ghr1_u_default_et_redux_values():
+def test_ku_ghr1_u_default_isobar_233_18O_values():
     row = fraction_row(ghr1_fraction(), EXPORTED_AT)
     oracle = _oracle("Oracle-GHR1 230921F03 U-239.txt")
     assert _rel(row.mean("233U/235U"), oracle["233/235oc"][0]) <= TOLERANCE  # the same formula in both forms
@@ -69,7 +69,7 @@ def test_ku_ghr1_u_default_et_redux_values():
     ratio = analysis.column("270/267") / analysis.column("265/267")
     assert row.mean("238U/233U") == pytest.approx(float(np.exp(np.log(ratio).mean())), rel=1e-13)
     assert row.values["U Oxide 18O/16O"] == 0.00205
-    assert "et_redux formula" in row.values["Notes"]
+    assert "isobar_233_18O formula" in row.values["Notes"]
 
 
 def test_correlations_are_bounded_and_equal_a_direct_numpy_computation():
@@ -245,6 +245,6 @@ def test_pairing_by_suggested_fraction_id():
 
 def test_derived_oxide_correction_records_its_formula_and_r18():
     row = fraction_row(ghr1_fraction(), EXPORTED_AT)
-    assert row.values["U Oxide Formula"] == "et_redux"
+    assert row.values["U Oxide Formula"] == "isobar_233_18O"
     assert row.values["U Oxide 18O/16O"] == 0.00205
     assert not row.problems()

@@ -46,7 +46,7 @@ class AnalysisSettings:
 
     stat_mode: str = "geometric"
     r18: float = DEFAULT_R18
-    oxide_formula: str = "et_redux"
+    oxide_formula: str = "isobar_233_18O"
     chauvenet_probability: float = _rules.CHAUVENET_PROBABILITY
     chauvenet_min_n: int = _rules.CHAUVENET_MIN_N
     k_sigma: float = _rules.K_SIGMA

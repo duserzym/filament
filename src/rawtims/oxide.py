@@ -4,13 +4,13 @@ U is measured as UO2+, so mass 265 is 233U16O16O, 267 is 235U16O16O and 270 is
 238U16O16O. The only interference corrected is 233U16O18O on mass 267, which
 scales with mass 265 and with the oxygen ratio r18 = 18O/16O. Per cycle:
 
-* ``et_redux`` (the default; ET_Redux ``R238_235oc``, legacy Tripoli and the
+* ``isobar_233_18O`` (the default; ET_Redux ``R238_235oc``, legacy Tripoli and the
   Thermo Triton equation)::
 
       233/235oc = R265/267 / (1 − 2·r18·R265/267)
       238/235oc = R270/267 / (1 − 2·r18·R265/267)
 
-* ``tripoli_00dc941`` (current CIRDLES Tripoli at commit 00dc941,
+* ``tripoli_java_00dc941`` (current CIRDLES Tripoli at commit 00dc941,
   ``MassSpecOutputBlockRecordLite.expandForUraniumOxideCorrection``), kept only
   so tests can compare with Tripoli's expected outputs; its 238/235 uses
   R270/267 in the denominator::
@@ -41,16 +41,16 @@ from rawtims.branding import APP_NAME
 from rawtims.model import Function, Run
 
 DEFAULT_R18 = 0.00205  # Tripoli's default 18O/16O (TripoliConstants.R18O_16O_DEFAULT_OXIDE_CORRECTION)
-FORMULAS: tuple[str, ...] = ("et_redux", "tripoli_00dc941")
-OxideFormula = Literal["et_redux", "tripoli_00dc941"]
+FORMULAS: tuple[str, ...] = ("isobar_233_18O", "tripoli_java_00dc941")
+OxideFormula = Literal["isobar_233_18O", "tripoli_java_00dc941"]
 DERIVED_NAMES = ("233/235oc", "238/235oc", "238/233oc")
 FORMULA_TEXT = {
-    "et_redux": {
+    "isobar_233_18O": {
         "233/235oc": "R265/267 / (1 - 2*r18*R265/267)",
         "238/235oc": "R270/267 / (1 - 2*r18*R265/267)",
         "238/233oc": "238/235oc / 233/235oc",
     },
-    "tripoli_00dc941": {
+    "tripoli_java_00dc941": {
         "233/235oc": "R265/267 / (1 - 2*r18*R265/267)",
         "238/235oc": "R270/267 / (1 - 2*r18*R270/267)",
         "238/233oc": "238/235oc / 233/235oc",
@@ -58,7 +58,7 @@ FORMULA_TEXT = {
 }
 
 
-def correct(r265_267, r270_267, r18: float = DEFAULT_R18, formula: OxideFormula = "et_redux") -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def correct(r265_267, r270_267, r18: float = DEFAULT_R18, formula: OxideFormula = "isobar_233_18O") -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return ``(233/235oc, 238/235oc, 238/233oc)`` per cycle from R265/267 and R270/267."""
     if formula not in FORMULAS:
         raise ValueError(f"unknown oxide formula {formula!r}; expected one of {FORMULAS}")
@@ -68,7 +68,7 @@ def correct(r265_267, r270_267, r18: float = DEFAULT_R18, formula: OxideFormula 
     r270 = np.asarray(r270_267, dtype=np.float64)
     with np.errstate(divide="ignore", invalid="ignore"):
         factor_233 = 1.0 - 2.0 * r18 * r265
-        factor_238 = factor_233 if formula == "et_redux" else 1.0 - 2.0 * r18 * r270
+        factor_238 = factor_233 if formula == "isobar_233_18O" else 1.0 - 2.0 * r18 * r270
         r233_235 = r265 / factor_233
         r238_235 = r270 / factor_238
         r238_233 = r238_235 / r233_235
@@ -158,7 +158,7 @@ def find_inputs(run: Run) -> tuple[dict[str, str], tuple[str, ...], np.ndarray, 
     return how, tuple(dict.fromkeys(keys)), r265, r270
 
 
-def oxide_correction(run: Run, r18: float = DEFAULT_R18, formula: OxideFormula = "et_redux") -> OxideResult:
+def oxide_correction(run: Run, r18: float = DEFAULT_R18, formula: OxideFormula = "isobar_233_18O") -> OxideResult:
     """Decide and, when needed, compute the oxide correction for one run."""
     if formula not in FORMULAS:
         raise ValueError(f"unknown oxide formula {formula!r}; expected one of {FORMULAS}")

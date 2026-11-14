@@ -46,7 +46,7 @@ CONTRACT_MAJOR = 1
 CONTRACT_ID = f"{CONTRACT_NAME}/{CONTRACT_MAJOR}"
 
 # Allowed values of `U Oxide Formula` (contract clarification 6); each is defined by its formula there.
-U_OXIDE_FORMULAS = ("tripoli_00dc941", "et_redux", "instrument")
+U_OXIDE_FORMULAS = ("tripoli_java_00dc941", "isobar_233_18O", "instrument")
 
 PB_RATIOS: tuple[str, ...] = ("206Pb/204Pb", "206Pb/207Pb", "206Pb/205Pb", "207Pb/205Pb", "204Pb/205Pb", "208Pb/205Pb", "202Pb/205Pb")
 PB_REQUIRED_RATIOS: tuple[str, ...] = PB_RATIOS[:6]
