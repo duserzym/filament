@@ -32,7 +32,8 @@ def test_importing_every_engine_module_loads_no_gui_or_network_package():
 
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert "rawtims.branding" in report["imported"]
-    assert len(report["imported"]) == 1 + len([p for p in ENGINE.rglob("*.py") if p.name != "__init__.py"])
+    # Every module file, subpackage initializers included, imports; only the top __init__ is "rawtims" itself.
+    assert len(report["imported"]) == 1 + len([p for p in ENGINE.rglob("*.py") if p != ENGINE / "__init__.py"])
     leaked = sorted(set(FORBIDDEN) & set(report["roots"]))
     assert not leaked, f"importing rawtims loaded {leaked}"
 

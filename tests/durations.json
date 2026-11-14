@@ -1,7 +1,13 @@
 {
   "tests/test_branding.py": 0.01,
-  "tests/test_engine_purity.py": 0.06,
+  "tests/test_engine_purity.py": 0.09,
   "tests/test_fixture_manifest.py": 0.01,
-  "tests/test_main_window.py": 1.48,
-  "tests/test_packaged_imports.py": 0.02
+  "tests/test_main_window.py": 1.39,
+  "tests/test_packaged_imports.py": 0.02,
+  "tests/test_readers_functions.py": 0.04,
+  "tests/test_readers_ionvantage.py": 0.42,
+  "tests/test_readers_oracle.py": 0.02,
+  "tests/test_readers_paths.py": 0.14,
+  "tests/test_readers_synthetic.py": 0.02,
+  "tests/test_readers_timsdp.py": 0.01
 }
