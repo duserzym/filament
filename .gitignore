@@ -1,0 +1,12 @@
+.venv/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+# Runtime test map and run logs live outside the repository; ignore any local copy.
+test-map/
+*.test-map.json

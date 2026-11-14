@@ -1,0 +1,7 @@
+{
+  "tests/test_branding.py": 0.01,
+  "tests/test_engine_purity.py": 0.06,
+  "tests/test_fixture_manifest.py": 0.01,
+  "tests/test_main_window.py": 1.48,
+  "tests/test_packaged_imports.py": 0.02
+}

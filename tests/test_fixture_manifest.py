@@ -1,0 +1,42 @@
+"""tests/fixtures/MANIFEST.toml lists every fixture with its true SHA-256 (SPEC section 0, decision 4)."""
+
+from __future__ import annotations
+
+import hashlib
+from pathlib import Path
+import tomllib
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+MANIFEST = FIXTURES / "MANIFEST.toml"
+NOT_LISTED = {Path("MANIFEST.toml"), Path("tripoli/LICENSE-APACHE-2.0"), Path("tripoli/NOTICE")}
+KINDS = {"ionvantage_xls", "timsdp", "oracle_short", "oracle_cycle", "oracle_full"}
+FIELDS = {"path", "kind", "element", "lab", "synthetic", "license", "source_repo", "source_commit", "source_path", "bytes", "sha256"}
+
+
+def _entries():
+    return tomllib.loads(MANIFEST.read_text(encoding="utf-8"))["file"]
+
+
+def test_manifest_lists_exactly_the_files_on_disk():
+    on_disk = {p.relative_to(FIXTURES) for p in FIXTURES.rglob("*") if p.is_file() and p.name != ".DS_Store"}
+    listed = [Path(entry["path"]) for entry in _entries()]
+    assert len(listed) == len(set(listed)), "duplicate manifest paths"
+    assert set(listed) == on_disk - NOT_LISTED
+    assert NOT_LISTED <= on_disk
+
+
+def test_manifest_checksums_and_fields():
+    for entry in _entries():
+        assert set(entry) == FIELDS, entry["path"]
+        data = (FIXTURES / entry["path"]).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == entry["sha256"], entry["path"]
+        assert len(data) == entry["bytes"], entry["path"]
+        assert entry["kind"] in KINDS and entry["element"] in {"Pb", "U"}
+        assert entry["license"] in {"Apache-2.0", "CC-BY-4.0"}
+        assert len(entry["source_commit"]) == 40
+
+
+def test_synthetic_files_are_named_and_marked():
+    for entry in _entries():
+        named = "synthetic" in Path(entry["path"]).name.lower()
+        assert entry["synthetic"] is named, entry["path"]

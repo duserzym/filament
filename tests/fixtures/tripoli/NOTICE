@@ -1,0 +1,38 @@
+Test fixtures copied from CIRDLES repositories
+==============================================
+
+The files under this folder are copied unmodified, byte for byte, from two
+public CIRDLES repositories. tests/fixtures/MANIFEST.toml lists every file
+with its source repository, source commit, source path, licence and SHA-256.
+They were copied on 2026-11-14.
+
+1. CIRDLES/Tripoli  https://github.com/CIRDLES/Tripoli
+   Commit 00dc94109f572c22bb3f357c0f7b1bb5347f62f5 (00dc941, 2026-10-09)
+   Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org
+   Licensed under the Apache License, Version 2.0; a copy of the licence is
+   in LICENSE-APACHE-2.0 next to this file. The Tripoli repository has no
+   NOTICE file of its own.
+   Copied from:
+   - TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/
+     dataSources/ogTripoli/isotopxPhoenixTIMS/  -> ionvantage/BoiseState/ and
+     ionvantage/KU_IGL/NBS981-500_20191208-5563.xls
+   - TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/
+     dataFiles/IsotopxPhoenixTIMS/              -> timsdp/
+     shortReports|cycleReports|fullReports/IsotopxPhoenixTIMS/
+                                                -> oracle/<same folders>/
+
+2. CIRDLES/tripoli-manual  https://github.com/CIRDLES/tripoli-manual
+   Commit 8b52824b9104e10238322d29898844b3e6ec750e (8b52824)
+   Files: testData/GHR1 20200827-11 Pb-6590.xls and
+          testData/GHR1 20200827-11 U run2-6591.xls
+          -> ionvantage/KU_IGL/
+   Licence: the repository has no LICENSE file. The manual's pages declare
+   "license: CC-BY-4.0" in their front matter (for example
+   setup/03-QuickStart.md, author Noah McLean, University of Kansas). We read
+   that as covering the repository's test data too, but the repository does
+   not say so explicitly. Attribution: Tripoli User Guide, CIRDLES
+   (Noah McLean, James Bowring, Scott Burdick), CC BY 4.0,
+   https://creativecommons.org/licenses/by/4.0/.
+
+Tripoli is CIRDLES's name. This project is not Tripoli and is not endorsed by
+CIRDLES; it uses these files only as test inputs and expected outputs.

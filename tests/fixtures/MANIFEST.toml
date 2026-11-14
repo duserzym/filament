@@ -1,0 +1,501 @@
+# Every file under tests/fixtures/ except this manifest, tripoli/LICENSE-APACHE-2.0 and
+# tripoli/NOTICE. tests/test_fixture_manifest.py checks paths and sha256 against the disk.
+# synthetic = true only for generated files, whose names must contain `synthetic`.
+# license for tripoli-manual files: CC-BY-4.0 as stated in the manual pages' front matter;
+# that repository has no LICENSE file (see tripoli/NOTICE).
+
+manifest_version = 1
+
+[[file]]
+path = "tripoli/ionvantage/BoiseState/B998_F11_13223M02_iz1_Pb1-14973.xls"
+kind = "ionvantage_xls"
+element = "Pb"
+lab = "BoiseState"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/dataSources/ogTripoli/isotopxPhoenixTIMS/boiseState/B998_F11_13223M02_iz1_Pb1-14973.xls"
+bytes = 1412096
+sha256 = "6b4032e5656f72cf166537fbd9fd9db9992d155726b47c22e61b1a568105138f"
+
+[[file]]
+path = "tripoli/ionvantage/KU_IGL/GHR1 20200827-11 Pb-6590.xls"
+kind = "ionvantage_xls"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "CC-BY-4.0"
+source_repo = "https://github.com/CIRDLES/tripoli-manual"
+source_commit = "8b52824b9104e10238322d29898844b3e6ec750e"
+source_path = "testData/GHR1 20200827-11 Pb-6590.xls"
+bytes = 1334272
+sha256 = "5b1661924718ee30a718911060117b720cda62ef67a2c7f973cbbd09a27e1a63"
+
+[[file]]
+path = "tripoli/ionvantage/KU_IGL/GHR1 20200827-11 U run2-6591.xls"
+kind = "ionvantage_xls"
+element = "U"
+lab = "KU_IGL"
+synthetic = false
+license = "CC-BY-4.0"
+source_repo = "https://github.com/CIRDLES/tripoli-manual"
+source_commit = "8b52824b9104e10238322d29898844b3e6ec750e"
+source_path = "testData/GHR1 20200827-11 U run2-6591.xls"
+bytes = 1944576
+sha256 = "dca4d2106f8108d2d34589e975b9a31b1cc710ce24311b9ad58e0fe16af861af"
+
+[[file]]
+path = "tripoli/ionvantage/KU_IGL/NBS981-500_20191208-5563.xls"
+kind = "ionvantage_xls"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/dataSources/ogTripoli/isotopxPhoenixTIMS/kU_IGL/ionVantage/NBS981-500_20191208-5563.xls"
+bytes = 1024512
+sha256 = "68c53fa30884ea6810159523a5a65962b9335843a8e6e3243d226f2fe3059cfd"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/KU_IGL/IonVantage/Oracle-NBS981-500 20191208-5563-report.tsv"
+kind = "oracle_cycle"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/KU_IGL/IonVantage/Oracle-NBS981-500 20191208-5563-report.tsv"
+bytes = 19461
+sha256 = "e05fa267efa637eb635eb5b0e88ca1097a061eb808201c154e6dabfb2af08692"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/KU_IGL/IsolinxVersion1/Oracle-NBS981 210325b-392-report.tsv"
+kind = "oracle_cycle"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion1/Oracle-NBS981 210325b-392-report.tsv"
+bytes = 71654
+sha256 = "f278c1832cea41b4f920ecb70182763526246ada37a5c02e32ddc215dee6a60c"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921 F08b-216-report.tsv"
+kind = "oracle_cycle"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921 F08b-216-report.tsv"
+bytes = 35629
+sha256 = "3d41968bf619923d98b5297fbeb7f4cc47ea7782851ba72f6af631e400f355f2"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239-report.tsv"
+kind = "oracle_cycle"
+element = "U"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239-report.tsv"
+bytes = 182163
+sha256 = "dd2ca6b1390fd73b9da0858ff6872ae6706ba1dd55dae7b23ee3b268be57dce5"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/KU_IGL/IsolinxVersion2/Oracle-NBS981 230024a-145-report.tsv"
+kind = "oracle_cycle"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-NBS981 230024a-145-report.tsv"
+bytes = 54129
+sha256 = "a97f3c682372a1ba38736b95a0fe963e15d8d67e512df4ab769b8a0bc670d02f"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/Purdue/Oracle-WH205 z4 Pb-654-report.tsv"
+kind = "oracle_cycle"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH205 z4 Pb-654-report.tsv"
+bytes = 16403
+sha256 = "2402dd066b926bd27ee874beb03808bb941e13962a0c7a5ea075919eb870b28d"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/Purdue/Oracle-WH205 z41 U-655-report.tsv"
+kind = "oracle_cycle"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH205 z41 U-655-report.tsv"
+bytes = 6575
+sha256 = "e4886519869cb499f7781f2714b563123610903fb67504761db6fa109b693a9e"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/Purdue/Oracle-WH233B z1 U-671-report.tsv"
+kind = "oracle_cycle"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH233B z1 U-671-report.tsv"
+bytes = 10709
+sha256 = "4012e505628028ba5e19b7c11d4bb4c860a3c4b6ca1a69a4067bd7f047162639"
+
+[[file]]
+path = "tripoli/oracle/cycleReports/Purdue/Oracle-WH233B z3 Pb-678-report.tsv"
+kind = "oracle_cycle"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH233B z3 Pb-678-report.tsv"
+bytes = 5009
+sha256 = "c416045b633a096474a19da10cc792469ac0bbba5582ac3cd7898588df9b7b24"
+
+[[file]]
+path = "tripoli/oracle/fullReports/KU_IGL/IsolinxVersion1/Oracle-NBS981 210325b-392-report.csv"
+kind = "oracle_full"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion1/Oracle-NBS981 210325b-392-report.csv"
+bytes = 1770
+sha256 = "cd8939eb930d7fe5b0ba86512274abb60988eda54d1a4d90e1a595498f0d0c74"
+
+[[file]]
+path = "tripoli/oracle/fullReports/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921 F08b-216-report.csv"
+kind = "oracle_full"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921 F08b-216-report.csv"
+bytes = 1749
+sha256 = "abaeda46c9d00d220869eb9656c7e7de5f4266fd7d28f483a749026f236ac554"
+
+[[file]]
+path = "tripoli/oracle/fullReports/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239-report.csv"
+kind = "oracle_full"
+element = "U"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239-report.csv"
+bytes = 1189
+sha256 = "4dedc8ac1f810d108fabf10954052b4cc752a4c7402465f571b00074cc3a1950"
+
+[[file]]
+path = "tripoli/oracle/fullReports/KU_IGL/IsolinxVersion2/Oracle-NBS981 230024a-145-report.csv"
+kind = "oracle_full"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-NBS981 230024a-145-report.csv"
+bytes = 1779
+sha256 = "df0fbd162a6b028e26da3582451aaefc5fb8a7e207dff967cc2925c08d9683ea"
+
+[[file]]
+path = "tripoli/oracle/fullReports/Purdue/Oracle-WH205 z4 Pb-654-report.csv"
+kind = "oracle_full"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH205 z4 Pb-654-report.csv"
+bytes = 1101
+sha256 = "962e25bb088c3f3add3b26dd5f2141eb67c1faf1d105a50c3ed05b4ff84a8e32"
+
+[[file]]
+path = "tripoli/oracle/fullReports/Purdue/Oracle-WH205 z41 U-655-report.csv"
+kind = "oracle_full"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH205 z41 U-655-report.csv"
+bytes = 737
+sha256 = "fa52a4cf19eb916828cf22ef7ab75d831fc1ff20795d9b06c1d4abd288e4cbe5"
+
+[[file]]
+path = "tripoli/oracle/fullReports/Purdue/Oracle-WH233B z1 U-671-report.csv"
+kind = "oracle_full"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH233B z1 U-671-report.csv"
+bytes = 736
+sha256 = "a3256a144c22ec482e7851e48c1f0b84ce34dd952036ad864036e07318fb8727"
+
+[[file]]
+path = "tripoli/oracle/fullReports/Purdue/Oracle-WH233B z3 Pb-678-report.csv"
+kind = "oracle_full"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH233B z3 Pb-678-report.csv"
+bytes = 1041
+sha256 = "5e7b1f51b9ee0ec2612f9e39ebae1e9816fad1fc0858b08235bbd08ae7c09ef3"
+
+[[file]]
+path = "tripoli/oracle/shortReports/KU_IGL/IonVantage/Oracle-NBS981-500 20191208-5563.txt"
+kind = "oracle_short"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/KU_IGL/IonVantage/Oracle-NBS981-500 20191208-5563.txt"
+bytes = 297
+sha256 = "5760b5c74de36d1c5e6979da7b675898ed1837f15c6f949934010209b9319ce5"
+
+[[file]]
+path = "tripoli/oracle/shortReports/KU_IGL/IsolinxVersion1/Oracle-NBS981 210325b-392.txt"
+kind = "oracle_short"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion1/Oracle-NBS981 210325b-392.txt"
+bytes = 1145
+sha256 = "881920b2f1112e38449267d420088053e5e964cdcf70c1295cb5544db26960d2"
+
+[[file]]
+path = "tripoli/oracle/shortReports/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921 F08b-216.txt"
+kind = "oracle_short"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921 F08b-216.txt"
+bytes = 1141
+sha256 = "345370355b2e5c78f6f32d1ab401a79782aeb6538e2f0d604208e82944b5ae5f"
+
+[[file]]
+path = "tripoli/oracle/shortReports/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239.txt"
+kind = "oracle_short"
+element = "U"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239.txt"
+bytes = 704
+sha256 = "60726f8334c08ce4a2d9456c9e91ea8abe9519d5b7024e608edf4a07235fdd4b"
+
+[[file]]
+path = "tripoli/oracle/shortReports/KU_IGL/IsolinxVersion2/Oracle-NBS981 230024a-145.txt"
+kind = "oracle_short"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-NBS981 230024a-145.txt"
+bytes = 1157
+sha256 = "cfdedd29c701e54d678ba8c37749529b4f36b1049aa79171d0e2931339b1cccf"
+
+[[file]]
+path = "tripoli/oracle/shortReports/Purdue/Oracle-WH205 z4 Pb-654.txt"
+kind = "oracle_short"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH205 z4 Pb-654.txt"
+bytes = 645
+sha256 = "dfe21c24375bb22d11853a65ba68b1c4f6e61421165d8e8d91d3ad8d689b0e4e"
+
+[[file]]
+path = "tripoli/oracle/shortReports/Purdue/Oracle-WH205 z41 U-655.txt"
+kind = "oracle_short"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH205 z41 U-655.txt"
+bytes = 380
+sha256 = "4e7d271aabcc2386fcf09152451218a3f4e9ea5d562e5d6081f6379ee378fee2"
+
+[[file]]
+path = "tripoli/oracle/shortReports/Purdue/Oracle-WH233B z1 U-671.txt"
+kind = "oracle_short"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH233B z1 U-671.txt"
+bytes = 384
+sha256 = "b9c36783f1820bcc85c6b34ad908c463e9faee86cc17785ebcdca3cb1c393f4b"
+
+[[file]]
+path = "tripoli/oracle/shortReports/Purdue/Oracle-WH233B z3 Pb-678.txt"
+kind = "oracle_short"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/shortReports/IsotopxPhoenixTIMS/Purdue/Oracle-WH233B z3 Pb-678.txt"
+bytes = 596
+sha256 = "e579e46fd04b7c0d6cbd634515e30361ed5b4bd83a09713ae1e804d08b8f59b2"
+
+[[file]]
+path = "tripoli/timsdp/KU_IGL/IsolinxVersion1/NBS981 210325b-392.TIMSDP"
+kind = "timsdp"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion1/NBS981 210325b-392.TIMSDP"
+bytes = 109159
+sha256 = "3826fec466b18101307ba33efe3cf00c666d6d9fb16a0762b81f07481d67cdfa"
+
+[[file]]
+path = "tripoli/timsdp/KU_IGL/IsolinxVersion2/GHR1 230921 F08b-216.TIMSDP"
+kind = "timsdp"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/GHR1 230921 F08b-216.TIMSDP"
+bytes = 54238
+sha256 = "9e9aab0aaf4af50034f5889be7ba772e7f9bcd225e2093c547422a3b0bda933f"
+
+[[file]]
+path = "tripoli/timsdp/KU_IGL/IsolinxVersion2/GHR1 230921F03 U-239.TIMSDP"
+kind = "timsdp"
+element = "U"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/GHR1 230921F03 U-239.TIMSDP"
+bytes = 125079
+sha256 = "8586bdb80042b55e7180b4f86587ad7f9b07a15382a34a84e7be65fdaff6b096"
+
+[[file]]
+path = "tripoli/timsdp/KU_IGL/IsolinxVersion2/NBS981 230024a-145.TIMSDP"
+kind = "timsdp"
+element = "Pb"
+lab = "KU_IGL"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/NBS981 230024a-145.TIMSDP"
+bytes = 78159
+sha256 = "fb3b721230c083e0f2baccdfeb7eca2cda288b5ee720166eb859a2f09f0fe606"
+
+[[file]]
+path = "tripoli/timsdp/Purdue/WH205 z4 Pb-654.TIMSDP"
+kind = "timsdp"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/Purdue/WH205 z4 Pb-654.TIMSDP"
+bytes = 27714
+sha256 = "435fbaa4f29ebbefbb2b581f1b1ba8135bb2d02ef29ce69cb7c3a138b37c3426"
+
+[[file]]
+path = "tripoli/timsdp/Purdue/WH205 z41 U-655.TIMSDP"
+kind = "timsdp"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/Purdue/WH205 z41 U-655.TIMSDP"
+bytes = 13838
+sha256 = "4a659faf2a43fa07bfcc132e6282457b2068b7226d049830488ce92b48a65910"
+
+[[file]]
+path = "tripoli/timsdp/Purdue/WH233B z1 U-671.TIMSDP"
+kind = "timsdp"
+element = "U"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/Purdue/WH233B z1 U-671.TIMSDP"
+bytes = 20865
+sha256 = "1a1685a75592a50c56fc0d43d53e35c49fb06734abedb12cd6f0dc7d3e7fba32"
+
+[[file]]
+path = "tripoli/timsdp/Purdue/WH233B z3 Pb-678.TIMSDP"
+kind = "timsdp"
+element = "Pb"
+lab = "Purdue"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/IsotopxPhoenixTIMS/Purdue/WH233B z3 Pb-678.TIMSDP"
+bytes = 10703
+sha256 = "a2c3c358bc4bd528e1b81e43635e9565182202df9b4fd9773140aefd0b778a7b"
