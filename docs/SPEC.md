@@ -15,6 +15,27 @@ CIRDLES Tripoli:
 It does not compute ages, spike-strip, or correct for mass fractionation. Those happen in the reduction app,
 as they do in the BSU spreadsheet and in ET_Redux today.
 
+## 0. Review decisions (coordinating session, 2026-11-14)
+
+The spec was confirmed for Phase 1 with these conditions, which override anything below:
+
+1. Dead time, gain, baseline, BaPO2/Tl and double-spike fractionation stay out of Phase 1. Studio's theme
+   is vendored by copy, with its source commit recorded, so the apps can later share one design package.
+   The package names are neutral, with one branding file.
+2. The oxide correction uses the ET_Redux form. The current-Tripoli difference is recorded as a factual
+   observation (section 1.2). We open no issues and contact no one.
+3. Until Yiming says how they reject cycles, **no automatic rejection is applied by default**.
+   - Chauvenet and k-σ are explicit actions. Each shows a preview of what it would reject before it is
+     applied.
+   - Every applied rule is in the history and in the exported provenance.
+   - The "Auto" button of the GUI therefore does not reject anything in Phase 1.
+4. Synthetic fixtures carry `synthetic` in the file name and in `tests/fixtures/MANIFEST.toml`. No test that
+   claims agreement with BSU numbers may rest on them. Section 11 lists what is still unvalidated against
+   real BSU data.
+5. Citations from memory are marked as such until checked (section 1.3).
+6. Phase 1 pauses after step 4 (engine, contract writer, MA1 round-trip) for a report of numbers and test
+   results, then continues with the GUI. The 1280 × 800 screenshots go to Yiming at step 8.
+
 ---
 
 ## 1. What I found
@@ -122,9 +143,17 @@ citations are in [tripoli-research-notes.md](tripoli-research-notes.md). The ess
     (`R238_235oc.java`): 238/235oc = R270/267 / (1 − 2·r18·**R265/267**).
   - The interference on mass 267 is 233U16O18O, which scales with mass 265, so the legacy form is right.
   - On Tripoli's own KU oracle cycle (265/267 = 0.97291, 270/267 = 2.42704) the two differ by 0.6 %.
-  - filament uses the legacy/ET_Redux form, with a regression test that pins both values, and reports the
-    difference to Yiming. Whether BSU's numbers are affected depends on the open question above: an IonVantage
-    user function would not be.
+  - filament uses the legacy/ET_Redux form, with a regression test that pins both values. Whether BSU's
+    numbers are affected depends on the open question above: an IonVantage user function would not be.
+  - Observation for Yiming, to decide whether to report it upstream (we do not contact CIRDLES ourselves):
+    in CIRDLES/Tripoli at commit `00dc941`, file
+    `TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/massSpectrometerModels/dataSourceProcessors/MassSpecOutputBlockRecordLite.java`,
+    lines 35-38 compute `233/235oc = R265_267 / (1 - 2·r18·R265_267)` and
+    `238/235oc = R270_267 / (1 - 2·r18·R270_267)`. Tripoli's expected-output file
+    `TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/IsotopxPhoenixTIMS/KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239-report.tsv`,
+    cycle 1 (265/267 = 0.97291, 270/267 = 2.42704, r18 = 0.00205), gives 238/235oc = 2.45143. The
+    R265_267 form used by ET_Redux, legacy Tripoli and the Thermo Triton equation gives 2.43675 for the same
+    cycle, 0.6 % lower.
 - **Fractionation, BaPO2 and Tl corrections:** current Tripoli applies none (`fracCorr` is always false and
   `meanAlphaPb` and `meanAlphaU` are always 0). Legacy C# Tripoli had them, all with a linear law:
   - Pb from 202/205: α = (1 − 202/205t ÷ 202/205m)/3, applied per amu;
@@ -166,11 +195,12 @@ What this allows (a plain reading of Apache-2.0, not legal advice):
 Papers to cite:
 - Bowring, McLean & Bowring 2011, G-cubed 12, Q0AA19, doi:10.1029/2010GC003479 (Tripoli and U-Pb_Redux;
   verified).
-- McLean, Bowring & Bowring 2011, G-cubed 12, Q0AA18 (ID-TIMS data reduction and the UO2 math cited by
-  Tripoli's `autoUO2Correction.md`).
-- Condon et al. 2015 and McLean et al. 2015, GCA 164 (ET535/ET2535 calibration).
+- [FROM MEMORY, unchecked] McLean, Bowring & Bowring 2011, G-cubed 12, Q0AA18 (ID-TIMS data reduction and
+  the UO2 math cited by Tripoli's `autoUO2Correction.md`).
+- [FROM MEMORY, unchecked] Condon et al. 2015 and McLean et al. 2015, GCA 164 (ET535/ET2535 calibration).
 
-The last three are from memory and must be checked before they go into the README.
+Citations marked FROM MEMORY stay marked until checked against the papers themselves; none goes into the
+README or the app's About text before that.
 
 ---
 
@@ -460,3 +490,17 @@ Hands-on work: Opus 5.5 subagents until Codex quota returns on 2026-11-18 12:48,
   section 2.
 - **One adjustment to "reuse Studio's design system":** vendor a pinned copy instead of importing `GUI.*`
   (see section 5).
+
+## 11. Not yet validated against real BSU data
+
+Real-file tests cover what the vendored Tripoli fixtures contain (the BSU 2018 Pb workbook, KU IonVantage
+Pb and U, Purdue and KU `.TIMSDP`) and agreement with Tripoli's own expected outputs for those files.
+Still unvalidated:
+
+- U runs from BSU: whether the `.xls` already holds oxide-corrected `238/235 oxide R18 0.00206` functions,
+  and filament's U numbers against Yiming's Tripoli U values.
+- ET2535 Pb runs with `202/205` (no real file exists anywhere we looked).
+- filament's means and % SE against the numbers Yiming pasted into the Grenville spreadsheets: this needs
+  the raw files of those fractions.
+- Yiming's rejection practice (decision 3 in section 0).
+- Whether BSU now writes IsoLinx `.TIMSDP` instead of IonVantage `.xls`.
