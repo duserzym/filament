@@ -8,9 +8,10 @@ pixel-exact synthetic events.
 from __future__ import annotations
 
 import pytest
+import numpy as np
 
 QtCore = pytest.importorskip("PySide6.QtCore")
-from PySide6 import QtGui, QtWidgets  # noqa: E402
+from PySide6 import QtGui, QtTest, QtWidgets  # noqa: E402
 
 from reader_fixtures import B998, FIXTURES, GHR1_PB_XLS, GHR1_U_XLS, TIMSDP_FILES  # noqa: E402
 from rawtims_gui import main as gui_main  # noqa: E402
@@ -258,6 +259,117 @@ def test_log_ratio_and_theme_switch(b998):
         assert window.settings.value(gui_main.THEME_KEY) == "dark"
     finally:
         window.set_theme("light")
+
+
+def _reject_b998_outliers(window):
+    values = window.analysis.column("206/204 D")
+    rows = np.argsort(np.abs(values - np.median(values)))[-2:].tolist()
+    window.request_toggle("206/204 D", rows)
+    return rows
+
+
+def test_accepted_range_pins_outliers_and_click_restores_through_history(b998):
+    plot = b998.plot_wall.plot("206/204 D")
+    all_range = plot.view_box.viewRange()[1]
+    rows = _reject_b998_outliers(b998)
+    QtWidgets.QApplication.processEvents()
+    accepted_range = plot.view_box.viewRange()[1]
+    values = b998.analysis.column(plot.key)
+    accepted = values[b998.analysis.included_for(plot.key)]
+    padding = np.ptp(accepted) * 0.08
+    assert accepted_range == pytest.approx([accepted.min() - padding, accepted.max() + padding])
+    assert accepted_range[1] < values[rows].min()
+    assert len(plot.pinned_points.data) == 2
+    assert set(plot.pinned_points.data["symbol"]) == {"t1"}
+    for row, point in zip(sorted(rows), plot.pinned_points.points()):
+        # Tooltips retain the true value even though the marker is at an edge.
+        assert f"{b998.analysis.column(plot.key)[row]:.12g}" in point.data()
+        assert point.brush().style() == QtCore.Qt.BrushStyle.NoBrush
+    b998.undo()
+    assert plot.view_box.viewRange()[1] == pytest.approx(all_range)
+    b998.redo()
+    assert plot.view_box.viewRange()[1] == pytest.approx(accepted_range)
+    # Exercise a real mouse event on the edge marker, including scatter hit handling.
+    point = plot.point_of(rows[0])
+    pos = plot.mapFromScene(plot.view_box.mapViewToScene(point))
+    QtTest.QTest.mouseClick(plot.viewport(), QtCore.Qt.MouseButton.LeftButton, pos=pos)
+    QtWidgets.QApplication.processEvents()
+    assert b998.analysis.included_for(plot.key)[rows[0]]
+    assert b998.analysis.history[-1]["include"] is True
+    b998.undo()
+    assert not b998.analysis.included_for(plot.key)[rows[0]]
+
+
+def test_fit_all_points_is_a_view_preference_and_preserves_zoom_until_data_changes(b998, tmp_path):
+    plot = b998.plot_wall.plot("206/204 D")
+    _reject_b998_outliers(b998)
+    path = b998.save_session_as(tmp_path / "range.rawtims")
+    accepted_range = plot.view_box.viewRange()[1]
+    assert not b998.fit_all_action.isChecked()
+    b998.fit_all_button.click()
+    all_range = plot.view_box.viewRange()[1]
+    assert all_range[0] < plot.y_shown.min() and all_range[1] > plot.y_shown.max()
+    assert not len(plot.pinned_points.data)
+    assert not b998.is_modified()
+    assert b998.settings.value(gui_main.FIT_ALL_KEY, type=bool)
+    other = gui_main.MainWindow(restore_geometry=False)
+    try:
+        assert other.fit_all_action.isChecked()
+    finally:
+        other.deleteLater()
+    b998.fit_all_button.click()
+    assert plot.view_box.viewRange()[1] == pytest.approx(accepted_range)
+    # ViewBox wheel zoom is the path used by the plot's ⌘/Ctrl-wheel handler.
+    QtWidgets.QApplication.processEvents()
+    pos = plot.viewport().rect().center()
+    wheel = QtGui.QWheelEvent(QtCore.QPointF(pos), QtCore.QPointF(plot.viewport().mapToGlobal(pos)),
+                             QtCore.QPoint(), QtCore.QPoint(0, 120), QtCore.Qt.MouseButton.NoButton,
+                             QtCore.Qt.KeyboardModifier.ControlModifier, QtCore.Qt.ScrollPhase.NoScrollPhase, False)
+    QtWidgets.QApplication.sendEvent(plot.viewport(), wheel)
+    zoomed = plot.view_box.viewRange()[1]
+    assert zoomed != pytest.approx(accepted_range)
+    b998.request_select(plot.key, [50], False)
+    b998.preview_rule()
+    b998.discard_preview()
+    b998.set_theme("dark")
+    assert plot.view_box.viewRange()[1] == pytest.approx(zoomed)
+    b998.request_toggle(plot.key, [50])
+    assert plot.view_box.viewRange()[1] != pytest.approx(zoomed)
+    b998.set_fit_all_points(True)
+    b998.unsaved_prompt = lambda _name: "discard"
+    assert b998.open_session(path, synchronous=True)
+    assert b998.fit_all_action.isChecked()  # session loading leaves the viewer preference alone
+
+
+def test_invalid_points_do_not_stretch_the_default_range(b998):
+    from dataclasses import replace
+    from rawtims.analysis import Analysis
+    from rawtims_gui.plots import PlotState
+
+    plot = b998.plot_wall.plot("206/204 D")
+    run = b998.analysis.run
+    values, invalid = run.values.copy(), run.invalid.copy()
+    column = b998.analysis.index(plot.key)
+    rows = np.argsort(np.abs(values[:, column] - np.median(values[:, column])))[-2:]
+    values[rows, column] = [-1e6, 1e6]
+    invalid[rows, column] = True
+    analysis = Analysis(replace(run, values=values, invalid=invalid))
+    plot.update_state(PlotState(analysis, None, False, frozenset()), rebuild=True)
+    lo, hi = plot.view_box.viewRange()[1]
+    assert 1700 < lo < 1900 and 2200 < hi < 2400
+    assert not len(plot.pinned_points.data)  # invalid points remain grey crosses
+    assert all(plot.points.data["symbol"][row] == "x" for row in rows)
+    # The same finite extremes, when excluded rather than invalid, pin in both directions.
+    excluded = Analysis(replace(run, values=values))
+    excluded.toggle_cycles(rows.tolist(), [plot.key], False)
+    plot.update_state(PlotState(excluded, None, False, frozenset()))
+    assert set(plot.pinned_points.data["symbol"]) == {"t", "t1"}
+    # A flat accepted series still gets a nonzero, proportionate range.
+    values[:, column] = 2000
+    analysis = Analysis(replace(run, values=values, invalid=invalid))
+    plot.update_state(PlotState(analysis, None, False, frozenset()))
+    lo, hi = plot.view_box.viewRange()[1]
+    assert 0 < lo < 2000 < hi < 3000
 
 
 @pytest.mark.parametrize("size", [(1280, 800), (1440, 900), (1024, 640)])

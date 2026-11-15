@@ -136,6 +136,7 @@ class PlotState:
     log_ratio: bool
     selection: frozenset[int]
     preview: Mapping[str, frozenset[int]] = field(default_factory=dict)  # function key -> rows a rule would reject
+    fit_all: bool = False
 
 
 class CyclePlot(RoundedPlotWidget):
@@ -153,6 +154,11 @@ class CyclePlot(RoundedPlotWidget):
         self.rows_shown = np.zeros(0, dtype=int)
         self.x_shown = np.zeros(0)
         self.y_shown = np.zeros(0)
+        self.y_display = np.zeros(0)
+        self._effective = np.zeros(0, dtype=bool)
+        self._invalid = np.zeros(0, dtype=bool)
+        self._values = np.zeros(0)
+        self._fit_all = False
         self.selected_rows: frozenset[int] = frozenset()
         self.preview_rows: frozenset[int] = frozenset()
         self.title_text = ""
@@ -170,16 +176,26 @@ class CyclePlot(RoundedPlotWidget):
         item.getAxis("left").setWidth(62)
         self.points = pg.ScatterPlotItem(pxMode=True)
         self.points.setZValue(10)
+        self.pinned_points = pg.ScatterPlotItem(pxMode=True, size=10, hoverable=True,
+                                               tip=lambda x, y, data: data)
+        self.pinned_points.setZValue(13)
         self.ring = pg.ScatterPlotItem(pxMode=True, symbol="o", size=13)
         self.ring.setZValue(11)
         self.preview_points = pg.ScatterPlotItem(pxMode=True, symbol="s", size=12)
         self.preview_points.setZValue(12)
         item.addItem(self.points)
+        item.addItem(self.pinned_points, ignoreBounds=True)
         item.addItem(self.ring)
         item.addItem(self.preview_points)
+        for scatter in (self.points, self.pinned_points):
+            scatter.sigClicked.connect(lambda _item, _points, ev: self._on_click(
+                self.view_box.mapSceneToView(ev.scenePos()), ev.modifiers()))
+        _quiet(self.ring)
+        _quiet(self.preview_points)
         self.view_box.sigPointClicked.connect(self._on_click)
         self.view_box.sigBoxDrawn.connect(self._on_box)
         self.view_box.sigContextRequested.connect(self._on_context)
+        self.view_box.sigRangeChanged.connect(self._update_pins)
         self.apply_theme()
 
     # -------------------------------------------------------------- style
@@ -199,6 +215,8 @@ class CyclePlot(RoundedPlotWidget):
         self.ring.setBrush(pg.mkBrush(None))
         self.preview_points.setPen(pg.mkPen(preview_color(theme), width=2))
         self.preview_points.setBrush(pg.mkBrush(None))
+        self.pinned_points.setPen(pg.mkPen(theme.danger, width=1.6))
+        self.pinned_points.setBrush(pg.mkBrush(None))
 
     # --------------------------------------------------------------- data
     def update_state(self, state: PlotState, *, rebuild: bool = False) -> None:
@@ -219,11 +237,22 @@ class CyclePlot(RoundedPlotWidget):
         else:
             y = values.astype(float)
         shown = np.isfinite(y)
+        effective = analysis.effective[:, column][shown]
+        invalid = analysis.invalid[:, column][shown]
+        # Preview, selection and theme redraws must preserve a user's wheel zoom.
+        refit = (rebuild or state.fit_all != self._fit_all
+                 or not np.array_equal(y[shown], self.y_shown)
+                 or not np.array_equal(run.cycle[shown], self.x_shown)
+                 or not np.array_equal(effective, self._effective)
+                 or not np.array_equal(invalid, self._invalid))
         self.rows_shown = np.flatnonzero(shown)
         self.x_shown = run.cycle[shown].astype(float)
         self.y_shown = y[shown]
-        effective = analysis.effective[:, column][shown]
-        invalid = analysis.invalid[:, column][shown]
+        self.y_display = self.y_shown.copy()
+        self._values = values[shown].copy()
+        self._effective = effective.copy()
+        self._invalid = invalid.copy()
+        self._fit_all = state.fit_all
         used_brush = pg.mkBrush(theme.accent)
         bad_pen = pg.mkPen(theme.danger, width=1.6)
         grey = pg.mkPen(theme.faint, width=1.4)
@@ -267,17 +296,42 @@ class CyclePlot(RoundedPlotWidget):
         title = self.getPlotItem().titleLabel
         title.setMinimumWidth(0)
         title.setMaximumWidth(max(10, self.width() - 20))
-        if rebuild:
+        if refit:
             self.reset_view()
+        self._update_pins()
 
     def reset_view(self) -> None:
         item = self.getPlotItem()
+        item.disableAutoRange()
         if self.x_shown.size:
             item.setXRange(float(self.x_shown.min()) - 0.5, float(self.x_shown.max()) + 0.5, padding=0.01)
-        item.enableAutoRange(axis="y")
-        item.autoRange()
-        if self.x_shown.size:
-            item.setXRange(float(self.x_shown.min()) - 0.5, float(self.x_shown.max()) + 0.5, padding=0.01)
+        values = self.y_shown if self._fit_all else self.y_shown[self._effective]
+        if values.size:
+            lo, hi = float(values.min()), float(values.max())
+            padding = (hi - lo) * 0.08 if hi > lo else max(abs(lo) * 0.08, 0.01)
+            item.setYRange(lo - padding, hi + padding, padding=0)
+        else:
+            item.setYRange(0, 1, padding=0)
+
+    def _update_pins(self, *_args) -> None:
+        """Pin excluded outliers just inside the current edges, including while zooming."""
+        self.y_display = self.y_shown.copy()
+        lo, hi = self.view_box.viewRange()[1]
+        outside = (~self._effective & ~self._invalid
+                   & ((self.y_shown < lo) | (self.y_shown > hi)))
+        if self._fit_all:
+            outside[:] = False
+        # Leave room for the entire triangle and its click target inside the view.
+        inset = min((hi - lo) / 4, abs(self.view_box.viewPixelSize()[1]) * 7)
+        self.y_display[outside] = np.clip(self.y_shown[outside], lo + inset, hi - inset)
+        self.pinned_points.setData(
+            x=self.x_shown[outside], y=self.y_display[outside],
+            symbol=["t1" if value > hi else "t" for value in self.y_shown[outside]],
+            data=[f"Cycle {cycle:g}: {value:.12g} (excluded)"
+                  for cycle, value in zip(self.x_shown[outside], self._values[outside])],
+        )
+        self.set_selection(self.selected_rows)
+        self.set_preview(self.preview_rows)
 
     def _draw_decorations(self, state: PlotState, theme: ThemeSpec, log: bool) -> None:
         item = self.getPlotItem()
@@ -337,7 +391,7 @@ class CyclePlot(RoundedPlotWidget):
             self.ring.setData(x=[], y=[])
             return
         mask = np.isin(self.rows_shown, list(self.selected_rows))
-        self.ring.setData(x=self.x_shown[mask], y=self.y_shown[mask])
+        self.ring.setData(x=self.x_shown[mask], y=self.y_display[mask])
 
     def set_preview(self, rows: frozenset[int] | set[int]) -> None:
         self.preview_rows = frozenset(rows)
@@ -345,7 +399,7 @@ class CyclePlot(RoundedPlotWidget):
             self.preview_points.setData(x=[], y=[])
             return
         mask = np.isin(self.rows_shown, list(self.preview_rows))
-        self.preview_points.setData(x=self.x_shown[mask], y=self.y_shown[mask])
+        self.preview_points.setData(x=self.x_shown[mask], y=self.y_display[mask])
 
     # ------------------------------------------------------- interaction
     def row_near(self, view_point: QtCore.QPointF) -> int | None:
@@ -356,20 +410,20 @@ class CyclePlot(RoundedPlotWidget):
         if not px or not py:
             return None
         dx = (self.x_shown - view_point.x()) / px
-        dy = (self.y_shown - view_point.y()) / py
+        dy = (self.y_display - view_point.y()) / py
         distance = np.hypot(dx, dy)
         best = int(np.argmin(distance))
         return int(self.rows_shown[best]) if distance[best] <= CLICK_RADIUS_PX else None
 
     def rows_in(self, rect: QtCore.QRectF) -> list[int]:
         inside = ((self.x_shown >= rect.left()) & (self.x_shown <= rect.right())
-                  & (self.y_shown >= rect.top()) & (self.y_shown <= rect.bottom()))
+                  & (self.y_display >= rect.top()) & (self.y_display <= rect.bottom()))
         return [int(row) for row in self.rows_shown[inside]]
 
     def point_of(self, row: int) -> QtCore.QPointF:
         """The view position of a cycle's point (for tests and keyboard tools)."""
         index = int(np.flatnonzero(self.rows_shown == row)[0])
-        return QtCore.QPointF(float(self.x_shown[index]), float(self.y_shown[index]))
+        return QtCore.QPointF(float(self.x_shown[index]), float(self.y_display[index]))
 
     def _on_click(self, view_point, modifiers) -> None:
         self.focused.emit(self.key)

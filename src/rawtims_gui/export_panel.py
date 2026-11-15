@@ -43,6 +43,59 @@ SEPARATORS = (("  ", "2 spaces (BSU sheets)"), (" ", "1 space (Tripoli report)")
 STATE_TEXT = {"ready": "ready", "attention": "needs attention", "incomplete": "incomplete"}
 
 
+class ElidingLineEdit(QtWidgets.QLineEdit):
+    """Keep the complete editable value; middle-elide only its unfocused display."""
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        self.textChanged.connect(self.setToolTip)
+
+    def text_rect(self) -> QtCore.QRect:
+        option = QtWidgets.QStyleOptionFrame()
+        self.initStyleOption(option)
+        rect = self.style().subElementRect(QtWidgets.QStyle.SubElement.SE_LineEditContents, option, self)
+        margins = self.textMargins()
+        return rect.adjusted(margins.left() + 2, margins.top(), -margins.right() - 2, -margins.bottom())
+
+    def displayed_text(self) -> str:
+        return self.fontMetrics().elidedText(self.text(), QtCore.Qt.TextElideMode.ElideMiddle,
+                                            max(0, self.text_rect().width()))
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 - Qt API
+        if self.hasFocus() and not self.isReadOnly():
+            super().paintEvent(event)
+            return
+        option = QtWidgets.QStyleOptionFrame()
+        self.initStyleOption(option)
+        painter = QtWidgets.QStylePainter(self)
+        painter.drawPrimitive(QtWidgets.QStyle.PrimitiveElement.PE_PanelLineEdit, option)
+        rect = self.text_rect()
+        painter.setClipRect(rect)
+        role = QtGui.QPalette.ColorRole.Text if self.text() else QtGui.QPalette.ColorRole.PlaceholderText
+        painter.setPen(self.palette().color(role))
+        painter.drawText(rect, self.alignment() | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                         self.displayed_text() if self.text() else self.placeholderText())
+
+
+class ElidingComboBox(QtWidgets.QComboBox):
+    def __init__(self) -> None:
+        super().__init__()
+        self.currentTextChanged.connect(self.setToolTip)
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 - Qt API
+        option = QtWidgets.QStyleOptionComboBox()
+        self.initStyleOption(option)
+        rect = self.style().subControlRect(QtWidgets.QStyle.ComplexControl.CC_ComboBox, option,
+                                          QtWidgets.QStyle.SubControl.SC_ComboBoxEditField, self)
+        option.currentText = self.fontMetrics().elidedText(option.currentText, QtCore.Qt.TextElideMode.ElideMiddle,
+                                                          max(0, rect.width() - 4))
+        painter = QtWidgets.QStylePainter(self)
+        painter.drawComplexControl(QtWidgets.QStyle.ComplexControl.CC_ComboBox, option)
+        painter.drawControl(QtWidgets.QStyle.ControlElement.CE_ComboBoxLabel, option)
+
+
 def _narrow(combo: QtWidgets.QComboBox, characters: int = 8) -> QtWidgets.QComboBox:
     combo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
     combo.setMinimumContentsLength(characters)
@@ -52,7 +105,7 @@ def _narrow(combo: QtWidgets.QComboBox, characters: int = 8) -> QtWidgets.QCombo
 
 
 def _line(object_name: str) -> QtWidgets.QLineEdit:
-    edit = QtWidgets.QLineEdit()
+    edit = ElidingLineEdit()
     edit.setObjectName(object_name)
     edit.setClearButtonEnabled(False)
     return edit
@@ -123,12 +176,13 @@ class ExportPanel(QtWidgets.QWidget):
         self.row_table.setObjectName("ExportRow")
         self.row_table.setHorizontalHeaderLabels(["Column", "Value"])
         self._style_table(self.row_table)
+        self.row_table.setTextElideMode(QtCore.Qt.TextElideMode.ElideMiddle)
         self.row_table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Interactive)
         self.row_table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.row_table.setColumnWidth(0, 132)
+        self.row_table.setColumnWidth(0, 104)
         self.row_table.setFixedHeight(204)
         layout.addWidget(self.row_table)
-        self.separator = _narrow(QtWidgets.QComboBox())
+        self.separator = _narrow(ElidingComboBox())
         self.separator.setObjectName("ClipboardSeparator")
         for value, label in SEPARATORS:
             self.separator.addItem(label, value)
@@ -145,6 +199,7 @@ class ExportPanel(QtWidgets.QWidget):
         form.setVerticalSpacing(4)
         form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapLongRows)
         form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        form.setFormAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self.fields: dict[str, QtWidgets.QWidget] = {}
         self.fraction_id = _line("FieldFractionId")
@@ -162,31 +217,33 @@ class ExportPanel(QtWidgets.QWidget):
             edit.editingFinished.connect(lambda a=attribute, e=edit, l=label: self._number_committed(a, e, l))
             form.addRow(label, edit)
             self.fields[attribute] = edit
-        self.spike_type = _narrow(QtWidgets.QComboBox())
+        self.spike_type = _narrow(ElidingComboBox())
         self.spike_type.setObjectName("Field Spike Type")
         for value in ("", *SPIKE_TYPES):
             self.spike_type.addItem(value or "(not set)", value or None)
         self.spike_type.currentIndexChanged.connect(lambda *_: self._choice_committed("spike_type", self.spike_type))
         form.addRow("Spike Type", self.spike_type)
         self.fields["spike_type"] = self.spike_type
-        self.spike = _narrow(QtWidgets.QComboBox())
+        self.spike = _narrow(ElidingComboBox())
         self.spike.setObjectName("Field Spike")
         self.spike.setEditable(True)
+        self.spike.setLineEdit(ElidingLineEdit(self.spike))
         self.spike.addItems(list(SPIKE_SUGGESTIONS))
         self.spike.lineEdit().editingFinished.connect(lambda: self._text_committed("spike", self.spike.lineEdit()))
         self.spike.activated.connect(lambda *_: self._text_committed("spike", self.spike.lineEdit()))
         form.addRow("Spike", self.spike)
         self.fields["spike"] = self.spike
-        self.collector = _narrow(QtWidgets.QComboBox())
+        self.collector = _narrow(ElidingComboBox())
         self.collector.setObjectName("Field Collector")
         for value in ("", *COLLECTORS):
             self.collector.addItem({"": "(not set)", "F": "F: Faraday", "D": "D: Daly"}[value], value or None)
         self.collector.currentIndexChanged.connect(lambda *_: self._choice_committed("collector", self.collector))
         form.addRow("Collector", self.collector)
         self.fields["collector"] = self.collector
-        self.timezone = _narrow(QtWidgets.QComboBox())
+        self.timezone = _narrow(ElidingComboBox())
         self.timezone.setObjectName("Field Timezone")
         self.timezone.setEditable(True)
+        self.timezone.setLineEdit(ElidingLineEdit(self.timezone))
         self.timezone.addItems(list(TIMEZONE_SUGGESTIONS))
         self.timezone.setToolTip("Time zone of the instrument clock (IANA name, optional). With it, Run Start is written "
                                  "as ISO 8601 with offset; without it, the local start time goes to Notes.")
@@ -197,6 +254,12 @@ class ExportPanel(QtWidgets.QWidget):
         self.fields["timezone"] = self.timezone
         form.addRow("Clipboard", self.separator)
         form.addRow("", self.full_precision)
+        # Long weight labels wrap so the field column can use the panel width.
+        for row in range(form.rowCount()):
+            label_item = form.itemAt(row, QtWidgets.QFormLayout.ItemRole.LabelRole)
+            if label_item is not None and isinstance(label_item.widget(), QtWidgets.QLabel):
+                label_item.widget().setWordWrap(True)
+                label_item.widget().setMaximumWidth(96)
         layout.addLayout(form)
         self.form_message = QtWidgets.QLabel("")
         self.form_message.setObjectName("FormMessage")

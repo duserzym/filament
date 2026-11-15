@@ -81,6 +81,7 @@ DEFAULT_SIZE = QtCore.QSize(1280, 800)
 MINIMUM_SIZE = QtCore.QSize(1024, 640)
 GEOMETRY_KEY = "window/geometry"
 THEME_KEY = "theme_mode"
+FIT_ALL_KEY = "plots/fit_all_points"
 THEME_MODES = ("light", "dark", "system")
 DEFAULT_INTENSITIES = 6
 RUN_FILTER = (f"Run files and sessions (*.xls *.XLS *.TIMSDP *.timsdp *{branding.SESSION_EXTENSION});;"
@@ -92,6 +93,7 @@ AUTOSAVE_MS = 1500
 UNTITLED = "Untitled"
 LEGEND = "● used  ○ excluded  × invalid  — mean, bands 2SE · 1σ · 2σ   Click or drag: toggle · ⌘-click, ⇧-drag: select · B: block"
 LEGEND_TIP = ("Filled: used. Hollow red: excluded by hand or by block. Grey cross: invalid value (never used).\n"
+              "Red edge triangles: excluded points outside the range; hover for the true value, click to toggle.\n"
               "Line: mean of the used cycles; bands from dark to light: 2SE, 1σ, 2σ.\n"
               "Click a point to toggle that cycle; drag a box to toggle the cycles inside.\n"
               "⌘-click (Ctrl-click) adds a point to the selection; ⇧-drag selects a box.\n"
@@ -230,6 +232,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_mode = "ratios"
         self.plot_kind = "ratios"  # the plotted set (ratios or intensities) the table and picker follow
         self.log_ratio = False
+        self.fit_all_points = self.settings.value(FIT_ALL_KEY, False, type=bool)
         self.skipped: list[tuple[str, str]] = []
         self._plotted: dict[int, dict[str, list[str]]] = {}
         self._workers: set[FunctionWorker] = set()
@@ -315,6 +318,9 @@ class MainWindow(QtWidgets.QMainWindow):
                                          tip="On: a rejection applies to every function mapped to the contract. "
                                              "Off: only to the function clicked.")
         self.log_action = self._action("Log Ratios", self.set_log_ratio, "Ctrl+L", checkable=True, tip="Plot ln(ratio) instead of the ratio (Ctrl+L)")
+        self.fit_all_action = self._action("Fit all points", self.set_fit_all_points, checkable=True,
+                                           tip="Fit every point, including excluded cycles. Off: fit accepted, valid cycles.")
+        self.fit_all_action.setChecked(self.fit_all_points)
         self.mode_actions: dict[str, QtGui.QAction] = {}
         for number, (mode, label) in enumerate(PLOT_MODES.items(), start=1):
             self.mode_actions[mode] = self._action(label, lambda _c=False, m=mode: self.set_plot_mode(m), f"Ctrl+{number}")
@@ -348,7 +354,7 @@ class MainWindow(QtWidgets.QMainWindow):
         view = bar.addMenu("View")
         view.addActions(list(self.mode_actions.values()))
         view.addSeparator()
-        view.addActions([self.log_action, self.synch_action])
+        view.addActions([self.log_action, self.synch_action, self.fit_all_action])
         view.addSeparator()
         theme_menu = view.addMenu("Theme")
         theme_menu.addActions(list(self.theme_actions.values()))
@@ -534,6 +540,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.synch_button = _tool(self.synch_action, "SYNCH")
         controls.addWidget(self.log_button)
         controls.addWidget(self.synch_button)
+        self.fit_all_button = _tool(self.fit_all_action, "Fit all points")
+        controls.addWidget(self.fit_all_button)
         controls.addWidget(_divider())
         self.undo_button = _tool(self.undo_action, "Undo")
         self.redo_button = _tool(self.redo_action, "Redo")
@@ -832,7 +840,7 @@ class MainWindow(QtWidgets.QMainWindow):
         analysis = self.analysis
         if analysis is None:
             return None
-        return PlotState(analysis, self.mapping, self.log_ratio, frozenset(self.selection), self.preview_rows())
+        return PlotState(analysis, self.mapping, self.log_ratio, frozenset(self.selection), self.preview_rows(), self.fit_all_points)
 
     def current_proposal(self) -> RuleProposal | None:
         if self.preview is None or self.preview[0] is not self.analysis:
@@ -960,7 +968,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.undo_action.setEnabled(has_run and analysis.can_undo)
         self.redo_action.setEnabled(has_run and analysis.can_redo)
         for action in (self.reject_action, self.block_action, self.reset_analysis_action, self.synch_action,
-                       self.log_action, *self.mode_actions.values()):
+                       self.log_action, self.fit_all_action, *self.mode_actions.values()):
             action.setEnabled(has_run)
         self.function_button.setEnabled(has_run)
         self.synch_action.blockSignals(True)
@@ -991,6 +999,14 @@ class MainWindow(QtWidgets.QMainWindow):
         if state is not None:
             self.plot_wall.refresh(state, rebuild=True)
         self._sync_controls()
+
+    def set_fit_all_points(self, checked: bool) -> None:
+        self.fit_all_points = bool(checked)
+        self.fit_all_action.setChecked(self.fit_all_points)
+        self.settings.setValue(FIT_ALL_KEY, self.fit_all_points)
+        state = self._state()
+        if state is not None:
+            self.plot_wall.refresh(state)
 
     def _fill_function_picker(self) -> None:
         self.function_list.blockSignals(True)

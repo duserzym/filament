@@ -328,6 +328,45 @@ def test_export_form_values_land_in_the_contract_row(window):
     assert window.current[0].timezone == "America/Chicago" and "IANA" in panel.form_message.text()
 
 
+@pytest.mark.parametrize("size", [(1280, 800), (1024, 640)])
+def test_export_fields_expand_and_middle_elide_with_full_tooltips(window, size):
+    _open(window, GHR1_PB_XLS, GHR1_U_XLS)
+    window.resize(*size)
+    window.set_workflow_step("Export")
+    panel = window.export_panel
+    identity = "GHR1 20200827-11"
+    panel.set_field("sample", identity)
+    for _ in range(4):
+        QtWidgets.QApplication.processEvents()
+    for edit in (panel.fraction_id, panel.fields["sample"]):
+        assert edit.toolTip() == identity
+        if size[0] == 1280:
+            assert edit.displayed_text() == identity
+        else:
+            assert edit.displayed_text().startswith("GHR1")
+            assert edit.displayed_text().endswith("-11")
+        assert edit.geometry().right() >= edit.parentWidget().width() - 8
+    table = panel.row_table
+    assert table.textElideMode() == QtCore.Qt.TextElideMode.ElideMiddle
+    assert table.horizontalHeader().sectionResizeMode(1) == QtWidgets.QHeaderView.ResizeMode.Stretch
+    for row in range(table.rowCount()):
+        value = table.item(row, 1)
+        assert value.toolTip() == value.text()
+        if size[0] == 1280 and table.item(row, 0).text() in ("Fraction ID", "Sample"):
+            assert table.fontMetrics().elidedText(value.text(), QtCore.Qt.TextElideMode.ElideMiddle,
+                                                  table.columnWidth(1) - 10) == identity
+    # Long values retain both ends, and focusing the editor keeps the full value editable.
+    long_value = "GHR1 " + "20200827-" * 8 + "11"
+    panel.set_field("sample", long_value)
+    edit = panel.fields["sample"]
+    shown = edit.displayed_text()
+    assert "…" in shown and shown.startswith("GHR1") and shown.endswith("11")
+    assert edit.text() == edit.toolTip() == long_value
+    edit.setFocus()
+    QtWidgets.QApplication.processEvents()
+    assert edit.hasFocus() and edit.text() == long_value
+
+
 def test_problems_are_listed_for_a_2535_fraction_without_202_205(window):
     _open(window, B998)
     window.export_panel.set_field("spike_type", "2535")
