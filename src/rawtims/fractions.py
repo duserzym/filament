@@ -40,7 +40,6 @@ from rawtims.analysis import Analysis
 from rawtims.branding import APP_NAME, RAW_APP_LABEL
 from rawtims.contract import (
     CONTRACT_ID,
-    COLUMNS,
     FractionRow,
     mean_column,
     rho_column,
@@ -326,10 +325,7 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         values[f"{element} Cycles Used"] = int(used.sum())
         values[f"{element} Cycles Total"] = run.n_cycles
         values[f"{element} Mean Statistic"] = analysis.settings.stat_mode
-        # TODO clarification 8: enable only after the agreed contract adds these columns.
-        selection_column = f"{element} Cycle Selection"
-        if any(column.name == selection_column for column in COLUMNS):
-            values[selection_column] = "shared"
+        values[f"{element} Cycle Selection"] = "shared"  # contract clarification 8: enforced shared mask
         start, note = _iso_start(analysis, fraction.timezone)
         values[f"{element} Run Start"] = start
         if note:

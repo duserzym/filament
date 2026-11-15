@@ -115,7 +115,7 @@ def _doc_table_names() -> tuple[set[str], set[str]]:
 def test_every_contract_table_column_is_known_and_every_known_column_is_in_the_contract():
     named, ratios = _doc_table_names()
     assert ratios == set(PB_RATIOS) | set(U_RATIOS)
-    assert len(named) == 37  # 8 identity, 8 setup, 21 provenance
+    assert len(named) == 39  # 8 identity, 8 setup, 23 provenance
     assert named <= set(COLUMN_NAMES)
     for name in COLUMN_NAMES:  # every non-ratio column comes from a contract table
         if name.endswith((" Mean", " % Standard Error")) or name.startswith("rho "):

@@ -224,21 +224,15 @@ def test_comparison_is_independent_arithmetic_and_read_only(tmp_path, legacy, ru
     assert a.history == history and result.clipboard_text.count('(Mean, %StdErr)') == 6
 
 
-def test_provenance_is_gated_by_existing_contract_columns(monkeypatch):
+def test_both_runs_record_the_shared_cycle_selection():
     from datetime import UTC, datetime
 
-    from rawtims import contract, fractions
+    from rawtims import fractions
     f = fractions.Fraction('paired', pb=Analysis(read(B998)), u=Analysis(read(SYNTHETIC_U)))
-    row = fractions.fraction_row(f, datetime.now(UTC))
-    assert 'Pb Cycle Selection' not in row.values and 'U Cycle Selection' not in row.values
-    additions = tuple(contract.Column(f'{el} Cycle Selection', 'text', 'provenance') for el in ('Pb', 'U'))
-    monkeypatch.setattr(fractions, 'COLUMNS', (*contract.COLUMNS, *additions))
-    monkeypatch.setattr(contract, 'COLUMN_BY_NAME', {**contract.COLUMN_BY_NAME, **{c.name: c for c in additions}})
     row = fractions.fraction_row(f, datetime.now(UTC))
     assert row.values['Pb Cycle Selection'] == row.values['U Cycle Selection'] == 'shared'
 
 
-@pytest.mark.xfail(reason='awaiting contract clarification 8', strict=True)
 def test_contract_has_shared_cycle_selection_provenance():
     from rawtims.contract import COLUMNS
     assert {'Pb Cycle Selection', 'U Cycle Selection'} <= {c.name for c in COLUMNS}
@@ -272,3 +266,14 @@ def test_mixed_rule_keeps_free_synch_setting_independent_of_group_union():
         assert set(np.flatnonzero(~a.included[:, a.index(key)])) == set(p.rejected[key])
     assert a.group_consistent()
     assert all(a.included[:, a.index(k)].all() for k in a.keys if k not in a.group_keys and k not in free)
+
+
+def test_cycle_selection_values_are_validated_and_written_by_default():
+    from datetime import UTC, datetime
+
+    from rawtims.contract import CONTRACT_ID, FractionRow
+    from rawtims.fractions import Fraction, fraction_row
+    row = fraction_row(Fraction('B998', pb=Analysis(read(B998))), datetime.now(UTC))
+    assert row.values['Pb Cycle Selection'] == 'shared' and 'U Cycle Selection' not in row.values
+    bad = FractionRow.from_csv({'Contract': CONTRACT_ID, 'Fraction ID': 'z1', 'Pb Cycle Selection': 'sometimes'})
+    assert any('is not one of' in p for p in bad.problems())

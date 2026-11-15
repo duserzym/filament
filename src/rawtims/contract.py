@@ -50,6 +50,10 @@ U_OXIDE_FORMULAS = ("tripoli_java_00dc941", "isobar_233_18O", "instrument")
 MEAN_STATISTICS = ("arithmetic", "geometric")
 MEAN_STATISTIC_COLUMNS = ("Pb Mean Statistic", "U Mean Statistic")
 
+# Allowed values of `Pb/U Cycle Selection` (contract clarification 8); missing means unknown.
+CYCLE_SELECTIONS = ("shared", "per_ratio")
+CYCLE_SELECTION_COLUMNS = ("Pb Cycle Selection", "U Cycle Selection")
+
 PB_RATIOS: tuple[str, ...] = ("206Pb/204Pb", "206Pb/207Pb", "206Pb/205Pb", "207Pb/205Pb", "204Pb/205Pb", "208Pb/205Pb", "202Pb/205Pb")
 PB_REQUIRED_RATIOS: tuple[str, ...] = PB_RATIOS[:6]
 """Required whenever the Pb block is present; ``202Pb/205Pb`` is required too when ``Spike Type`` is 2535."""
@@ -129,6 +133,7 @@ def _build_columns() -> tuple[Column, ...]:
         ("U Oxide 18O/16O", "float"),
         ("U Oxide Formula", "text"),
         ("Pb Mean Statistic", "text"), ("U Mean Statistic", "text"),
+        ("Pb Cycle Selection", "text"), ("U Cycle Selection", "text"),
         ("Raw App", "text"),
         ("Raw App Session", "text"), ("Raw App Session SHA256", "text"),
         ("Exported At", "text"),
@@ -278,6 +283,10 @@ class FractionRow:
             value = self.get(column)
             if value not in MEAN_STATISTICS:
                 found.append(f"fraction {label}: {column!r} = {value!r} is not one of {MEAN_STATISTICS}")
+        for column in CYCLE_SELECTION_COLUMNS:
+            value = self.values.get(column)
+            if value is not None and value not in CYCLE_SELECTIONS:
+                found.append(f"fraction {label}: {column!r} = {value!r} is not one of {CYCLE_SELECTIONS}")
         for element, required in (("Pb", PB_REQUIRED_RATIOS), ("U", U_REQUIRED_RATIOS)):
             if not self.has_block(element):
                 continue
