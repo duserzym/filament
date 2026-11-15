@@ -73,6 +73,37 @@ For the magnitudes in Yiming's BSU spreadsheets (238/235 ≈ 0.34-0.47, 233/235 
 the current Tripoli form would come out **0.22-0.28 % lower** than the ET_Redux form. That would affect
 Yiming's numbers only if Tripoli applied the correction to them, which is not established (next section).
 
+## Legacy C# Tripoli = filament's default (confirmed 2026-11-14)
+
+Yiming confirmed that BSU uses the older Windows Tripoli (legacy C#, OGTripoli). Its oxide correction is
+in `source/TripoliWorkProduct.cs`, `PerformOxideCorrectionFor233_235Tracer`, lines 2655-2672. Per cycle, in
+C# `decimal`:
+
+    denominator = 1 / R265_267 − 2·r18        (line 2655-2657)
+    r233_235    = 1 / denominator              (line 2660)
+    r238_235    = (R270_267 / R265_267) / denominator   (lines 2663-2665)
+    r238_233    = r238_235 / r233_235          (line 2672)
+
+- It runs only on a pair of ratios whose simplified names contain `270/267` and `265/267` (lines 2495-2612),
+  and renames the results `238/235 OxideCor:(…)`, `233/235 OxideCor:(…)` and `238/233 OxideCor:(…)`
+  (lines 2678-2722).
+- **How R18 enters:** `r18` is `_r18O_16O` (line 131), copied from the user's saved
+  `USampleComponents.DefaultR18O_16O` (`source/earth_time_org/USampleComponents.cs`, lines 121-183; 0.0020 if
+  unset). It is edited in the Oxide Correction dialog (`source/forms/frmOxideCorrection.cs`). So BSU's 0.00206
+  is a saved user setting.
+- **Where "0.00206" in the name comes from:** no code in this version writes the R18 into a ratio name, so the
+  `238/235 oxide R18 0.00206` names in Yiming's sheets were not produced by legacy Tripoli 4.10.0.3. They may
+  come from BSU's raw-file function names, from a later legacy build, or from manual editing. Only Yiming or a
+  BSU U workbook can tell.
+- **Algebra:** r233_235 = R265/267 / (1 − 2·r18·R265/267) and r238_235 = R270/267 / (1 − 2·r18·R265/267).
+  This is **identical** to filament's default `isobar_233_18O` (and ET_Redux's `R238_235oc`).
+- `tests/test_oxide_legacy.py` re-implements the legacy steps literally in Decimal and agrees with filament to
+  better than 1e-14 relative on all 770 cycles of the KU U-239 run, at r18 = 0.0020, 0.00205 and 0.00206, and
+  at BSU magnitudes. The Java form differs by +0.602 % on Tripoli's test cycle.
+
+So the default formula matches legacy Tripoli, the program behind Yiming's past data, and ET_Redux. The Java
+Tripoli form stays a labelled comparison option.
+
 ## Where Yiming's existing BSU numbers come from (facts established 2026-11-14)
 
 Yiming first said the BSU oxide correction is applied in IonVantage, then corrected this the same day: "the
