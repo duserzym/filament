@@ -6,18 +6,20 @@ every function the edits address (the contract-mapped ones, or the plotted
 ones when nothing is mapped), unchecked when it is used in none and partly
 checked otherwise. Ticking it asks the window for the same toggle a click on
 the plot makes. Excluded values are shown in the danger colour, invalid ones
-in grey italics.
+in grey italics. Cells a previewed rule would reject get an amber background
+(the Include cell when any shown function would lose the cycle).
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims.analysis import Analysis
+from rawtims_gui.plots import preview_color
 from rawtims_gui.studio.theme import active_theme
 from rawtims_gui.studio.widgets import FrozenColumnsView
 
@@ -34,6 +36,19 @@ class CycleTableModel(QtCore.QAbstractTableModel):
         self.keys: list[str] = []
         self.include_keys: list[str] = []
         self._columns: list[int] = []
+        self.preview: dict[str, frozenset[int]] = {}
+        self._preview_any: frozenset[int] = frozenset()
+
+    def set_preview(self, preview: Mapping[str, frozenset[int]] | None) -> None:
+        self.preview = {key: frozenset(rows) for key, rows in (preview or {}).items()}
+        shown = set(self.keys) | set(self.include_keys)
+        self._preview_any = frozenset().union(*[rows for key, rows in self.preview.items() if key in shown]) if self.preview else frozenset()
+        self.refresh()
+
+    def _preview_brush(self) -> QtGui.QBrush:
+        color = QtGui.QColor(preview_color())
+        color.setAlpha(70)
+        return QtGui.QBrush(color)
 
     def set_analysis(self, analysis: Analysis | None, keys: Sequence[str], include_keys: Sequence[str]) -> None:
         self.beginResetModel()
@@ -80,6 +95,10 @@ class CycleTableModel(QtCore.QAbstractTableModel):
         if column == 0:
             if role == QtCore.Qt.ItemDataRole.CheckStateRole:
                 return self.include_state(row)
+            if role == QtCore.Qt.ItemDataRole.BackgroundRole and row in self._preview_any:
+                return self._preview_brush()
+            if role == QtCore.Qt.ItemDataRole.ToolTipRole and row in self._preview_any:
+                return "The previewed rule would reject this cycle"
             return None
         if role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
             return int(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -97,6 +116,9 @@ class CycleTableModel(QtCore.QAbstractTableModel):
                     return QtGui.QBrush(QtGui.QColor(active_theme().danger))
             return None
         col = self._columns[column - len(FIXED_COLUMNS)]
+        if role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            key = self.keys[column - len(FIXED_COLUMNS)]
+            return self._preview_brush() if row in self.preview.get(key, ()) else None
         invalid = bool(analysis.invalid[row, col])
         used = bool(analysis.effective[row, col])
         if role == QtCore.Qt.ItemDataRole.DisplayRole:

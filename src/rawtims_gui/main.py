@@ -1,29 +1,34 @@
-"""Desktop entry point and main window (SPEC section 5, Phase 1 step 5: GUI step A).
+"""Desktop entry point and main window (SPEC section 5, Phase 1 steps 5 and 6: GUI steps A and B).
 
 The window has the workflow rail and the fraction list on the left, the
 review area in the centre (mode bar Ratios | Intensities | Table, the cycle
-plot wall or the cycle table) and the inspector on the right (Stats now;
-Rules, Corrections and Export in the next step).
+plot wall or the cycle table) and the inspector on the right: Stats, Rules
+(preview, apply, history), Corrections (oxide correction and mapping) and
+Export (fraction fields, contract preview, CSV, clipboard and cycles).
 
-Every rejection goes through :class:`rawtims.analysis.Analysis` operations,
-so statistics, plots and table update at once and Undo/Redo walk the
-history. Nothing is rejected automatically (SPEC section 0, decision 3).
+Every rejection and setting goes through :class:`rawtims.analysis.Analysis`
+operations, so statistics, plots and table update at once and Undo/Redo walk
+the history. Nothing is rejected automatically (SPEC section 0, decision 3):
+a rule is previewed first and applied only on request.
 
 Command line (the executable name is branding.EXECUTABLE_NAME; the pip
 console script is set in pyproject.toml)::
 
     <app> [--theme light|dark|system] [--open PATH ...]
     <app> --export png PATH [--open PATH ...]   # render the window offscreen and exit
+    <app> --verify PATH ... --verification-output OUT.csv   # headless contract CSV, no window
     <app> --version
-    <app> --verify ...          # not available yet: exits 2
 """
 
 from __future__ import annotations
 
 import argparse
+from datetime import date, datetime
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 if __package__ in {None, ""}:
     # Run as a script (PyInstaller's entry point): make `src/` importable.
@@ -33,20 +38,30 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims import branding
 from rawtims.analysis import Analysis
-from rawtims.fractions import Fraction
-from rawtims.mapping import ElementMapping
+from rawtims.contract import ContractError, write_csv
+from rawtims.exports import CLIPBOARD_SEPARATOR, clipboard_text, write_cycles_csv
+from rawtims.fractions import Fraction, FractionError
+from rawtims.mapping import ElementMapping, MappingError, MethodMapping
+from rawtims.rules import RuleProposal
+from rawtims_gui.corrections_panel import CorrectionsPanel
 from rawtims_gui.cycle_table import CycleTable
+from rawtims_gui.export_panel import ExportPanel
 from rawtims_gui.fraction_list import FractionList
-from rawtims_gui.inspector import StatsPanel, placeholder_tab
+from rawtims_gui.inspector import StatsPanel
 from rawtims_gui.plots import PlotState, PlotWall
+from rawtims_gui.rules_panel import RulesPanel
 from rawtims_gui.studio.theme import NeumorphicFrame, WallpaperWidget, apply_theme, build_application, paint_wallpaper
-from rawtims_gui.studio.widgets import ElidedLabel, SegmentButton, SegmentedBar, _WorkflowRailDelegate, elide_tab_titles
+from rawtims_gui.studio.widgets import ElidedLabel, SegmentButton, SegmentedBar, _WorkflowRailDelegate, elide_tab_titles, scrolling_page
 from rawtims_gui.studio.workers import FunctionWorker
+from rawtims_gui.verify import run_verify
 from rawtims_gui.workspace import Workspace, describe_path, read_paths
 
 WORKFLOW_STEPS = ("Import", "Review", "Correct", "Export")
-ACTIVE_STEPS = ("Import", "Review")
+ACTIVE_STEPS = WORKFLOW_STEPS
 INSPECTOR_TABS = ("Stats", "Rules", "Corrections", "Export")
+STEP_TABS = {"Correct": "Corrections", "Export": "Export"}
+REMEMBERED_KEY = "mappings/remembered"
+EXPORT_DIR_KEY = "export/folder"
 PLOT_MODES = {"ratios": "Ratios", "intensities": "Intensities", "table": "Table"}
 DEFAULT_SIZE = QtCore.QSize(1280, 800)
 MINIMUM_SIZE = QtCore.QSize(1024, 640)
@@ -61,12 +76,37 @@ LEGEND_TIP = ("Filled: used. Hollow red: excluded by hand or by block. Grey cros
               "Click a point to toggle that cycle; drag a box to toggle the cycles inside.\n"
               "⌘-click (Ctrl-click) adds a point to the selection; ⇧-drag selects a box.\n"
               "Delete or Backspace rejects the selection; B toggles its block; right-click for the block menu.\n"
-              "SYNCH on: edits apply to every contract-mapped function. ⌘ + wheel zooms a plot.")
+              "SYNCH on: edits apply to every contract-mapped function. ⌘ + wheel zooms a plot.\n"
+              "Amber square: a cycle the previewed rule would reject (Rules tab).")
 
 
 def app_settings() -> QtCore.QSettings:
     """Per-viewer preferences (the user scope of QSettings)."""
     return QtCore.QSettings(branding.QSETTINGS_ORG, branding.QSETTINGS_APP)
+
+
+def load_remembered(settings: QtCore.QSettings) -> dict[str, MethodMapping]:
+    """Mappings remembered per method name (one JSON value; unreadable entries are skipped)."""
+    text = settings.value(REMEMBERED_KEY, "", type=str) or ""
+    try:
+        data = json.loads(text) if text else {}
+    except ValueError:
+        return {}
+    remembered: dict[str, MethodMapping] = {}
+    for method, entry in (data.items() if isinstance(data, dict) else []):
+        try:
+            remembered[str(method)] = MethodMapping.from_dict(entry)
+        except (KeyError, TypeError, ValueError):
+            continue
+    return remembered
+
+
+def store_remembered(settings: QtCore.QSettings, remembered: dict[str, MethodMapping]) -> None:
+    if remembered:
+        settings.setValue(REMEMBERED_KEY, json.dumps({method: m.to_dict() for method, m in remembered.items()}, sort_keys=True))
+    else:
+        settings.remove(REMEMBERED_KEY)
+    settings.sync()
 
 
 def fitted_window_size(available: QtCore.QSize) -> QtCore.QSize:
@@ -75,6 +115,16 @@ def fitted_window_size(available: QtCore.QSize) -> QtCore.QSize:
         max(MINIMUM_SIZE.width(), min(DEFAULT_SIZE.width(), available.width())),
         max(MINIMUM_SIZE.height(), min(DEFAULT_SIZE.height(), available.height())),
     )
+
+
+def fitted_page(page: QtWidgets.QWidget) -> QtWidgets.QScrollArea:
+    """An inspector page that scrolls vertically and never sideways (UX rule 7)."""
+    scroll = scrolling_page(page)
+    scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    scroll.viewport().setAutoFillBackground(False)
+    page.setObjectName(page.objectName() or "InspectorPage")
+    page.setStyleSheet(f"#{page.objectName()} {{ background: transparent; }}")
+    return scroll
 
 
 def _section_title(text: str) -> QtWidgets.QLabel:
@@ -123,8 +173,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, *, restore_geometry: bool = True) -> None:
         super().__init__()
         self.settings = app_settings()
-        self.workspace = Workspace()
+        self.workspace = Workspace(load_remembered(self.settings))
         self.current: tuple[Fraction, str] | None = None
+        self.preview: tuple[Analysis, RuleProposal] | None = None
         self.selection: set[int] = set()
         self.focus_key: str | None = None
         self.last_row: int | None = None
@@ -253,9 +304,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.workflow_step_list.setSpacing(1)
         for index, name in enumerate(WORKFLOW_STEPS, start=1):
             item = QtWidgets.QListWidgetItem(f"{index}  {name}")
-            if name not in ACTIVE_STEPS:
-                item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEnabled & ~QtCore.Qt.ItemFlag.ItemIsSelectable)
-                item.setToolTip(f"{name}: next step")
+            item.setToolTip({
+                "Import": "Open run files and folders",
+                "Review": "Cycles, hand rejection and rules",
+                "Correct": "Oxide correction and the mapping to the contract (Corrections tab)",
+                "Export": "Fraction fields, contract CSV, Tripoli clipboard, cycles CSV (Export tab)",
+            }[name])
             self.workflow_step_list.addItem(item)
         self.workflow_step_list.setCurrentRow(0)
         self.workflow_step_list.setFixedHeight(self.workflow_step_list.sizeHintForRow(0) * len(WORKFLOW_STEPS) + 16)
@@ -411,6 +465,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.legend = ElidedLabel(LEGEND)
         self.legend.setObjectName("SecondaryText")
         self.legend.setToolTip(LEGEND_TIP)
+        # A fixed line height: the label never shares rows with the last plot's axis.
+        self.legend.setFixedHeight(self.legend.fontMetrics().height() + 6)
+        self.legend.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.legend)
         return page
 
@@ -428,13 +485,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stats_panel = StatsPanel()
         self.stats_panel.blockToggleRequested.connect(self.toggle_block)
         self.inspector_tabs.addTab(self.stats_panel, "Stats")
-        for name, text in (
-            ("Rules", "Chauvenet and k-σ, each previewed before it is applied: next step."),
-            ("Corrections", "Oxide correction, 18O/16O and the function-to-contract mapping: next step."),
-            ("Export", "Contract CSV preview, Tripoli clipboard block and cycles CSV: next step."),
-        ):
-            self.inspector_tabs.addTab(placeholder_tab(text), name)
+        self.rules_panel = RulesPanel()
+        self.rules_panel.previewRequested.connect(self.preview_rule)
+        self.rules_panel.applyRequested.connect(self.apply_preview)
+        self.rules_panel.discardRequested.connect(self.discard_preview)
+        self.rules_panel.parametersEdited.connect(self.discard_preview)
+        self.rules_panel.synchToggled.connect(self.set_synch)
+        self.rules_panel.setObjectName("RulesPage")
+        self.inspector_tabs.addTab(fitted_page(self.rules_panel), "Rules")
+        self.corrections_panel = CorrectionsPanel()
+        self.corrections_panel.settingRequested.connect(self.set_analysis_setting)
+        self.corrections_panel.mappingEdited.connect(self.edit_mapping)
+        self.corrections_panel.collectorChanged.connect(self.set_collector)
+        self.corrections_panel.rememberRequested.connect(self.remember_mapping)
+        self.corrections_panel.forgetRequested.connect(self.forget_mapping)
+        self.corrections_panel.revertRequested.connect(self.revert_mapping)
+        self.corrections_panel.setObjectName("CorrectionsPage")
+        self.inspector_tabs.addTab(fitted_page(self.corrections_panel), "Corrections")
+        self.export_panel = ExportPanel()
+        self.export_panel.fieldEdited.connect(self.set_fraction_field)
+        self.export_panel.saveContractRequested.connect(lambda: self.save_contract_csv())
+        self.export_panel.copyClipboardRequested.connect(lambda: self.copy_clipboard())
+        self.export_panel.saveCyclesRequested.connect(lambda: self.save_cycles_csv())
+        self.inspector_tabs.addTab(self.export_panel, "Export")
         elide_tab_titles(self.inspector_tabs)
+        self.inspector_tabs.currentChanged.connect(self._inspector_tab_changed)
         layout.addWidget(self.inspector_tabs, 1)
         return frame
 
@@ -571,9 +646,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.focus_key = (self.plotted_keys() or [None])[0]
         self.fraction_list.set_current(self.current)
         self.centre_stack.setCurrentWidget(self.review_page)
-        self.workflow_step_list.blockSignals(True)
-        self.workflow_step_list.setCurrentRow(WORKFLOW_STEPS.index("Review"))
-        self.workflow_step_list.blockSignals(False)
+        if WORKFLOW_STEPS[self.workflow_step_list.currentRow()] == "Import":
+            self.workflow_step_list.blockSignals(True)
+            self.workflow_step_list.setCurrentRow(WORKFLOW_STEPS.index("Review"))
+            self.workflow_step_list.blockSignals(False)
         self._rebuild_view()
 
     def rename_fraction(self, fraction: Fraction, new_id: str) -> bool:
@@ -587,10 +663,29 @@ class MainWindow(QtWidgets.QMainWindow):
         return ok
 
     def _workflow_step_changed(self, row: int) -> None:
-        if WORKFLOW_STEPS[row] == "Import" or self.analysis is None:
+        step = WORKFLOW_STEPS[row]
+        if step == "Import" or self.analysis is None:
             self.centre_stack.setCurrentWidget(self.import_page)
         else:
             self.centre_stack.setCurrentWidget(self.review_page)
+        if step in STEP_TABS:
+            self.inspector_tabs.blockSignals(True)
+            self.inspector_tabs.setCurrentIndex(INSPECTOR_TABS.index(STEP_TABS[step]))
+            self.inspector_tabs.blockSignals(False)
+
+    def set_workflow_step(self, step: str) -> None:
+        self.workflow_step_list.setCurrentRow(WORKFLOW_STEPS.index(step))
+
+    def _inspector_tab_changed(self, index: int) -> None:
+        """The rail follows the inspector: Corrections is the Correct step, Export the Export step."""
+        if self.analysis is None:
+            return
+        tab = INSPECTOR_TABS[index]
+        step = {"Corrections": "Correct", "Export": "Export"}.get(tab, "Review")
+        self.workflow_step_list.blockSignals(True)
+        self.workflow_step_list.setCurrentRow(WORKFLOW_STEPS.index(step))
+        self.workflow_step_list.blockSignals(False)
+        self.centre_stack.setCurrentWidget(self.review_page)
 
     # ------------------------------------------------------- plot / view
     def plotted_keys(self, kind: str | None = None) -> list[str]:
@@ -603,7 +698,23 @@ class MainWindow(QtWidgets.QMainWindow):
         analysis = self.analysis
         if analysis is None:
             return None
-        return PlotState(analysis, self.mapping, self.log_ratio, frozenset(self.selection))
+        return PlotState(analysis, self.mapping, self.log_ratio, frozenset(self.selection), self.preview_rows())
+
+    def current_proposal(self) -> RuleProposal | None:
+        if self.preview is None or self.preview[0] is not self.analysis:
+            return None
+        return self.preview[1]
+
+    def preview_rows(self) -> dict[str, frozenset[int]]:
+        """Function key → rows the previewed rule would exclude there (synced: the union in every function)."""
+        proposal = self.current_proposal()
+        analysis = self.analysis
+        if proposal is None or analysis is None:
+            return {}
+        if proposal.synced:
+            union = frozenset(proposal.cycles)
+            return {key: union for key in analysis.keys} if union else {}
+        return {key: frozenset(rows) for key, rows in proposal.rejected.items() if rows}
 
     def _rebuild_view(self) -> None:
         """New run, mode or function set: rebuild the plots and the table."""
@@ -617,15 +728,51 @@ class MainWindow(QtWidgets.QMainWindow):
         self._fill_function_picker()
         self._after_edit()
 
-    def _after_edit(self, *, rebuild: bool = False) -> None:
-        """Everything that shows the analysis follows its current flags."""
+    def _after_edit(self, *, rebuild: bool = False, keep_preview: bool = False) -> None:
+        """Everything that shows the analysis follows its current flags. Any edit drops a rule preview."""
+        if not keep_preview:
+            self.preview = None
         state = self._state()
         if state is not None and self.plot_mode != "table":
             self.plot_wall.refresh(state, rebuild=rebuild)
-        self.cycle_table.cycle_model.refresh()
+        self.cycle_table.cycle_model.set_preview(self.preview_rows())
         self.stats_panel.update_stats(self.analysis, self.mapping, self.stats_keys())
+        self.rules_panel.update_panel(self.analysis, self.current_proposal())
+        self._refresh_corrections()
+        self._refresh_export()
         self._sync_controls()
         self._update_titles()
+
+    def _refresh_corrections(self) -> None:
+        analysis = self.analysis
+        fraction = self.current[0] if self.current is not None else None
+        if analysis is None:
+            self.corrections_panel.update_panel(None, None, None, "proposed", False)
+            return
+        method = analysis.run.metadata.method
+        self.corrections_panel.update_panel(
+            analysis, fraction, self.mapping, self.workspace.mapping_source(analysis),
+            bool(method) and method in self.workspace.remembered)
+
+    def fraction_reports(self) -> list[tuple[Fraction, str, list[str], Any, str | None]]:
+        """(fraction, state, reasons, row or None, error or None) for every open fraction."""
+        now = datetime.now().astimezone()
+        reports = []
+        for fraction in self.workspace.fractions:
+            state, reasons, row, error = self.workspace.fraction_report(fraction, now)
+            reports.append((fraction, state, reasons, row, error))
+        return reports
+
+    def _refresh_export(self) -> None:
+        reports = self.fraction_reports()
+        self.fraction_list.set_states({id(f): (state, reasons) for f, state, reasons, _row, _error in reports})
+        fraction = self.current[0] if self.current is not None else None
+        row = error = None
+        for f, _state, _reasons, f_row, f_error in reports:
+            if f is fraction:
+                row, error = f_row, f_error
+        self.export_panel.update_panel(fraction, [(f, state, reasons) for f, state, reasons, _r, _e in reports], row, error,
+                                       self.current[1] if self.current is not None else None)
 
     def stats_keys(self) -> list[str]:
         keys = self.plotted_keys("ratios")
@@ -851,7 +998,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_synch(self, checked: bool) -> None:
         analysis = self.analysis
-        if analysis is not None and analysis.settings.synced != bool(checked):
+        if analysis is None:
+            return
+        if analysis.settings.synced != bool(checked):
             analysis.set_setting("synced", bool(checked))
             self.statusBar().showMessage("SYNCH on: rejections apply to every contract-mapped function" if checked
                                          else "SYNCH off: rejections apply only to the function clicked", 5000)
@@ -884,6 +1033,220 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage("Analysis reset: every cycle included (Undo brings the rejections back)", 6000)
         return True
 
+    # ------------------------------------------------------------- rules
+    def preview_rule(self) -> RuleProposal | None:
+        """Commit the rule parameters (undoable settings), then show what the rule would reject. The mask is not changed."""
+        analysis = self.analysis
+        if analysis is None:
+            return None
+        params = self.rules_panel.parameters()
+        rule = params["rule"]
+        names = ("chauvenet_probability", "chauvenet_min_n") if rule == "chauvenet" else ("k_sigma", "k_sigma_max_iterations")
+        for name in names:
+            if getattr(analysis.settings, name) != params[name]:
+                analysis.set_setting(name, params[name])
+        mapping = self.mapping
+        keys: list[str] | None = None
+        if params["function_set"] == "plotted" or mapping is None or not mapping.function_keys:
+            keys = [key for key in self.plotted_keys("ratios")] or None
+        propose = analysis.propose_chauvenet if rule == "chauvenet" else analysis.propose_k_sigma
+        try:
+            proposal = propose(keys, mapping=mapping if mapping is not None and mapping.function_keys else None, scope=params["scope"])
+        except ValueError as error:
+            self.statusBar().showMessage(f"Cannot preview the rule: {error}", 8000)
+            return None
+        self.preview = (analysis, proposal)
+        self._after_edit(keep_preview=True)
+        count = len(proposal.cycles)
+        self.statusBar().showMessage(
+            f"Preview: {proposal.describe()}. Nothing changed yet; Apply excludes them." if count else
+            f"Preview: {proposal.describe()}. Nothing would be rejected.", 8000)
+        return proposal
+
+    def apply_preview(self) -> dict | None:
+        """Apply exactly the previewed proposal (recorded in the history; Undo reverts it)."""
+        analysis = self.analysis
+        proposal = self.current_proposal()
+        if analysis is None or proposal is None:
+            return None
+        op = analysis.apply_rule(proposal)
+        self.preview = None
+        self._after_edit()
+        self.statusBar().showMessage(f"Applied {proposal.describe()} (Undo reverts it)", 8000)
+        return op
+
+    def discard_preview(self) -> None:
+        if self.preview is None:
+            return
+        self.preview = None
+        self._after_edit()
+
+    # ------------------------------------------------------- corrections
+    def set_analysis_setting(self, name: str, value: Any) -> dict | None:
+        """Change one setting of the current run through the history (undoable)."""
+        analysis = self.analysis
+        if analysis is None:
+            return None
+        if getattr(analysis.settings, name) == value:
+            self._after_edit(keep_preview=True)
+            return None
+        try:
+            op = analysis.set_setting(name, value)
+        except (KeyError, ValueError) as error:
+            self.statusBar().showMessage(f"Not changed: {error}", 8000)
+            self._after_edit(keep_preview=True)
+            return None
+        self._after_edit()
+        self.statusBar().showMessage(f"{name.replace('_', ' ')} set to {value} (Undo reverts it)", 6000)
+        return op
+
+    def _replot_mapping(self, analysis: Analysis, old: ElementMapping | None) -> None:
+        """After a mapping change: the new mapped functions are plotted; other plotted ratios stay."""
+        new = self.workspace.mapping(analysis)
+        plotted = self._plotted.get(id(analysis))
+        if plotted is not None and new is not None:
+            old_keys = set(old.function_keys) if old is not None else set()
+            extras = [key for key in plotted["ratios"] if key not in old_keys and key not in new.function_keys]
+            plotted["ratios"] = [*new.function_keys, *extras] or plotted["ratios"]
+        self._rebuild_view()
+
+    def edit_mapping(self, choice: dict[str, dict | None]) -> ElementMapping | None:
+        analysis = self.analysis
+        if analysis is None:
+            return None
+        old = self.mapping
+        try:
+            mapping = self.workspace.set_mapping(analysis, choice)
+        except MappingError as error:
+            self.statusBar().showMessage(f"Mapping not changed: {error}", 8000)
+            return None
+        self._replot_mapping(analysis, old)
+        self.statusBar().showMessage("Mapping edited for this run", 5000)
+        return mapping
+
+    def set_collector(self, collector: str | None) -> None:
+        """The fraction's Collector: a contract field that also steers the Pb mapping proposal."""
+        if self.current is None:
+            return
+        fraction = self.current[0]
+        if collector == fraction.collector:
+            return
+        fraction.collector = collector
+        pb = fraction.pb
+        if pb is not None:
+            old = self.workspace.mapping(pb)
+            self.workspace.clear_mapping_edit(pb)
+            if self.analysis is pb:
+                self._replot_mapping(pb, old)
+                return
+        self._after_edit(keep_preview=True)
+
+    def remember_mapping(self) -> MethodMapping | None:
+        analysis = self.analysis
+        if analysis is None:
+            return None
+        try:
+            remembered = self.workspace.remember(analysis)
+        except MappingError as error:
+            self.statusBar().showMessage(f"Not remembered: {error}", 8000)
+            return None
+        store_remembered(self.settings, self.workspace.remembered)
+        self._after_edit(keep_preview=True)
+        self.statusBar().showMessage(f"Mapping remembered for method “{remembered.method}”", 6000)
+        return remembered
+
+    def forget_mapping(self) -> bool:
+        analysis = self.analysis
+        if analysis is None or not analysis.run.metadata.method:
+            return False
+        forgotten = self.workspace.forget(analysis.run.metadata.method)
+        store_remembered(self.settings, self.workspace.remembered)
+        self._after_edit(keep_preview=True)
+        if forgotten:
+            self.statusBar().showMessage(f"Forgot the mapping of method “{analysis.run.metadata.method}”", 6000)
+        return forgotten
+
+    def revert_mapping(self) -> None:
+        analysis = self.analysis
+        if analysis is not None:
+            old = self.mapping
+            self.workspace.clear_mapping_edit(analysis)
+            self._replot_mapping(analysis, old)
+
+    # ------------------------------------------------------------ export
+    def set_fraction_field(self, attribute: str, value: Any) -> None:
+        if self.current is None:
+            return
+        if attribute == "collector":
+            self.set_collector(value)
+            return
+        setattr(self.current[0], attribute, value)
+        self._after_edit(keep_preview=True)
+
+    def _export_folder(self) -> str:
+        folder = self.settings.value(EXPORT_DIR_KEY, "", type=str) or ""
+        return folder if folder and Path(folder).is_dir() else str(Path.home())
+
+    def save_contract_csv(self, path: str | None = None) -> Path | None:
+        """Write every exportable fraction to an idtims-fractions/1 file (atomic). Asks for the path when none is given."""
+        rows, left_out = self.workspace.export_rows(datetime.now().astimezone())
+        if not rows:
+            reasons = "; ".join(f"{fid}: {reason}" for fid, reason in left_out) or "no fractions open"
+            self.statusBar().showMessage(f"Nothing to export ({reasons})", 10000)
+            return None
+        if path is None:
+            default = str(Path(self._export_folder()) / f"{date.today().isoformat()}.fractions.csv")
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save contract CSV", default, "Fractions CSV (*.fractions.csv *.csv)")
+            if not path:
+                return None
+        try:
+            written = write_csv(rows, path)
+        except (OSError, ContractError) as error:
+            self.statusBar().showMessage(f"Could not save: {error}", 10000)
+            return None
+        self.settings.setValue(EXPORT_DIR_KEY, str(written.parent))
+        message = f"Saved {len(rows)} fraction{'s' if len(rows) != 1 else ''} to {written.name}"
+        if left_out:
+            message += f"; left out: {', '.join(fid for fid, _ in left_out)} (see the Export tab)"
+        self.statusBar().showMessage(message, 10000)
+        return written
+
+    def copy_clipboard(self) -> str | None:
+        """Copy the current fraction as Tripoli clipboard blocks (Pb then U)."""
+        if self.current is None:
+            return None
+        fraction = self.current[0]
+        self.workspace.sync_mappings(fraction)
+        separator = self.export_panel.separator.currentData() or CLIPBOARD_SEPARATOR
+        try:
+            text = clipboard_text(fraction, separator=separator)
+        except FractionError as error:
+            self.statusBar().showMessage(f"Nothing copied: {error}", 10000)
+            return None
+        QtWidgets.QApplication.clipboard().setText(text)
+        blocks = text.count("(Mean, %StdErr)")
+        self.statusBar().showMessage(f"Copied {blocks} ratio block{'s' if blocks != 1 else ''} of {fraction.fraction_id}", 6000)
+        return text
+
+    def save_cycles_csv(self, path: str | None = None) -> Path | None:
+        analysis = self.analysis
+        if analysis is None:
+            return None
+        if path is None:
+            stem = Path(analysis.run.raw.name).stem
+            default = str(Path(self._export_folder()) / f"{stem}.cycles.csv")
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save cycles CSV", default, "CSV (*.csv)")
+            if not path:
+                return None
+        try:
+            written = write_cycles_csv(analysis, path)
+        except OSError as error:
+            self.statusBar().showMessage(f"Could not save: {error}", 10000)
+            return None
+        self.settings.setValue(EXPORT_DIR_KEY, str(written.parent))
+        self.statusBar().showMessage(f"Saved the cycles of {analysis.run.raw.name} to {written.name}", 8000)
+        return written
+
     # ------------------------------------------------------------- theme
     def set_theme(self, mode: str) -> None:
         if mode not in THEME_MODES:
@@ -904,6 +1267,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cycle_table.apply_theme()
         self.fraction_list.set_current(self.current)
         self.stats_panel.update_stats(self.analysis, self.mapping, self.stats_keys())
+        self._refresh_corrections()
+        self._refresh_export()
         self.update()
 
     # ---------------------------------------------------------- geometry
@@ -963,10 +1328,17 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--open", nargs="+", metavar="PATH", help="Open run files or folders at start")
     parser.add_argument("--export", nargs=2, metavar=("FORMAT", "PATH"), help="Render the window to PATH and exit; FORMAT must be png")
     parser.add_argument("--version", action="version", version=branding.RAW_APP_LABEL)
-    parser.add_argument("--verify", nargs="*", metavar="ARG", help="Not available yet (comes with the readers)")
+    parser.add_argument("--verify", nargs="+", metavar="PATH",
+                        help="Open run files or folders without a window, pair them, use the default mapping, apply no "
+                             "rejection and write the contract CSV to --verification-output")
+    parser.add_argument("--verification-output", metavar="OUT.csv", help="Where --verify writes the contract CSV")
     args = parser.parse_args(argv)
-    if args.verify is not None:
-        parser.exit(2, f"{branding.EXECUTABLE_NAME}: --verify is not available yet; it arrives with the readers in a later step.\n")
+    if args.verify is not None and not args.verification_output:
+        parser.error("--verify needs --verification-output OUT.csv")
+    if args.verification_output and args.verify is None:
+        parser.error("--verification-output is used only with --verify")
+    if args.verify is not None and (args.export is not None or args.open):
+        parser.error("--verify runs without a window; do not combine it with --open or --export")
     if args.export is not None and args.export[0].lower() != "png":
         parser.error(f"--export supports only png, not {args.export[0]!r}")
     return args
@@ -974,6 +1346,8 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_arguments(sys.argv[1:] if argv is None else argv)
+    if args.verify is not None:
+        return run_verify(args.verify, args.verification_output)
     settings = app_settings()
     theme_mode = args.theme or str(settings.value(THEME_KEY, "light", type=str) or "light")
     if theme_mode not in THEME_MODES:

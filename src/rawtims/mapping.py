@@ -360,6 +360,44 @@ def propose_mapping(analysis: Any, element: str | None = None, *, collector: str
     return ElementMapping(element=element, method=analysis.run.metadata.method, stat_mode=stat_mode, ratios=ratios, issues=tuple(issues), collector=collector)
 
 
+@dataclass(frozen=True)
+class RatioCandidate:
+    """A function that could supply a contract ratio, for a mapping editor (see :func:`ratio_candidates`)."""
+
+    ratio: str
+    key: str
+    name: str
+    inverted: bool
+    collector: str | None
+    source: Source
+    raw: bool
+
+
+def ratio_candidates(analysis: Any, element: str | None = None) -> dict[str, list[RatioCandidate]]:
+    """Every usable candidate function per contract ratio of one element, direct orientation first.
+
+    The same candidates :func:`propose_mapping` ranks (U: oxide-corrected
+    functions only), before any ranking or collector filter. Inverted
+    candidates are listed in every statistics mode; using one in arithmetic
+    mode is refused when the mapping is resolved (:meth:`MethodMapping.apply`).
+    """
+    element = element or analysis.run.element
+    if element not in ("Pb", "U"):
+        raise MappingError(f"cannot list candidates for a run whose element is {element!r}")
+    usable, _refused = _candidates(analysis.functions, element)
+    result: dict[str, list[RatioCandidate]] = {}
+    for ratio in element_ratios(element):
+        masses = ratio_masses(ratio)
+        entries = []
+        for inverted, wanted in ((False, masses), (True, masses[::-1])):
+            entries += [
+                RatioCandidate(ratio, c.key, c.name, inverted, c.collector, c.source, c.raw)
+                for c in usable if c.masses == wanted
+            ]
+        result[ratio] = entries
+    return result
+
+
 # ------------------------------------------------------------ remembered
 @dataclass(frozen=True)
 class MethodMapping:
@@ -488,10 +526,12 @@ __all__ = [
     "MappingError",
     "MappingIssue",
     "MethodMapping",
+    "RatioCandidate",
     "element_ratios",
     "mapped_values",
     "mapping_for",
     "propose_mapping",
+    "ratio_candidates",
     "ratio_correlation",
     "ratio_stats",
     "ratio_usable",

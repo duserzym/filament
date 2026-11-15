@@ -98,11 +98,12 @@ def test_export_png_writes_a_full_size_screenshot(tmp_path):
     assert QtGui.QImage(str(output)).size() == QtCore.QSize(1280, 800)
 
 
-def test_version_and_verify_stub(tmp_path):
+def test_version_and_verify_usage(tmp_path):
     version = _run_cli("--version", tmp_path=tmp_path)
     assert version.returncode == 0 and version.stdout.strip() == branding.RAW_APP_LABEL
     verify = _run_cli("--verify", "x.xls", tmp_path=tmp_path)
-    assert verify.returncode == 2
-    assert "not available yet" in verify.stderr
+    assert verify.returncode == 2 and "--verification-output" in verify.stderr
+    nothing = _run_cli("--verify", str(tmp_path), "--verification-output", str(tmp_path / "out.csv"), tmp_path=tmp_path)
+    assert nothing.returncode == 1 and "Nothing exportable" in nothing.stderr and not (tmp_path / "out.csv").exists()
     bad = _run_cli("--export", "jpg", str(tmp_path / "x.jpg"), tmp_path=tmp_path)
     assert bad.returncode == 2

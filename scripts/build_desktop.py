@@ -2,10 +2,12 @@
 
 Adapted from UPbRPy commit f8c561f, scripts/build_desktop.py, on 2026-11-14.
 Changes: names come from rawtims.branding and the spec is
-packaging/rawtims.spec; the smoke test runs ``--version`` and
-``--export png`` on the empty window (fixture sessions and ``--verify`` come in
-later steps); PYTHONPATH is removed from the PyInstaller and smoke-test
-environments.
+packaging/rawtims.spec; the smoke test runs ``--version``, ``--export png`` of
+the empty window and of the window with the B998 fixture run open (each over
+10 KB), and ``--verify`` on the KU GHR1 IsoLinx Pb and U fixtures, whose
+contract CSV must equal, cell by cell, the one the unfrozen source environment
+writes (all columns but ``Exported At``); PYTHONPATH is removed from the
+PyInstaller and smoke-test environments.
 
 Run it with the interpreter of the environment to bundle (``make build``).
 Output goes outside the repository, under
@@ -15,6 +17,7 @@ Output goes outside the repository, under
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import importlib.util
 import os
@@ -34,6 +37,13 @@ CACHE_BASE = (
 CHECKOUT_KEY = hashlib.sha256(str(PROJECT_ROOT).encode()).hexdigest()[:12]
 BUILD_ROOT = Path(os.environ.get("RAWTIMS_BUILD_ROOT", str(CACHE_BASE / branding.CACHE_DIR_NAME / CHECKOUT_KEY)))
 MINIMUM_PNG_BYTES = 10_000
+FIXTURES = PROJECT_ROOT / "tests" / "fixtures" / "tripoli"
+SMOKE_RUN = FIXTURES / "ionvantage" / "BoiseState" / "B998_F11_13223M02_iz1_Pb1-14973.xls"
+SMOKE_VERIFY = (
+    FIXTURES / "timsdp" / "KU_IGL" / "IsolinxVersion2" / "GHR1 230921 F08b-216.TIMSDP",
+    FIXTURES / "timsdp" / "KU_IGL" / "IsolinxVersion2" / "GHR1 230921F03 U-239.TIMSDP",
+)
+VOLATILE_COLUMNS = ("Exported At",)
 
 
 def clean_environment() -> dict[str, str]:
@@ -101,8 +111,36 @@ def run_frozen(application: Path, arguments: list[str], work_directory: Path) ->
     return result
 
 
+def run_source(arguments: list[str], work_directory: Path) -> subprocess.CompletedProcess:
+    """Run the same command from the source environment (this interpreter), for comparison with the frozen app."""
+    environment = clean_environment()
+    environment["QT_QPA_PLATFORM"] = "offscreen"
+    result = subprocess.run([sys.executable, "-m", "rawtims_gui.main", *arguments], cwd=work_directory, env=environment,
+                            capture_output=True, text=True, timeout=300)
+    output = result.stdout + result.stderr
+    if result.returncode != 0 or "Traceback" in output:
+        raise RuntimeError(f"The source app failed on {' '.join(arguments)} (exit {result.returncode}):\n{output[-4000:]}")
+    return result
+
+
+def compare_contract_files(frozen: Path, source: Path) -> int:
+    """Raise unless both files have the same header and cells (``Exported At`` aside); return the row count."""
+    with frozen.open(newline="", encoding="utf-8") as a, source.open(newline="", encoding="utf-8") as b:
+        frozen_rows, source_rows = list(csv.reader(a)), list(csv.reader(b))
+    if not frozen_rows or frozen_rows[0] != source_rows[0]:
+        raise RuntimeError(f"Frozen and source --verify headers differ:\n{frozen_rows[:1]}\n{source_rows[:1]}")
+    if len(frozen_rows) != len(source_rows):
+        raise RuntimeError(f"Frozen --verify wrote {len(frozen_rows) - 1} rows, source {len(source_rows) - 1}")
+    header = frozen_rows[0]
+    for number, (left, right) in enumerate(zip(frozen_rows[1:], source_rows[1:]), start=2):
+        for column, a_cell, b_cell in zip(header, left, right):
+            if column not in VOLATILE_COLUMNS and a_cell != b_cell:
+                raise RuntimeError(f"Line {number}, column {column!r}: frozen {a_cell!r}, source {b_cell!r}")
+    return len(frozen_rows) - 1
+
+
 def smoke_test_application(application: Path, work_directory: Path) -> list[str]:
-    """Check ``--version`` and an offscreen PNG of the empty window."""
+    """Check ``--version``, offscreen PNGs of the empty window and of a loaded run, and ``--verify`` against the source app."""
     work_directory.mkdir(parents=True, exist_ok=True)
     lines = []
     version = run_frozen(application, ["--version"], work_directory).stdout.strip()
@@ -116,6 +154,21 @@ def smoke_test_application(application: Path, work_directory: Path) -> list[str]
     if size <= MINIMUM_PNG_BYTES:
         raise RuntimeError(f"The frozen app did not produce a valid empty-window screenshot ({size} bytes): {screenshot}")
     lines.append(f"Frozen --export png: {screenshot} ({size} bytes)")
+    loaded = work_directory / "smoke-b998.png"
+    loaded.unlink(missing_ok=True)
+    run_frozen(application, ["--theme", "light", "--open", str(SMOKE_RUN), "--export", "png", str(loaded)], work_directory)
+    size = loaded.stat().st_size if loaded.exists() else 0
+    if size <= MINIMUM_PNG_BYTES:
+        raise RuntimeError(f"The frozen app did not produce a valid screenshot of {SMOKE_RUN.name} ({size} bytes): {loaded}")
+    lines.append(f"Frozen --open {SMOKE_RUN.name} --export png: {loaded} ({size} bytes)")
+    frozen_csv, source_csv = work_directory / "smoke-verify-frozen.csv", work_directory / "smoke-verify-source.csv"
+    for path in (frozen_csv, source_csv):
+        path.unlink(missing_ok=True)
+    inputs = [str(path) for path in SMOKE_VERIFY]
+    run_frozen(application, ["--verify", *inputs, "--verification-output", str(frozen_csv)], work_directory)
+    run_source(["--verify", *inputs, "--verification-output", str(source_csv)], work_directory)
+    rows = compare_contract_files(frozen_csv, source_csv)
+    lines.append(f"Frozen --verify: {rows} rows identical to the source app's (Exported At aside): {frozen_csv}")
     return lines
 
 

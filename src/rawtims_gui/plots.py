@@ -7,7 +7,9 @@ Each :class:`CyclePlot` shows one function of the current analysis:
   ratio in geometric mode the bands are exp(mean ln r ± k·s), as the
   statistics are taken on ln r;
 * used cycles filled, excluded cycles hollow red, invalid cycles grey crosses;
-* selected cycles ringed.
+* selected cycles ringed;
+* cycles a previewed rule would reject marked with an amber square (the
+  preview never changes the analysis; see :mod:`rawtims_gui.rules_panel`).
 
 Mouse (sculpting, as Tripoli's): a click toggles the nearest cycle, a left drag
 draws a box that toggles the cycles inside, ⌘/Ctrl-click adds or removes a
@@ -22,8 +24,8 @@ edit is in the history.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 import math
 
 import numpy as np
@@ -38,11 +40,17 @@ from rawtims.mapping import ElementMapping, MappedRatio, ratio_stats
 from rawtims_gui.studio.theme import ThemeSpec, active_theme, theme_color
 from rawtims_gui.studio.widgets import RoundedPlotWidget
 
-PLOT_MIN_HEIGHT = 190
+PLOT_MIN_HEIGHT = 168
 PLOT_MAX_HEIGHT = 340
 COLUMN_MIN_WIDTH = 290
 CLICK_RADIUS_PX = 10
 SELECT_MODIFIERS = QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.MetaModifier
+PREVIEW_COLORS = {"light": "#d97706", "dark": "#f0b429"}
+
+
+def preview_color(theme: ThemeSpec | None = None) -> str:
+    theme = theme or active_theme()
+    return PREVIEW_COLORS.get(theme.name, PREVIEW_COLORS["light"])
 
 
 def direct_mapping(mapping: ElementMapping | None, key: str) -> MappedRatio | None:
@@ -127,6 +135,7 @@ class PlotState:
     mapping: ElementMapping | None
     log_ratio: bool
     selection: frozenset[int]
+    preview: Mapping[str, frozenset[int]] = field(default_factory=dict)  # function key -> rows a rule would reject
 
 
 class CyclePlot(RoundedPlotWidget):
@@ -145,6 +154,7 @@ class CyclePlot(RoundedPlotWidget):
         self.x_shown = np.zeros(0)
         self.y_shown = np.zeros(0)
         self.selected_rows: frozenset[int] = frozenset()
+        self.preview_rows: frozenset[int] = frozenset()
         self.title_text = ""
         self._log = False
         self._ratio_scale = False
@@ -162,8 +172,11 @@ class CyclePlot(RoundedPlotWidget):
         self.points.setZValue(10)
         self.ring = pg.ScatterPlotItem(pxMode=True, symbol="o", size=13)
         self.ring.setZValue(11)
+        self.preview_points = pg.ScatterPlotItem(pxMode=True, symbol="s", size=12)
+        self.preview_points.setZValue(12)
         item.addItem(self.points)
         item.addItem(self.ring)
+        item.addItem(self.preview_points)
         self.view_box.sigPointClicked.connect(self._on_click)
         self.view_box.sigBoxDrawn.connect(self._on_box)
         self.view_box.sigContextRequested.connect(self._on_context)
@@ -184,6 +197,8 @@ class CyclePlot(RoundedPlotWidget):
         item.showGrid(x=False, y=True, alpha=0.25)
         self.ring.setPen(pg.mkPen(theme.accent_strong, width=2))
         self.ring.setBrush(pg.mkBrush(None))
+        self.preview_points.setPen(pg.mkPen(preview_color(theme), width=2))
+        self.preview_points.setBrush(pg.mkBrush(None))
 
     # --------------------------------------------------------------- data
     def update_state(self, state: PlotState, *, rebuild: bool = False) -> None:
@@ -233,6 +248,7 @@ class CyclePlot(RoundedPlotWidget):
         self.points.setData(x=self.x_shown, y=self.y_shown, brush=brushes, pen=pens, symbol=symbols, size=sizes)
         self._draw_decorations(state, theme, log)
         self.set_selection(state.selection)
+        self.set_preview(state.preview.get(self.key, frozenset()))
         stats = plot_stats(analysis, state.mapping, self.key)
         name = analysis.function(self.key).name
         label = f"ln({name})" if log else name
@@ -322,6 +338,14 @@ class CyclePlot(RoundedPlotWidget):
             return
         mask = np.isin(self.rows_shown, list(self.selected_rows))
         self.ring.setData(x=self.x_shown[mask], y=self.y_shown[mask])
+
+    def set_preview(self, rows: frozenset[int] | set[int]) -> None:
+        self.preview_rows = frozenset(rows)
+        if not self.preview_rows or not self.rows_shown.size:
+            self.preview_points.setData(x=[], y=[])
+            return
+        mask = np.isin(self.rows_shown, list(self.preview_rows))
+        self.preview_points.setData(x=self.x_shown[mask], y=self.y_shown[mask])
 
     # ------------------------------------------------------- interaction
     def row_near(self, view_point: QtCore.QPointF) -> int | None:
@@ -442,7 +466,7 @@ class PlotWall(QtWidgets.QScrollArea):
 
     def set_selection(self, rows: set[int] | frozenset[int]) -> None:
         if self.state is not None:
-            self.state = PlotState(self.state.analysis, self.state.mapping, self.state.log_ratio, frozenset(rows))
+            self.state = replace(self.state, selection=frozenset(rows))
         for plot in self.plots:
             plot.set_selection(rows)
 
@@ -490,4 +514,4 @@ class PlotWall(QtWidgets.QScrollArea):
         self._relayout()
 
 
-__all__ = ["CyclePlot", "PlotState", "PlotWall", "SculptViewBox", "direct_mapping", "format_number", "is_ratio_scale", "plot_stats"]
+__all__ = ["CyclePlot", "PlotState", "PlotWall", "SculptViewBox", "direct_mapping", "format_number", "is_ratio_scale", "plot_stats", "preview_color"]

@@ -1,4 +1,4 @@
-"""The inspector's Stats tab (SPEC F11; the Rules, Corrections and Export tabs come in the next step).
+"""The inspector's Stats tab (SPEC F11). Rules, Corrections and Export have their own modules.
 
 The top table lists the functions mapped to contract ratios (bold, in
 contract order) and then the other plotted functions: mean, 1σ % standard
@@ -73,11 +73,11 @@ def _table(columns: Sequence[str]) -> QtWidgets.QTableWidget:
     table.setWordWrap(False)
     table.setStyleSheet("QTableWidget { font-size: 12px; } QHeaderView::section { font-size: 12px; padding: 4px 6px; }")
     table.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
+    # The numbers keep their full width; the name column gives way and elides (full name in the tooltip).
     header = table.horizontalHeader()
-    header.setMaximumSectionSize(150)
-    header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-    header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-    for column in range(2, len(columns)):
+    header.setMinimumSectionSize(36)
+    header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+    for column in range(1, len(columns)):
         header.setSectionResizeMode(column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
     return table
 
@@ -184,17 +184,4 @@ class StatsPanel(QtWidgets.QWidget):
             self.blockToggleRequested.emit(int(self.analysis.blocks[row]))
 
 
-def placeholder_tab(text: str) -> QtWidgets.QWidget:
-    page = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout(page)
-    layout.setContentsMargins(4, 16, 4, 4)
-    label = QtWidgets.QLabel(text)
-    label.setObjectName("SecondaryText")
-    label.setWordWrap(True)
-    label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop)
-    layout.addWidget(label)
-    layout.addStretch(1)
-    return page
-
-
-__all__ = ["StatsPanel", "StatsRow", "placeholder_tab", "stats_rows"]
+__all__ = ["StatsPanel", "StatsRow", "stats_rows"]

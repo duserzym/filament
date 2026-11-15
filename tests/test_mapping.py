@@ -253,3 +253,19 @@ def test_function_objects_are_not_mutated_by_mapping():
     before = [replace(f) for f in run.functions]
     propose_mapping(Analysis(run))
     assert list(run.functions) == before and all(isinstance(f, Function) for f in run.functions)
+
+
+def test_ratio_candidates_list_every_usable_function_per_ratio():
+    from rawtims.mapping import ratio_candidates
+
+    analysis = Analysis(read(B998))
+    candidates = ratio_candidates(analysis)
+    keys = [c.key for c in candidates["206Pb/207Pb"]]
+    assert "206/207 D" in keys and "206/207 F" in keys
+    assert all(not c.inverted for c in candidates["206Pb/207Pb"] if c.key in ("206/207 D", "206/207 F"))
+    assert {c.collector for c in candidates["206Pb/205Pb"]} >= {"D", "F"}
+    # U: only oxide-corrected functions (the derived columns here), never raw 270/267.
+    u = ratio_candidates(Analysis(read(GHR1_U_XLS)))
+    assert [c.key for c in u["238U/235U"]] == ["238/235oc"] and u["238U/235U"][0].source == "derived"
+    with pytest.raises(MappingError):
+        ratio_candidates(Analysis(read(B998)), "Th")
