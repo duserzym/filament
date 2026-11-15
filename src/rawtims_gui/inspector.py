@@ -1,10 +1,8 @@
 """The inspector's Stats tab (SPEC F11). Rules, Corrections and Export have their own modules.
 
-The top table lists the functions mapped to contract ratios (bold, in
-contract order) and then the other plotted functions: mean, 1σ % standard
-error of the mean (Tripoli's smaller-side convention for geometric ratio
-means) and cycles used / total. The block table below shows the same per
-block for one function; double-clicking a block toggles it.
+Wall shows the selected function's SD/SE and its per-block statistics.
+The one-release classic fallback retains its function summary table. Double-clicking
+any block row toggles inclusion through the same shared Analysis history.
 """
 
 from __future__ import annotations
@@ -86,8 +84,9 @@ def _table(columns: Sequence[str]) -> QtWidgets.QTableWidget:
 class StatsPanel(QtWidgets.QWidget):
     blockToggleRequested = QtCore.Signal(int)
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None, *, detail_only: bool = False) -> None:
         super().__init__(parent)
+        self.detail_only = detail_only
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 6, 0, 0)
         layout.setSpacing(6)
@@ -98,6 +97,12 @@ class StatsPanel(QtWidgets.QWidget):
         self.table = _table(STATS_COLUMNS)
         self.table.setObjectName("StatsTable")
         layout.addWidget(self.table, 3)
+        self.table.setVisible(not detail_only)
+        self.detail = QtWidgets.QLabel()
+        self.detail.setWordWrap(True)
+        self.detail.setObjectName("SecondaryText")
+        self.detail.setVisible(detail_only)
+        layout.addWidget(self.detail)
         row = QtWidgets.QHBoxLayout()
         row.setSpacing(6)
         label = QtWidgets.QLabel("Blocks of")
@@ -128,6 +133,9 @@ class StatsPanel(QtWidgets.QWidget):
             f"{'Geometric' if mode == 'geometric' else 'Arithmetic'} means for ratios, arithmetic for intensities. "
             "% SE is the 1σ standard error of the mean. Bold: mapped to the contract."
         )
+        if self.detail_only and analysis is not None:
+            self.note.setText(f"{'Geometric' if mode == 'geometric' else 'Arithmetic'} means for ratios. "
+                              "Double-click a block row to toggle inclusion. % SE is 1σ.")
         self.table.setRowCount(len(self.rows))
         for index, row in enumerate(self.rows):
             stats = row.stats
@@ -158,6 +166,10 @@ class StatsPanel(QtWidgets.QWidget):
             per_block = _stats.block_stats(values, include, analysis.run.block, is_ratio=True, ratio_mode=analysis.settings.stat_mode)  # type: ignore[arg-type]
         else:
             per_block = analysis.block_stats(key)
+        stats = next((row.stats for row in self.rows if row.key == key), None)
+        if stats is not None:
+            self.detail.setText(f"Function detail · {stats.mode}{' (ln scale)' if stats.mode == 'geometric' else ''}\n"
+                                f"1σ SD {format_number(stats.sd)} · 1σ SE {format_number(stats.se)}")
         theme = active_theme()
         self.block_table.setRowCount(len(analysis.blocks))
         for index, (block, included) in enumerate(zip(analysis.blocks, analysis.block_included)):

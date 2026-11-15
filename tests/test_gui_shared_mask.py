@@ -9,9 +9,9 @@ from test_review_window import window as review_window
 app = review_app
 
 
-@pytest.fixture
-def window(app, qt_settings_folder):
-    yield from review_window.__wrapped__(app, qt_settings_folder)
+@pytest.fixture(params=["classic", "wall"])
+def window(app, qt_settings_folder, request):
+    yield from review_window.__wrapped__(app, qt_settings_folder, request)
 from rawtims_gui.rules_panel import SHARED_SELECTION_TOOLTIP
 
 

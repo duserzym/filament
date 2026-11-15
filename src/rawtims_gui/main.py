@@ -220,9 +220,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     importFinished = QtCore.Signal(object)  # rawtims_gui.workspace.ImportResult
 
-    def __init__(self, *, restore_geometry: bool = True, layout: str = "classic") -> None:
+    def __init__(self, *, restore_geometry: bool = True, layout: str = "wall") -> None:
         super().__init__()
-        if layout not in ("classic", "strips", "wall"):
+        if layout not in ("classic", "wall"):
             raise ValueError(f"Unknown Review layout: {layout}")
         self.layout_name = layout
         self.settings = app_settings()
@@ -372,6 +372,7 @@ class MainWindow(QtWidgets.QMainWindow):
         mode = str(QtWidgets.QApplication.instance().property("upbrpy.theme_mode") or "light")
         self.theme_actions.get(mode, self.theme_actions["light"]).setChecked(True)
         view.addAction(self.reset_layout_action)
+        self.view_menu = view
 
     # ------------------------------------------------------------ layout
     def _build_rail(self) -> QtWidgets.QWidget:
@@ -500,9 +501,10 @@ class MainWindow(QtWidgets.QMainWindow):
         page = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(4 if self.layout_name == "wall" else 6)
         top = QtWidgets.QHBoxLayout()
-        top.setSpacing(8)
+        top.setSpacing(6)
+        top.setContentsMargins(0, 0, 0, 0)
         self.mode_bar = SegmentedBar()
         self.mode_bar.setObjectName("StageSegmentBar")
         mode_row = QtWidgets.QHBoxLayout(self.mode_bar)
@@ -534,6 +536,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.layout_name != "classic":
             from rawtims_gui.review_layouts import PanelHeader, tool
             header = PanelHeader()
+            self.wall_header = header
+            self.run_title.hide()
             header.setLayout(top)
             header.doubleClicked.connect(lambda: self.review_shell.toggle_outer())
             top.addWidget(tool("⤢", "Maximise / restore plots", lambda: self.review_shell.toggle_outer()))
@@ -584,17 +588,20 @@ class MainWindow(QtWidgets.QMainWindow):
         controls.addStretch(1)
         self.reset_button = _tool(self.reset_analysis_action, "Reset…")
         controls.addWidget(self.reset_button)
-        layout.addWidget(bar)
+        if self.layout_name == "wall":
+            top.insertWidget(1, bar, 1)
+        else:
+            layout.addWidget(bar)
 
         self.view_stack = QtWidgets.QStackedWidget()
         if self.layout_name == "classic":
             self.plot_wall = PlotWall()
         else:
-            from rawtims_gui.review_layouts import SharedBlocks, VariantPlotWall
+            from rawtims_gui.review_layouts import SharedBlocks, ReviewPlotWall
             self.block_header = SharedBlocks()
             self.block_header.blockClicked.connect(self.toggle_block)
             layout.addWidget(self.block_header)
-            self.plot_wall = VariantPlotWall(self.layout_name)
+            self.plot_wall = ReviewPlotWall()
         self.plot_wall.toggleRequested.connect(self.request_toggle)
         self.plot_wall.selectRequested.connect(self.request_select)
         self.plot_wall.blockToggleRequested.connect(self.request_block_toggle)
@@ -624,7 +631,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.legend.setObjectName("SecondaryText")
         self.legend.setToolTip(LEGEND_TIP)
         # A fixed line height: the label never shares rows with the last plot's axis.
-        self.legend.setFixedHeight(self.legend.fontMetrics().height() + 6)
+        self.legend.setFixedHeight(self.legend.fontMetrics().height() + (2 if self.layout_name == "wall" else 6))
         self.legend.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.legend)
         return page
@@ -646,7 +653,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inspector_tabs = QtWidgets.QTabWidget()
         self.inspector_tabs.setDocumentMode(True)
         self.inspector_tabs.tabBar().setStyleSheet("QTabBar::tab { padding: 7px 6px; margin: 3px 1px; }")
-        self.stats_panel = StatsPanel()
+        self.stats_panel = StatsPanel(detail_only=self.layout_name == "wall")
         self.stats_panel.blockToggleRequested.connect(self.toggle_block)
         self.inspector_tabs.addTab(self.stats_panel, "Stats")
         self.rules_panel = RulesPanel()
@@ -1930,11 +1937,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.centre_on_screen()
         self.settings.remove(GEOMETRY_KEY)
         if hasattr(self, "review_shell"):
-            self.review_shell.restore()
-            self.review_shell.restore()
-            self.review_shell.inspector.set_collapsed(False, animate=False)
-            if hasattr(self.review_shell, "rail") and not self.review_shell.rail.collapsed:
-                self.review_shell.toggle_rail()
+            self.review_shell.restore_all()
             self.review_shell.splitter.reset_sizes()
         if self.analysis is not None:
             self.set_plot_mode("ratios")
@@ -1948,6 +1951,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # noqa: N802 - Qt API
         super().resizeEvent(event)
         if self.layout_name != "classic":
+            if hasattr(self, "review_shell"):
+                self.review_shell.fit_width()
             if hasattr(self, "plot_wall"):
                 self.plot_wall._relayout()
             return
@@ -1978,8 +1983,8 @@ def export_window(window: QtWidgets.QMainWindow, output_path: str) -> bool:
 
 def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog=branding.EXECUTABLE_NAME, description=f"{branding.DISPLAY_NAME}: raw ID-TIMS data review")
-    parser.add_argument("--layout", choices=("classic", "strips", "wall"), default="classic",
-                        help="Review layout preview (default: classic)")
+    parser.add_argument("--layout", choices=("classic", "wall"), default="wall",
+                        help="Review layout (default: wall; classic is a one-release fallback)")
     parser.add_argument("--theme", choices=THEME_MODES, help="Theme for this launch (default: the saved choice, else light)")
     parser.add_argument("--open", nargs="+", metavar="PATH", help="Open run files, folders or a saved session at start")
     parser.add_argument("--export", nargs=2, metavar=("FORMAT", "PATH"), help="Render the window to PATH and exit; FORMAT must be png")

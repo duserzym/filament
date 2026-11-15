@@ -325,6 +325,8 @@ def _build_palette(theme: ThemeSpec) -> QtGui.QPalette:
     palette.setColor(QtGui.QPalette.ColorRole.AlternateBase, QtGui.QColor(theme.surface_soft))
     palette.setColor(QtGui.QPalette.ColorRole.Text, QtGui.QColor(theme.text))
     palette.setColor(QtGui.QPalette.ColorRole.WindowText, QtGui.QColor(theme.text))
+    palette.setColor(QtGui.QPalette.ColorRole.Link, QtGui.QColor(theme.accent))
+    palette.setColor(QtGui.QPalette.ColorRole.LinkVisited, QtGui.QColor(theme.accent))
     palette.setColor(QtGui.QPalette.ColorRole.ButtonText, QtGui.QColor(theme.text))
     palette.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor(theme.surface))
     palette.setColor(QtGui.QPalette.ColorRole.Highlight, theme_color(theme.accent_soft))

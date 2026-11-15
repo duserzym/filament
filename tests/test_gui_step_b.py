@@ -59,6 +59,7 @@ def window(app, qt_settings_folder):
 def _open(window, *paths):
     window.open_paths([str(p) for p in paths], synchronous=True)
     QtWidgets.QApplication.processEvents()
+    QtWidgets.QApplication.setActiveWindow(window)
     return window
 
 

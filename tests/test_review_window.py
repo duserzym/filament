@@ -26,10 +26,10 @@ def app():
     return build_application(["test"], theme_mode="light")
 
 
-@pytest.fixture
-def window(app, qt_settings_folder):
+@pytest.fixture(params=["classic", "wall"])
+def window(app, qt_settings_folder, request):
     gui_main.app_settings().clear()
-    window = gui_main.MainWindow(restore_geometry=False)
+    window = gui_main.MainWindow(restore_geometry=False, layout=request.param)
     window.resize(gui_main.DEFAULT_SIZE)
     window.show()
     yield window
@@ -382,10 +382,15 @@ def test_review_fits_without_horizontal_scrolling(b998, size):
     wall = window.plot_wall
     assert not wall.horizontalScrollBar().isVisible()
     assert wall.container.width() <= wall.viewport().width()
-    assert 1 <= wall.column_count() <= 2
+    if window.layout_name == "wall":
+        assert wall.column_count() == (3 if size[0] >= 1440 else 2 if size[0] >= 1100 else 1)
+    else:
+        assert 1 <= wall.column_count() <= 2
     for plot in wall.plots:
         assert plot.width() >= 250 and plot.geometry().right() <= wall.container.width()
     for panel in (window.rail_panel, window.centre_stack, window.inspector_panel):
+        if not panel.isVisible():
+            continue
         top_left = panel.mapTo(window, QtCore.QPoint(0, 0))
         assert top_left.x() >= 0 and top_left.x() + panel.width() <= size[0]
 

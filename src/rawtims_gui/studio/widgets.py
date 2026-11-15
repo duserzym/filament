@@ -108,12 +108,8 @@ class SegmentedBar(QtWidgets.QFrame):
         self._selected = button
         target = QtCore.QRectF(button.geometry())
         self._motion.stop()
-        if self._pill.isEmpty() or not self.isVisible():
-            self._move_pill(target)
-        else:
-            self._motion.setStartValue(self._pill)
-            self._motion.setEndValue(target)
-            self._motion.start()
+        # Tabs and chips switch instantly, including keyboard and reduced motion.
+        self._move_pill(target)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

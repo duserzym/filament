@@ -2,7 +2,6 @@
 
 Run with PYTHONPATH cleared and QT_QPA_PLATFORM=offscreen; pass the screenshot
 folder as the positional argument. Settings and recovery stay under that folder.
-Use --variants for the five light-theme layout comparison PNGs.
 The 1280x800 images go directly in that folder; other sizes go in fit/.
 """
 
@@ -14,7 +13,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from PySide6 import QtCore, QtTest, QtWidgets
+from PySide6 import QtCore, QtGui, QtTest, QtWidgets
 
 from rawtims.analysis import Analysis, AnalysisSettings
 from rawtims.readers import open_run
@@ -30,7 +29,7 @@ PAIR = [FIXTURES / "ionvantage/KU_IGL" / name for name in (
 
 
 def settle() -> None:
-    QtTest.QTest.qWait(250)  # let the segmented-bar selection animation finish
+    QtTest.QTest.qWait(250)  # settle geometry and any mouse-driven panel motion
     for _ in range(8):
         QtWidgets.QApplication.processEvents()
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
@@ -52,10 +51,31 @@ def fit_evidence(window: gui.MainWindow) -> dict:
             "size": [window.width(), window.height()]}
 
 
+def save_overview(output: Path, width: int, height: int, theme: str) -> None:
+    """Refresh the existing visual QA sheets from this capture's six states."""
+    source = output if width == 1280 else output / "fit" / f"{width}x{height}"
+    names = ("01_review", "02_rules", "03_table", "04_corrections", "05_export", "06_rules_union_preview")
+    tile_width = 640
+    tile_height = round(height * tile_width / width)
+    sheet = QtGui.QImage(tile_width * 3, (tile_height + 24) * 2, QtGui.QImage.Format.Format_RGB32)
+    sheet.fill(QtGui.QColor("#e8ecf2"))
+    painter = QtGui.QPainter(sheet)
+    for index, name in enumerate(names):
+        x, y = index % 3 * tile_width, index // 3 * (tile_height + 24)
+        painter.setPen(QtGui.QColor("#142130"))
+        painter.drawText(x + 8, y + 17, f"{width}×{height} · {theme} · {name}")
+        picture = QtGui.QImage(str(source / f"{name}_{theme}.png"))
+        assert not picture.isNull()
+        painter.drawImage(QtCore.QRect(x, y + 24, tile_width, tile_height), picture)
+    painter.end()
+    (output / "fit").mkdir(exist_ok=True)
+    assert sheet.save(str(output / "fit" / f"overview_{width}x{height}_{theme}.png"), "PNG")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', type=Path)
-    parser.add_argument('--variants', action='store_true', help='Capture the layout comparison only')
+    parser.add_argument("--round-shots", type=Path, help="Also write the UI-round review, collapsed and maximised captures")
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -71,37 +91,8 @@ def main() -> None:
     for mode in ("geometric", "arithmetic"):
         analysis = Analysis(run, AnalysisSettings(stat_mode=mode))
         report["b998_all_valid"][mode] = analysis.stats("206/204 D").to_dict()
-    values = run.column("206/204 D")
-    outliers = np.argsort(np.abs(values - np.median(values)))[-2:].tolist()
+    outliers = [int(np.flatnonzero(run.cycle == cycle)[0]) for cycle in (23, 24)]
     report["manual_rejected_cycles"] = run.cycle[outliers].tolist()
-    if args.variants:
-        for layout in ('classic', 'strips', 'wall'):
-            for width, height in ((1280, 800), (1024, 640)):
-                if layout == 'classic' and width != 1280:
-                    continue
-                settings.clear()
-                window = gui.MainWindow(restore_geometry=False, layout=layout)
-                window.resize(width, height)
-                window.show()
-                window.open_paths([str(B998)], synchronous=True)
-                settle()
-                for cycle in (23, 24):
-                    row = int(np.flatnonzero(run.cycle == cycle)[0])
-                    plot = window.plot_wall.plot('206/204 D')
-                    plot._on_click(plot.point_of(row), QtCore.Qt.KeyboardModifier.NoModifier)
-                assert window.cycles_used() == (94, 96)
-                window.statusBar().clearMessage()
-                settle()
-                name = f'classic_{width}.png' if layout == 'classic' else f'variant_{layout}_{width}.png'
-                report['captures'][name] = fit_evidence(window)
-                assert window.grab().save(str(output / name), 'PNG')
-                window.unsaved_prompt = lambda _name: 'discard'
-                window.close()
-                window.deleteLater()
-                settle()
-        (output / 'variants-fit-report.json').write_text(json.dumps(report, indent=2) + '\n')
-        print(json.dumps(report, indent=2))
-        return
     for theme in ("light", "dark"):
         for width, height in ((1280, 800), (1440, 900), (1024, 640)):
             settings.clear()
@@ -125,6 +116,21 @@ def main() -> None:
                 plot._on_click(plot.point_of(row), QtCore.Qt.KeyboardModifier.NoModifier)
             window.statusBar().clearMessage()
             capture("01_review")
+            if args.round_shots and (width == 1280 or theme == "light"):
+                args.round_shots.mkdir(parents=True, exist_ok=True)
+                name = f"after_review_{width}_{theme}.png"
+                assert window.grab().save(str(args.round_shots / name), "PNG")
+                if width == 1280 and theme == "light":
+                    window.review_shell.inspector.set_collapsed(True, animate=False)
+                    settle()
+                    assert window.plot_wall.verticalScrollBar().maximum() == 0
+                    assert window.grab().save(str(args.round_shots / "after_review_collapsed_1280_light.png"), "PNG")
+                    window.review_shell.inspector.set_collapsed(False, animate=False)
+                    window.plot_wall.cards[0].max_button.click()
+                    settle()
+                    assert window.grab().save(str(args.round_shots / "after_maximised_card_1280_light.png"), "PNG")
+                    window.review_shell.restore_all()
+                    settle()
             while window.analysis.can_undo:
                 window.undo_action.trigger()
             window.inspector_tabs.setCurrentIndex(gui.INSPECTOR_TABS.index("Rules"))
@@ -159,6 +165,7 @@ def main() -> None:
             assert window.fraction_list.states() == [("GHR1 20200827-11", "ready")]
             window.statusBar().clearMessage()
             capture("05_export")
+            save_overview(output, width, height, theme)
             window.close()
             window.deleteLater()
             settle()

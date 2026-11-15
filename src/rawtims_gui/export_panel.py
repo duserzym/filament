@@ -27,6 +27,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims.contract import FractionRow
 from rawtims.fractions import COLLECTORS, SPIKE_TYPES, Fraction
+from rawtims_gui.studio.widgets import ElidedLabel
 
 TEXT_FIELDS = (
     ("sample", "Sample"),
@@ -170,7 +171,7 @@ class ExportPanel(QtWidgets.QWidget):
         self.problems.setWordWrap(True)
         self.problems.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(self.problems)
-        self.row_title = QtWidgets.QLabel("Row")
+        self.row_title = ElidedLabel("Row")
         self.row_title.setObjectName("SectionTitle")
         layout.addWidget(self.row_title)
         self.row_table = QtWidgets.QTableWidget(0, 2)
@@ -191,7 +192,7 @@ class ExportPanel(QtWidgets.QWidget):
         self.full_precision = QtWidgets.QCheckBox("Full precision")
         self.full_precision.setObjectName("ClipboardFullPrecision")
         self.full_precision.setToolTip("Off: legacy clipboard format (C# E7, eight significant digits). On: every digit. Contract CSV always keeps full precision.")
-        self.compare_legacy_button = QtWidgets.QPushButton("Compare with legacy Tripoli (per-ratio)")
+        self.compare_legacy_button = QtWidgets.QPushButton("Compare with legacy Tripoli…")
         self.compare_legacy_button.setObjectName("CompareLegacy")
         self.compare_legacy_button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
         self.compare_legacy_button.setToolTip("Compare with legacy Tripoli (per-ratio) — read-only, comparison only")
@@ -450,11 +451,12 @@ class ExportPanel(QtWidgets.QWidget):
                 lines += [f"• {fraction.fraction_id}: {reason} (exported as a one-block row)" for reason in reasons]
         height = self.fraction_table.horizontalHeader().height() + 22 * max(1, len(statuses)) + 4
         self.fraction_table.setFixedHeight(min(height, 22 * 6 + 30))
+        self.problems.setToolTip(f"{len(lines)} export issues" if lines else "0 export issues")
         if lines:
             self.problems.setText("\n".join(lines))
             self.problems.setStyleSheet(f"#ExportProblems {{ color: {theme.text}; font-size: 12px; }}")
         else:
-            self.problems.setText("Every fraction is ready." if statuses else "Open runs to see their contract rows.")
+            self.problems.setText("0 issues · all fractions ready" if statuses else "0 issues")
             self.problems.setStyleSheet(f"#ExportProblems {{ color: {theme.muted}; font-size: 12px; }}")
 
     def _fill_row(self, fraction: Fraction | None, row: FractionRow | None, error: str | None) -> None:
