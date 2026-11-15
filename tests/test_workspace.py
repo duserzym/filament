@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
+
+import pytest
 
 from reader_fixtures import B998, GHR1_PB_XLS, GHR1_U_XLS, TIMSDP_FILES
 from rawtims.analysis import Analysis
 from rawtims.readers import open_run
 from rawtims_gui.workspace import Workspace
+from rawtims.session import SessionError, load_session, save_session
 
 
 def test_workspace_needs_no_qt():
@@ -59,3 +63,54 @@ def test_rename_merges_fitting_fractions_and_refuses_clashes():
     assert not ok and "already has a Pb run" in message
     ok, _, holder = workspace.rename(workspace.find("13223M02 iz1"), "z1")
     assert ok and holder.fraction_id == "z1"
+
+
+@pytest.mark.parametrize("mode", ["arithmetic", "geometric"])
+def test_project_statistics_apply_to_existing_and_later_imports_and_survive_save(tmp_path, mode):
+    workspace = Workspace()
+    workspace.open([GHR1_PB_XLS])
+    workspace.set_stat_mode(mode)
+    workspace.open([GHR1_U_XLS])
+    assert all(a.settings.stat_mode == mode for a in workspace.analyses())
+    assert not workspace.statistics_problem()
+    state, problems = load_session(save_session(workspace.session_state(), tmp_path / "project.rawtims"))
+    restored = Workspace()
+    assert not problems and not restored.restore(state)
+    assert restored.stat_mode == mode
+    restored.open([B998])
+    assert all(a.settings.stat_mode == mode for a in restored.analyses())
+    assert not restored.statistics_problem()
+
+
+def test_project_statistics_can_be_set_before_any_import_and_reject_invalid_values(tmp_path):
+    workspace = Workspace()
+    workspace.set_stat_mode("geometric")
+    state, problems = load_session(save_session(workspace.session_state(), tmp_path / "empty.rawtims"))
+    assert not problems
+    restored = Workspace()
+    restored.restore(state)
+    restored.open([B998])
+    assert restored.analyses()[0].settings.stat_mode == "geometric"
+    with pytest.raises(ValueError):
+        restored.set_stat_mode("median")
+    assert restored.stat_mode == "geometric"
+
+
+def test_legacy_unanimous_geometric_session_restores_project_default(tmp_path):
+    workspace = Workspace()
+    workspace.open([GHR1_PB_XLS, GHR1_U_XLS])
+    workspace.set_stat_mode("geometric")
+    path = save_session(workspace.session_state(), tmp_path / "old.rawtims")
+    document = json.loads(path.read_text())
+    document.pop("stat_mode")
+    path.write_text(json.dumps(document))
+    state, problems = load_session(path)
+    restored = Workspace()
+    assert not problems and not restored.restore(state)
+    assert restored.stat_mode == "geometric" and not restored.statistics_problem()
+    restored.open([B998])
+    assert restored.analyses()[-1].settings.stat_mode == "geometric"
+    document["stat_mode"] = "median"
+    path.write_text(json.dumps(document))
+    with pytest.raises(SessionError, match="invalid project stat_mode"):
+        load_session(path)

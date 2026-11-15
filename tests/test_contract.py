@@ -29,7 +29,6 @@ from rawtims.contract import (
     rho_column,
     se_column,
     write_csv,
-    FractionRow,
     U_OXIDE_FORMULAS,
 )
 from rawtims.fractions import Fraction, SessionInfo, fraction_row
@@ -104,7 +103,7 @@ def _doc_table_names() -> tuple[set[str], set[str]]:
         cells = [cell.strip() for cell in line.strip("|").split("|")]
         if cells[0] in ("Pb", "U"):
             continue
-        if cells[0].strip("`") in U_OXIDE_FORMULAS:  # rows of the `U Oxide Formula` value table
+        if cells[0].strip("`") in (*U_OXIDE_FORMULAS, "arithmetic", "geometric"):  # value tables, not columns
             continue
         columns.update(re.findall(r"`([^`]+)`", cells[0]))
     for line in CONTRACT_DOC.read_text(encoding="utf-8").splitlines():
@@ -116,7 +115,7 @@ def _doc_table_names() -> tuple[set[str], set[str]]:
 def test_every_contract_table_column_is_known_and_every_known_column_is_in_the_contract():
     named, ratios = _doc_table_names()
     assert ratios == set(PB_RATIOS) | set(U_RATIOS)
-    assert len(named) == 35  # 8 identity, 8 setup, 19 provenance
+    assert len(named) == 37  # 8 identity, 8 setup, 21 provenance
     assert named <= set(COLUMN_NAMES)
     for name in COLUMN_NAMES:  # every non-ratio column comes from a contract table
         if name.endswith((" Mean", " % Standard Error")) or name.startswith("rho "):
@@ -293,3 +292,41 @@ def test_u_oxide_formula_required_with_r18_and_from_the_allowed_values():
     for value in U_OXIDE_FORMULAS:
         row.values["U Oxide Formula"] = value
         assert not any("U Oxide Formula" in p for p in row.problems())
+
+
+@pytest.mark.parametrize("element", ["Pb", "U"])
+@pytest.mark.parametrize("mode", ["arithmetic", "geometric"])
+def test_mean_statistic_columns_round_trip(tmp_path, ghr1_row, element, mode):
+    column = f"{element} Mean Statistic"
+    assert COLUMN_BY_NAME[column].kind == "text" and COLUMN_BY_NAME[column].group == "provenance"
+    row = FractionRow(values=ghr1_row.values | {column: mode})
+    back = read_csv(write_csv([row], tmp_path / "stats.csv"))[0]
+    assert back.get(column) == mode and back.values == row.values
+
+
+@pytest.mark.parametrize("element", ["Pb", "U"])
+def test_bad_mean_statistic_is_a_problem(element):
+    column = f"{element} Mean Statistic"
+    row = FractionRow(values={"Fraction ID": "z1", column: "median"})
+    assert any(column in p and "median" in p and "is not one of" in p for p in row.problems())
+
+
+@pytest.mark.parametrize("element", ["Pb", "U"])
+@pytest.mark.parametrize("implicit_arithmetic", [False, True])
+def test_merge_refuses_mixed_mean_statistics(ghr1_row, element, implicit_arithmetic):
+    column = f"{element} Mean Statistic"
+    arithmetic = dict(ghr1_row.values)
+    if implicit_arithmetic:
+        arithmetic.pop(column)
+    other = FractionRow(values=ghr1_row.values | {column: "geometric"})
+    with pytest.raises(MergeConflict) as info:
+        merge_rows([("legacy.csv", [FractionRow(values=arithmetic)]), ("geometric.csv", [other])])
+    assert all(part in str(info.value) for part in (column, "GHR1 z1", "legacy.csv", "geometric.csv"))
+
+
+@pytest.mark.parametrize("prefix", ["Grain ID\nz1\n", f"Contract,Fraction ID\n{CONTRACT_ID},z1\n"])
+def test_missing_mean_statistic_reads_as_arithmetic(prefix):
+    row = parse_csv_text(prefix)[0]
+    assert row.get("Pb Mean Statistic") == row.get("U Mean Statistic") == "arithmetic"
+    # Absence remains lossless on re-export.
+    assert "Mean Statistic" not in csv_text([row])

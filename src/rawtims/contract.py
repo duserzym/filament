@@ -47,6 +47,8 @@ CONTRACT_ID = f"{CONTRACT_NAME}/{CONTRACT_MAJOR}"
 
 # Allowed values of `U Oxide Formula` (contract clarification 6); each is defined by its formula there.
 U_OXIDE_FORMULAS = ("tripoli_java_00dc941", "isobar_233_18O", "instrument")
+MEAN_STATISTICS = ("arithmetic", "geometric")
+MEAN_STATISTIC_COLUMNS = ("Pb Mean Statistic", "U Mean Statistic")
 
 PB_RATIOS: tuple[str, ...] = ("206Pb/204Pb", "206Pb/207Pb", "206Pb/205Pb", "207Pb/205Pb", "204Pb/205Pb", "208Pb/205Pb", "202Pb/205Pb")
 PB_REQUIRED_RATIOS: tuple[str, ...] = PB_RATIOS[:6]
@@ -126,6 +128,7 @@ def _build_columns() -> tuple[Column, ...]:
         ("Filter Rule", "text"),
         ("U Oxide 18O/16O", "float"),
         ("U Oxide Formula", "text"),
+        ("Pb Mean Statistic", "text"), ("U Mean Statistic", "text"),
         ("Raw App", "text"),
         ("Raw App Session", "text"), ("Raw App Session SHA256", "text"),
         ("Exported At", "text"),
@@ -241,6 +244,10 @@ class FractionRow:
         return self.values.get("Fraction ID")
 
     def get(self, name: str, default: Any = None) -> Any:
+        # Keep missing cells absent for lossless re-export, but interpret the
+        # optional statistic as arithmetic (contract clarification 7).
+        if name in MEAN_STATISTIC_COLUMNS:
+            return self.values.get(name, "arithmetic")
         if name in COLUMN_BY_NAME:
             return self.values.get(name, default)
         return self.extra.get(name, default)
@@ -267,6 +274,10 @@ class FractionRow:
         if contract is not None and contract != CONTRACT_ID:
             found.append(f"Contract is {contract!r}, expected {CONTRACT_ID!r}")
         label = self.fraction_id or "?"
+        for column in MEAN_STATISTIC_COLUMNS:
+            value = self.get(column)
+            if value not in MEAN_STATISTICS:
+                found.append(f"fraction {label}: {column!r} = {value!r} is not one of {MEAN_STATISTICS}")
         for element, required in (("Pb", PB_REQUIRED_RATIOS), ("U", U_REQUIRED_RATIOS)):
             if not self.has_block(element):
                 continue
@@ -441,7 +452,14 @@ def merge_rows(sources: Sequence[tuple[str, Sequence[FractionRow]]]) -> list[Fra
     for label, rows in sources:
         for row in rows:
             entry = merged.setdefault(row.fraction_id, {"values": {}, "extra": {}, "origin": {}, "legacy": True})
-            for name, value in [*row.values.items(), *row.extra.items()]:
+            values = dict(row.values)
+            # A legacy block's implicit arithmetic mode conflicts with an
+            # explicit geometric block too. An absent block supplies no mode.
+            for element in ("Pb", "U"):
+                column = f"{element} Mean Statistic"
+                if row.has_block(element):
+                    values.setdefault(column, row.get(column))
+            for name, value in [*values.items(), *row.extra.items()]:
                 target = entry["values"] if name in COLUMN_BY_NAME else entry["extra"]
                 if name in target and target[name] != value:
                     raise MergeConflict(

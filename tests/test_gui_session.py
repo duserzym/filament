@@ -112,6 +112,20 @@ def test_gui_round_trip_restores_masks_settings_mapping_form_and_export(windows,
     assert all(row["Raw App Session SHA256"] == session_sha256(path) for row in rows_without_timestamp(second_csv))
 
 
+def test_empty_project_statistics_setting_is_modified_and_saved(windows, tmp_path):
+    w = windows()
+    w.set_analysis_setting("stat_mode", "geometric")
+    assert w.is_modified() and w.save_action.isEnabled()
+    assert w.session_state_name() == "untitled"
+    path = w.save_session_as(tmp_path / "empty-project.rawtims")
+    assert not w.is_modified()
+    after = windows()
+    assert after.open_session(path, synchronous=True)
+    assert after.corrections_panel.stat_mode.currentData() == "geometric"
+    after.open_paths([B998], synchronous=True)
+    assert after.analysis.settings.stat_mode == "geometric"
+
+
 def test_recent_sessions_persist_are_limited_deduplicated_and_prune_missing(windows, tmp_path):
     w = windows()
     w.open_paths([B998], synchronous=True)

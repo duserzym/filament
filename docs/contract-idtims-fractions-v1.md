@@ -1,8 +1,9 @@
 # Contract `idtims-fractions/1`: measured ratios from raw-data review to reduction
 
 Status: **agreed** on 2026-11-14 between the raw-data app (filament, writer) and the ID-TIMS
-reduction app (IDTIMS_UPbRPy, reader). Clarifications 1 to 6 were agreed the same day. They add one
-optional column and change no existing column or meaning, so the version stays /1. The same text is kept in both repositories as
+reduction app (IDTIMS_UPbRPy, reader). Clarifications 1 to 7 were agreed the same day. They add
+optional columns (`U Oxide Formula`, `Pb Mean Statistic`, `U Mean Statistic`) and change no existing
+column or meaning, so the version stays /1. The same text is kept in both repositories as
 `docs/contract-idtims-fractions-v1.md`. This CSV text is the contract. Any class either side ships
 to read or write it is an implementation.
 
@@ -85,6 +86,16 @@ Each ratio has a mean column `<ratio> Mean` and an error column `<ratio> % Stand
 error is the 1σ standard error of the mean of the accepted cycles, in percent of the mean. This is
 Tripoli's "% Standard Error" and the `load_grains` default.
 
+Which mean and standard error a block uses is named in `Pb Mean Statistic` and `U Mean Statistic`
+(optional, one per block):
+
+| Value | Mean | % Standard Error |
+|---|---|---|
+| `arithmetic` | mean of the accepted cycle ratios | 100·SD/√n/mean (legacy C# Tripoli) |
+| `geometric` | exp of the mean of ln r | (1 − e^(−SD_ln/√n))·100 (Java Tripoli) |
+
+A missing value is read as `arithmetic`, which matches legacy files and existing BSU sheets.
+
 | Block | Ratios |
 |---|---|
 | Pb | `206Pb/204Pb`, `206Pb/207Pb`, `206Pb/205Pb`, `207Pb/205Pb`, `204Pb/205Pb`, `208Pb/205Pb`; `202Pb/205Pb` when `Spike Type` is `2535` |
@@ -148,6 +159,7 @@ Optional, and strongly encouraged from the raw-data app.
 | `Filter Rule` | Short text, e.g. `2-sigma iterative, Tripoli-equivalent`. When both runs are present: `Pb: <text> \| U: <text>` |
 | `U Oxide 18O/16O` | The 18O/16O used for the oxide correction (see `U Oxide Formula`) |
 | `U Oxide Formula` | `isobar_233_18O`, `tripoli_java_00dc941` or `instrument` (see above) |
+| `Pb Mean Statistic`, `U Mean Statistic` | `arithmetic` or `geometric` (see Measured ratios); missing means `arithmetic` |
 | `Raw App` | Writer name and version, e.g. `filament 0.1.0` |
 | `Raw App Session`, `Raw App Session SHA256` | The writer's own session file (rejected block/cycle lists, dead time, Daly gain, baseline and interference settings); readers keep it as provenance |
 | `Exported At` | ISO 8601 with offset |

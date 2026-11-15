@@ -55,7 +55,7 @@ def fit_evidence(window: gui.MainWindow) -> dict:
 def main() -> None:
     output = Path(sys.argv[1]).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    cache = Path.home() / "Library/Caches" / branding.CACHE_DIR_NAME / "review-capture"
+    cache = Path(os.environ.get("RAWTIMS_CACHE_DIR", Path.home() / "Library/Caches" / branding.CACHE_DIR_NAME)) / "review-capture"
     cache.mkdir(parents=True, exist_ok=True)
     os.environ["RAWTIMS_CACHE_DIR"] = str(cache)
     settings = QtCore.QSettings(str(cache / "settings.ini"), QtCore.QSettings.Format.IniFormat)

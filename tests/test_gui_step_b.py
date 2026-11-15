@@ -139,12 +139,60 @@ def test_statistics_switch_is_undoable_saved_and_updates_stats(window, tmp_path)
     assert _row(window).mean("206Pb/204Pb") != before
     path = window.save_session_as(tmp_path / "statistics.rawtims")
     window.undo_action.trigger()
-    assert panel.stat_mode.currentData() == "arithmetic" and _row(window).mean("206Pb/204Pb") == before
+    assert window.analysis.settings.stat_mode == "arithmetic"
+    assert panel.stat_mode.currentIndex() == -1 and window.workspace.statistics_problem()
+    assert not window.export_panel.save_button.isEnabled()
     window.redo_action.trigger()
     assert window.open_session(path, synchronous=True)
     assert window.analysis.settings.stat_mode == panel.stat_mode.currentData() == "geometric"
     window.undo_action.trigger()
     assert window.analysis.settings.stat_mode == "arithmetic"
+
+
+@pytest.mark.parametrize("mode,label", [("arithmetic", "arithmetic (legacy Tripoli)"), ("geometric", "geometric (Java Tripoli)")])
+def test_project_statistics_switch_updates_all_runs_and_export_footnote(window, mode, label):
+    _open(window, GHR1_PB_XLS, GHR1_U_XLS)
+    window.set_analysis_setting("stat_mode", mode)
+    assert window.workspace.stat_mode == mode
+    assert all(a.settings.stat_mode == mode for a in window.workspace.analyses())
+    assert window.export_panel.statistics_note.text() == f"Means and % SE: {label}"
+    assert window.export_panel.save_button.isEnabled()
+    _open(window, B998)
+    assert window.analysis.settings.stat_mode == mode
+    for f in window.workspace.fractions:
+        for element in ("Pb", "U"):
+            if f.analysis(element):
+                window.select_run(f, element)
+                assert window.corrections_panel.stat_mode.currentData() == mode
+
+
+def test_old_mixed_session_warns_and_refuses_all_exports_until_reconciled(window, tmp_path):
+    import json
+
+    _open(window, GHR1_PB_XLS, GHR1_U_XLS, B998)
+    window.workspace.analyses()[0].set_setting("stat_mode", "geometric")
+    path = window.save_session_as(tmp_path / "old.rawtims")
+    document = json.loads(path.read_text())
+    document.pop("stat_mode")  # old sessions had only per-run settings
+    path.write_text(json.dumps(document))
+    assert window.open_session(path, synchronous=True)
+    panel = window.export_panel
+    assert "Mixed statistics modes" in panel.statistics_note.text()
+    assert not any(b.isEnabled() for b in (panel.save_button, panel.copy_button, panel.cycles_button, panel.session_first_button))
+    assert window.save_contract_csv(str(tmp_path / "blocked.csv")) is None
+    assert window.save_cycles_csv(str(tmp_path / "blocked-cycles.csv")) is None
+    QtWidgets.QApplication.clipboard().setText("keep me")
+    assert window.copy_clipboard() is None
+    assert QtWidgets.QApplication.clipboard().text() == "keep me"
+    assert not (tmp_path / "blocked.csv").exists() and not (tmp_path / "blocked-cycles.csv").exists()
+    assert not window.workspace.export_rows(datetime.now().astimezone(), [window.workspace.fractions[-1]])[0]
+    # Choosing even the current project's default resolves all old modes.
+    combo = window.corrections_panel.stat_mode
+    assert combo.currentIndex() == -1
+    combo.setCurrentIndex(combo.findData("arithmetic"))
+    assert not window.workspace.statistics_problem() and panel.save_button.isEnabled()
+    assert panel.statistics_note.text() == "Means and % SE: arithmetic (legacy Tripoli)"
+    assert window.save_contract_csv(str(tmp_path / "resolved.csv"))
 
 
 def test_oxide_formula_switch_changes_u_values_and_the_exported_formula(window):

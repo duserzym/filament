@@ -53,6 +53,7 @@ from rawtims.fractions import Fraction, FractionError, SessionInfo, fraction_row
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping, propose_mapping
 from rawtims.readers import open_paths
 from rawtims.session import MissingRun, SessionProblem, SessionState, same_ratios
+from rawtims.stats import STAT_MODES
 
 ELEMENTS = ("Pb", "U")
 MAPPING_SOURCES = ("edited", "remembered", "proposed")
@@ -84,6 +85,26 @@ class Workspace:
         self._mappings: dict[int, tuple[Any, ElementMapping | None, str]] = {}
         # Runs of a loaded session that could not be opened (kept for the next save).
         self.missing: list[MissingRun] = []
+        self.stat_mode = "arithmetic"
+
+    def set_stat_mode(self, mode: str) -> None:
+        """Set the project default and update every run through its undoable history.
+
+        Run-level undo remains available; export checks agreement with this
+        default, so a partial undo must be reconciled with the project switch.
+        """
+        if mode not in STAT_MODES:
+            raise ValueError(f"stat_mode must be one of {STAT_MODES}")
+        self.stat_mode = mode
+        for analysis in self.analyses():
+            if analysis.settings.stat_mode != mode:
+                analysis.set_setting("stat_mode", mode)
+
+    def statistics_problem(self) -> str | None:
+        if any(a.settings.stat_mode != self.stat_mode for a in self.analyses()):
+            return ("Mixed statistics modes: runs disagree with the project setting. "
+                    "Choose Statistics for this project in Corrections to make all runs agree before exporting.")
+        return None
 
     # ------------------------------------------------------------ queries
     def analyses(self) -> list[Analysis]:
@@ -197,6 +218,9 @@ class Workspace:
         only the other block would silently change it.
         """
         lost = self.missing_of(fraction)
+        problem = self.statistics_problem()
+        if problem:
+            raise FractionError(problem)
         if lost:
             raise FractionError("; ".join(m.problem.message for m in lost))
         self.sync_mappings(fraction)
@@ -284,6 +308,8 @@ class Workspace:
             self.fractions.append(fraction)
             placed.append((fraction, analysis))
         for fraction, analysis in placed:
+            if analysis.settings.stat_mode != self.stat_mode:
+                analysis.set_setting("stat_mode", self.stat_mode)
             result.added.append(analysis)
             if fraction not in result.fractions:
                 result.fractions.append(fraction)
@@ -351,7 +377,8 @@ class Workspace:
                 sources[run_id] = self.mapping_source(analysis)
                 if id(analysis) in self._edits:
                     edits[run_id] = self._edits[id(analysis)]
-        return SessionState(fractions=list(self.fractions), mapping_edits=edits, mapping_sources=sources, missing=list(self.missing))
+        return SessionState(fractions=list(self.fractions), mapping_edits=edits, mapping_sources=sources,
+                            missing=list(self.missing), stat_mode=self.stat_mode)
 
     def restore(self, state: SessionState) -> list[SessionProblem]:
         """Take the fractions of a loaded session (replacing what is open). Returns the mapping problems found.
@@ -363,6 +390,7 @@ class Workspace:
         not change silently.
         """
         self.fractions = list(state.fractions)
+        self.stat_mode = state.stat_mode
         self.missing = list(state.missing)
         self._edits.clear()
         self._mappings.clear()

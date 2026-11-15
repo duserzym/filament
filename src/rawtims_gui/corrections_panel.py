@@ -108,7 +108,7 @@ class CorrectionsPanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 6, 4, 4)
         layout.setSpacing(6)
 
-        title = QtWidgets.QLabel("Statistics")
+        title = QtWidgets.QLabel("Statistics for this project")
         title.setObjectName("SectionTitle")
         layout.addWidget(title)
         self.stat_mode = QtWidgets.QComboBox()
@@ -116,7 +116,8 @@ class CorrectionsPanel(QtWidgets.QWidget):
         _narrow(self.stat_mode)
         self.stat_mode.addItem("arithmetic (legacy Tripoli)", "arithmetic")
         self.stat_mode.addItem("geometric (Java Tripoli)", "geometric")
-        self.stat_mode.setToolTip("Ratio statistics; saved in the session. Undo reverts this change. Intensities always use arithmetic statistics.")
+        self.stat_mode.setToolTip("Applies to every run, including later imports; saved in the session. Each run records an undoable change. Intensities always use arithmetic statistics.")
+        self.stat_mode.setPlaceholderText("Mixed modes — choose for all runs")
         layout.addWidget(self.stat_mode)
 
         title = QtWidgets.QLabel("Oxide correction")
@@ -237,7 +238,7 @@ class CorrectionsPanel(QtWidgets.QWidget):
 
     # ------------------------------------------------------------ signals
     def _stat_mode_changed(self, *_args) -> None:
-        if not self._loading and self.analysis is not None and self.stat_mode.currentData() != self.analysis.settings.stat_mode:
+        if not self._loading and self.stat_mode.currentData() is not None:
             self.settingRequested.emit("stat_mode", self.stat_mode.currentData())
 
     def _r18_edited(self) -> None:
@@ -268,6 +269,14 @@ class CorrectionsPanel(QtWidgets.QWidget):
         self.formula_warning.setVisible(comparison and self.oxide_controls.isEnabled())
 
     # ------------------------------------------------------------ display
+    def set_project_statistics(self, mode: str, mixed: bool) -> None:
+        self._loading = True
+        try:
+            self.stat_mode.setEnabled(True)
+            self.stat_mode.setCurrentIndex(-1 if mixed else self.stat_mode.findData(mode))
+        finally:
+            self._loading = False
+
     def update_panel(self, analysis: Analysis | None, fraction: Fraction | None, mapping: ElementMapping | None,
                      source: str, remembered: bool) -> None:
         self.analysis, self.mapping = analysis, mapping

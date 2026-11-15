@@ -882,11 +882,13 @@ class MainWindow(QtWidgets.QMainWindow):
         fraction = self.current[0] if self.current is not None else None
         if analysis is None:
             self.corrections_panel.update_panel(None, None, None, "proposed", False)
+            self.corrections_panel.set_project_statistics(self.workspace.stat_mode, bool(self.workspace.statistics_problem()))
             return
         method = analysis.run.metadata.method
         self.corrections_panel.update_panel(
             analysis, fraction, self.mapping, self.workspace.mapping_source(analysis),
             bool(method) and method in self.workspace.remembered)
+        self.corrections_panel.set_project_statistics(self.workspace.stat_mode, bool(self.workspace.statistics_problem()))
 
     def fraction_reports(self) -> list[tuple[Fraction, str, list[str], Any, str | None]]:
         """(fraction, state, reasons, row or None, error or None) for every open fraction."""
@@ -909,6 +911,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.export_panel.update_panel(fraction, [(f, state, reasons) for f, state, reasons, _r, _e in reports], row, error,
                                        self.current[1] if self.current is not None else None)
         self.export_panel.set_session_state(self.session_state_name(), self.session_name())
+        self.export_panel.set_project_statistics(self.workspace.stat_mode, self.workspace.statistics_problem())
 
     def stats_keys(self) -> list[str]:
         keys = self.plotted_keys("ratios")
@@ -1224,7 +1227,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ------------------------------------------------------- corrections
     def set_analysis_setting(self, name: str, value: Any) -> dict | None:
-        """Change one setting of the current run through the history (undoable)."""
+        """Change a run setting through its history; statistics applies to the project."""
+        if name == "stat_mode":
+            try:
+                self.workspace.set_stat_mode(value)
+            except ValueError as error:
+                self.statusBar().showMessage(f"Not changed: {error}", 8000)
+                return None
+            self._after_edit()
+            self.statusBar().showMessage(f"Statistics for this project set to {value}", 6000)
+            return None
         analysis = self.analysis
         if analysis is None:
             return None
@@ -1363,6 +1375,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def copy_clipboard(self) -> str | None:
         """Copy the current fraction as Tripoli clipboard blocks (Pb then U)."""
+        problem = self.workspace.statistics_problem()
+        if problem:
+            self.statusBar().showMessage(f"Nothing copied: {problem}", 10000)
+            return None
         if self.current is None:
             return None
         fraction = self.current[0]
@@ -1379,6 +1395,10 @@ class MainWindow(QtWidgets.QMainWindow):
         return text
 
     def save_cycles_csv(self, path: str | None = None) -> Path | None:
+        problem = self.workspace.statistics_problem()
+        if problem:
+            self.statusBar().showMessage(f"Nothing to export: {problem}", 10000)
+            return None
         analysis = self.analysis
         if analysis is None:
             return None
@@ -1404,7 +1424,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def is_modified(self) -> bool:
         """Unsaved changes: an untitled session with something open, or a state other than the saved file holds."""
         if self.session_path is None:
-            return bool(self.workspace.fractions or self.workspace.missing)
+            return bool(self.workspace.fractions or self.workspace.missing or self.workspace.stat_mode != "arithmetic")
         if self._saved_fingerprint is None:
             return True
         return session_io.session_fingerprint(self.workspace.session_state(), self.session_path) != self._saved_fingerprint
@@ -1412,7 +1432,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def session_state_name(self) -> str:
         """``empty``, ``untitled``, ``modified`` or ``saved`` (for the Export tab)."""
         if self.session_path is None:
-            return "untitled" if self.workspace.fractions or self.workspace.missing else "empty"
+            return "untitled" if self.is_modified() else "empty"
         if self.is_modified():
             return "modified"
         return "saved" if self.session_info(verify=True) is not None else "unlinked"
@@ -1450,7 +1470,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self._autosave_timer.stop()
             recovery.discard()
-        self.save_action.setEnabled(bool(self.workspace.fractions or self.workspace.missing or self.session_path))
+        self.save_action.setEnabled(bool(modified or self.workspace.fractions or self.workspace.missing or self.session_path))
         return modified
 
     def _ask_unsaved(self, name: str) -> str:

@@ -72,6 +72,7 @@ from rawtims.branding import (
 from rawtims.fractions import Fraction, FractionError
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping
 from rawtims.readers import UnsupportedFile, open_run
+from rawtims.stats import STAT_MODES
 
 ELEMENTS = ("Pb", "U")
 # Fraction attributes saved under "fields" (identity, setup and provenance fields of the contract).
@@ -121,7 +122,9 @@ class SessionState:
     ``proposed``). On load, ``saved_mappings`` has the mapping that was in
     effect when the session was saved, so the caller can check its own
     resolution against it. ``recovery`` is the optional block of a crash
-    recovery copy (see ``save_session(extra=…)``).
+    recovery copy (see ``save_session(extra=…)``). ``stat_mode`` is the project
+    default, including for later imports. Loading preserves run settings;
+    the workspace checks agreement before export, including old mixed sessions.
     """
 
     fractions: list[Fraction] = field(default_factory=list)
@@ -130,6 +133,7 @@ class SessionState:
     saved_mappings: dict[str, MethodMapping] = field(default_factory=dict)
     missing: list[MissingRun] = field(default_factory=list)
     recovery: dict[str, Any] | None = None
+    stat_mode: str = "arithmetic"
 
     def analyses(self) -> list[Analysis]:
         return [a for fraction in self.fractions for a in (fraction.pb, fraction.u) if a is not None]
@@ -280,6 +284,7 @@ def session_document(state: SessionState, path: str | os.PathLike[str] | None, *
         "saved_at": stamp.astimezone(UTC).isoformat(timespec="seconds"),
         "runs": runs,
         "fractions": fractions,
+        "stat_mode": state.stat_mode,
     }
     if extra:
         document.update({key: value for key, value in extra.items() if key not in document})
@@ -470,6 +475,10 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
             raise SessionError(f"{path.name}: duplicate run_id {record['run_id']!r}")
         runs[record["run_id"]] = record
     state = SessionState(recovery=document.get("recovery") if isinstance(document.get("recovery"), dict) else None)
+    if "stat_mode" in document:
+        if document["stat_mode"] not in STAT_MODES:
+            raise SessionError(f"{path.name}: invalid project stat_mode {document['stat_mode']!r}")
+        state.stat_mode = document["stat_mode"]
     problems: list[SessionProblem] = []
     restored: dict[str, Analysis | None] = {}
     used: set[str] = set()
@@ -532,6 +541,10 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
                                                           "the mapping is proposed again", fid, element, run_id))
     if set(runs) != used:
         raise SessionError(f"{path.name}: runs without a fraction: {', '.join(sorted(set(runs) - used))}")
+    if "stat_mode" not in document:
+        modes = {a.settings.stat_mode for a in state.analyses()}
+        if len(modes) == 1:
+            state.stat_mode = modes.pop()
     return state, problems
 
 

@@ -107,6 +107,10 @@ class ExportPanel(QtWidgets.QWidget):
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.fraction_table)
+        self.statistics_note = QtWidgets.QLabel("")
+        self.statistics_note.setObjectName("StatisticsNote")
+        self.statistics_note.setWordWrap(True)
+        layout.addWidget(self.statistics_note)
         self.problems = QtWidgets.QLabel("")
         self.problems.setObjectName("ExportProblems")
         self.problems.setWordWrap(True)
@@ -421,6 +425,19 @@ class ExportPanel(QtWidgets.QWidget):
         color = theme.muted if state == "saved" else theme.text
         self.session_note.setStyleSheet(f"#SessionNote {{ color: {color}; font-size: 12px; }}")
         self.session_first_button.setVisible(state in ("modified", "untitled", "unlinked"))
+
+    def set_project_statistics(self, mode: str, problem: str | None) -> None:
+        from rawtims_gui.studio.theme import active_theme
+
+        label = {"arithmetic": "arithmetic (legacy Tripoli)", "geometric": "geometric (Java Tripoli)"}[mode]
+        self.statistics_note.setText(problem or f"Means and % SE: {label}")
+        color = active_theme().danger if problem else active_theme().muted
+        self.statistics_note.setStyleSheet(f"#StatisticsNote {{ color: {color}; font-size: 12px; }}")
+        if problem:
+            for button in (self.save_button, self.copy_button, self.cycles_button, self.session_first_button):
+                button.setEnabled(False)
+        else:
+            self.session_first_button.setEnabled(True)
 
     def row_cells(self) -> dict[str, str]:
         return {self.row_table.item(i, 0).text(): self.row_table.item(i, 1).text() for i in range(self.row_table.rowCount())}

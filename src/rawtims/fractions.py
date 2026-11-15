@@ -310,12 +310,12 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         values[f"{element} Method"] = run.metadata.method
         values[f"{element} Cycles Used"] = int(used.sum())
         values[f"{element} Cycles Total"] = run.n_cycles
+        values[f"{element} Mean Statistic"] = analysis.settings.stat_mode
         start, note = _iso_start(analysis, fraction.timezone)
         values[f"{element} Run Start"] = start
         if note:
             notes.append(f"{element}: {note}")
         rules.append((element, filter_rule_text(analysis)))
-        notes.append(f"{element}: {analysis.settings.stat_mode} statistics")
         if run.metadata.instrument:
             instruments.append(run.metadata.instrument)
         if element == "U":

@@ -73,6 +73,17 @@ def test_ku_ghr1_u_default_isobar_233_18O_values():
 
 
 @pytest.mark.parametrize("mode", ["arithmetic", "geometric"])
+def test_writer_records_each_blocks_mean_statistic(mode):
+    fraction = ghr1_fraction(AnalysisSettings(stat_mode=mode), settings_pb=AnalysisSettings(stat_mode=mode))
+    row = fraction_row(fraction, EXPORTED_AT)
+    assert row.values["Pb Mean Statistic"] == row.values["U Mean Statistic"] == mode
+    assert f"{mode} statistics" not in row.get("Notes", "")
+    fraction.u = None
+    pb_only = fraction_row(fraction, EXPORTED_AT)
+    assert pb_only.get("Pb Mean Statistic") == mode and "U Mean Statistic" not in pb_only.values
+
+
+@pytest.mark.parametrize("mode", ["arithmetic", "geometric"])
 def test_correlations_are_bounded_and_equal_a_direct_numpy_computation(mode):
     fraction = ghr1_fraction(AnalysisSettings(stat_mode=mode), settings_pb=AnalysisSettings(stat_mode=mode))
     fraction.pb.toggle_cycles([3, 4], ["206/204"], include=False)  # different include sets for one function
