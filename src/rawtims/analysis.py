@@ -406,6 +406,11 @@ class Analysis:
         """The applied operations, oldest first, as JSON-serialisable dicts (undone operations are not included)."""
         return copy.deepcopy(self._ops[: self._applied])
 
+    @property
+    def redo_history(self) -> list[dict[str, Any]]:
+        """Undone operations, next to redo first, for lossless session restoration."""
+        return copy.deepcopy(self._ops[self._applied :])
+
     def rejected_summary(self) -> dict[str, Any]:
         """Counts for provenance: excluded cycle flags per function and excluded blocks."""
         return {

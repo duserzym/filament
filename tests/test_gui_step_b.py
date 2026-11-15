@@ -41,6 +41,7 @@ def _close(window) -> None:
 
     if not shiboken6.isValid(window):
         return  # closed by the test already
+    window.unsaved_prompt = lambda _name: "discard"  # never block on the unsaved-session question
     window.close()
     window.deleteLater()
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)

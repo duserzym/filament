@@ -23,6 +23,7 @@ import importlib.abc
 import json
 import os
 import operator
+import signal
 import sys
 import tempfile
 from pathlib import Path
@@ -68,6 +69,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 _home_folder = tempfile.TemporaryDirectory(prefix="rawtims-test-home-")
 for _variable, _name in (("XDG_CONFIG_HOME", "config"), ("XDG_CACHE_HOME", "cache"), ("XDG_DATA_HOME", "data")):
     os.environ[_variable] = str(Path(_home_folder.name) / _name)
+# The app cache (session recovery copies) goes there too, on every platform.
+os.environ["RAWTIMS_CACHE_DIR"] = str(Path(_home_folder.name) / "cache" / "app")
 
 
 class _BlockedImports(importlib.abc.MetaPathFinder):
@@ -130,6 +133,36 @@ def qt_settings_folder() -> Path:
     if _qt_settings_folder is None:
         pytest.skip("PySide6 is unavailable")
     return _qt_settings_folder
+
+
+@pytest.fixture(autouse=True)
+def gui_deadline_and_no_modal_dialogs(request, monkeypatch):
+    """Fail an unexpected dialog immediately; bound each GUI test including teardown."""
+    if not any(word in request.node.path.stem for word in ("gui", "window")):
+        yield
+        return
+    from PySide6 import QtWidgets
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("GUI tests must inject dialog answers")
+
+    monkeypatch.setattr(QtWidgets.QMessageBox, "exec", unexpected)
+    for name in ("getOpenFileName", "getOpenFileNames", "getSaveFileName", "getExistingDirectory"):
+        monkeypatch.setattr(QtWidgets.QFileDialog, name, unexpected)
+    if not hasattr(signal, "SIGALRM"):
+        yield
+        return
+
+    def expired(signum, frame):
+        raise TimeoutError(f"GUI test exceeded 45 seconds: {request.node.nodeid}")
+
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, 45)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 class _OpenAuditSink:

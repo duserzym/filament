@@ -32,6 +32,7 @@ def window(app, qt_settings_folder):
     window.resize(gui_main.DEFAULT_SIZE)
     window.show()
     yield window
+    window.unsaved_prompt = lambda _name: "discard"  # never block on the unsaved-session question
     window.close()
     window.deleteLater()
     # Delete it now: a window left alive would be restyled by every later theme switch.

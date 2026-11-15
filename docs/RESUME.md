@@ -16,18 +16,21 @@
   gaps, and the facts on legacy C# Tripoli (Yiming's numbers come from it: two-space `(Mean, %StdErr)` clipboard,
   E7 values, arithmetic statistics). Last commit 3628bd3.
 
-## Half-done (uncommitted, in the working tree; do not discard)
-- **Step 7, session save/restore**, by a subagent stopped at the pause.
-  - New: `src/rawtims/session.py`, `src/rawtims_gui/recovery.py`, `tests/test_session.py` (11 engine tests,
-    passing per the subagent; tidy `test_a_same_named_file_next_to_the_session_is_found`).
-  - Modified: `src/rawtims/readers/__init__.py`, `src/rawtims_gui/{main,workspace,export_panel}.py`,
-    `tests/{conftest,test_gui_step_b,test_review_window}.py`.
-  - Not yet audited or tested as a whole. One GUI test run hung while these edits were in progress (probably a
-    modal prompt).
-  - Missing: GUI session tests (recent files, prompt, export session columns, `--open`, recovery) and a
-    screenshot.
-  - Next: read the diff, run `make test` with a per-test timeout, finish round-trip, problems, recent files and
-    the unsaved-changes prompt, then commit.
+## Step 7 complete (uncommitted, 2026-11-14; supervising audit pending)
+- Session save/restore is implemented in `src/rawtims/session.py` and the GUI. Atomic JSON saves keep raw
+  paths/hashes, settings, history (including redo), fraction fields and mappings, without raw values or results. Loading
+  resolves relative, absolute, then adjacent paths; a changed first-resolved file is reported rather than
+  bypassed. Unrestorable runs stay out of exports and retain their records for subsequent saves.
+- File actions, content routing (Open, drop, `--open`), title/dirty state, injected unsaved prompts, recent
+  sessions (eight, missing paths pruned), saved-session export provenance and cache recovery are complete.
+- `tests/test_gui_session.py` covers the B998/KU GHR1 round trip, prompts, recent sessions, export linkage,
+  content routing, CLI and recovery. GUI tests reject unexpected dialogs and have a 45-second deadline on
+  platforms supporting SIGALRM. `tests/test_session.py` also covers atomic failure and path precedence.
+- `make test`: 340 passed, 14.9 s wall time; `make test-quick`: 340 passed, 10.0 s. Both test targets support the cache override through
+  `RAWTIMS_CACHE_DIR`; validation used repository-local temporary/cache folders under `.venv/step7`.
+- Screenshot: `session_export_light_1280x800.png` in the requested screenshot folder's `step7/`, rendered
+  offscreen with `export_window` after loading a saved session; Export shows the filename and hash.
+- No commit or packaging build was made. Step 8 and the legacy-Tripoli follow-up below remain separate.
 
 ## Not started
 - **Legacy-Tripoli oxide confirmation** (asked 2026-11-14, after Yiming said BSU uses the older Windows Tripoli):

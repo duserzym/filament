@@ -26,7 +26,16 @@ oxide formula, r18), the fraction's Collector or the edits change.
 made or has problems) or ``incomplete`` (a run is missing), with the reasons;
 :meth:`Workspace.export_rows` returns the rows of every exportable fraction and
 the reasons for the others. Nothing here imports Qt, so ``--verify`` runs
-without a window.
+without a window. A ``session_info`` (:class:`rawtims.fractions.SessionInfo`)
+fills ``Raw App Session`` and its SHA-256; the window passes one only while the
+saved session file matches what is open.
+
+**Sessions.** :meth:`Workspace.session_state` gives what
+:func:`rawtims.session.save_session` writes (the mapping in effect of every run
+and the user's edits, keyed by run_id), and :meth:`Workspace.restore` takes what
+:func:`rawtims.session.load_session` read. A run the session could not open is
+kept in :attr:`Workspace.missing` with its saved record: its fraction needs
+attention and is left out of the export, and saving writes the record back.
 """
 
 from __future__ import annotations
@@ -40,9 +49,10 @@ from typing import Any
 
 from rawtims.analysis import Analysis
 from rawtims.contract import FractionRow
-from rawtims.fractions import Fraction, FractionError, fraction_row, pair_analyses, suggested_fraction_id
+from rawtims.fractions import Fraction, FractionError, SessionInfo, fraction_row, pair_analyses, suggested_fraction_id
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping, propose_mapping
 from rawtims.readers import open_paths
+from rawtims.session import MissingRun, SessionProblem, SessionState, same_ratios
 
 ELEMENTS = ("Pb", "U")
 MAPPING_SOURCES = ("edited", "remembered", "proposed")
@@ -72,6 +82,8 @@ class Workspace:
         self.remembered: dict[str, MethodMapping] = dict(remembered or {})
         self._edits: dict[int, MethodMapping] = {}
         self._mappings: dict[int, tuple[Any, ElementMapping | None, str]] = {}
+        # Runs of a loaded session that could not be opened (kept for the next save).
+        self.missing: list[MissingRun] = []
 
     # ------------------------------------------------------------ queries
     def analyses(self) -> list[Analysis]:
@@ -175,15 +187,26 @@ class Workspace:
             if analysis is not None:
                 self.mapping(analysis)
 
-    def fraction_row(self, fraction: Fraction, exported_at: datetime) -> FractionRow:
-        """The contract row of one fraction with the mappings shown (raises FractionError)."""
-        self.sync_mappings(fraction)
-        return fraction_row(fraction, exported_at)
+    def missing_of(self, fraction: Fraction) -> list[MissingRun]:
+        return [m for m in self.missing if m.fraction is fraction]
 
-    def fraction_report(self, fraction: Fraction, exported_at: datetime) -> tuple[str, list[str], FractionRow | None, str | None]:
+    def fraction_row(self, fraction: Fraction, exported_at: datetime, session_info: SessionInfo | None = None) -> FractionRow:
+        """The contract row of one fraction with the mappings shown (raises FractionError).
+
+        A fraction with a run the session could not open has no row: exporting
+        only the other block would silently change it.
+        """
+        lost = self.missing_of(fraction)
+        if lost:
+            raise FractionError("; ".join(m.problem.message for m in lost))
+        self.sync_mappings(fraction)
+        return fraction_row(fraction, exported_at, session_info)
+
+    def fraction_report(self, fraction: Fraction, exported_at: datetime,
+                        session_info: SessionInfo | None = None) -> tuple[str, list[str], FractionRow | None, str | None]:
         """``(state, reasons, row or None, FractionError text or None)``; states as in :meth:`fraction_status`."""
         try:
-            row = self.fraction_row(fraction, exported_at)
+            row = self.fraction_row(fraction, exported_at, session_info)
         except FractionError as error:
             return "attention", [str(error)], None, str(error)
         problems = row.problems()
@@ -199,13 +222,14 @@ class Workspace:
         state, reasons, _row, _error = self.fraction_report(fraction, exported_at or datetime.now().astimezone())
         return state, reasons
 
-    def export_rows(self, exported_at: datetime, fractions: Sequence[Fraction] | None = None) -> tuple[list[FractionRow], list[tuple[str, str]]]:
+    def export_rows(self, exported_at: datetime, fractions: Sequence[Fraction] | None = None,
+                    session_info: SessionInfo | None = None) -> tuple[list[FractionRow], list[tuple[str, str]]]:
         """Rows of every exportable fraction, and ``(fraction ID, reason)`` for each one left out."""
         rows: list[FractionRow] = []
         left_out: list[tuple[str, str]] = []
         for fraction in self.fractions if fractions is None else fractions:
             try:
-                row = self.fraction_row(fraction, exported_at)
+                row = self.fraction_row(fraction, exported_at, session_info)
             except FractionError as error:
                 left_out.append((fraction.fraction_id, str(error)))
                 continue
@@ -242,7 +266,7 @@ class Workspace:
         for new in pairing.fractions:
             existing = self.find(new.fraction_id)
             runs = [a for a in (new.pb, new.u) if a is not None]
-            if existing is not None and all(getattr(existing, _slot(a)) is None for a in runs):
+            if existing is not None and all(self._slot_free(existing, a.run.element) for a in runs):
                 for analysis in runs:
                     setattr(existing, _slot(analysis), analysis)
                 placed += [(existing, a) for a in runs]
@@ -292,6 +316,13 @@ class Workspace:
         if clash:
             element = clash[0].run.element
             return False, f"Fraction {new_id} already has a {element} run ({getattr(other, _slot(clash[0])).run.raw.name}).", fraction
+        lost = self.missing_of(fraction)
+        elements = [a.run.element for a in runs] + [m.element for m in lost]
+        blocked = [e for e in elements if not self._slot_free(other, e)]
+        if blocked:
+            return False, f"Fraction {new_id} already has a {blocked[0]} run (one the session could not open).", fraction
+        for entry in lost:
+            entry.fraction = other
         for analysis in runs:
             setattr(other, _slot(analysis), analysis)
             self._mappings.pop(id(analysis), None)
@@ -299,6 +330,73 @@ class Workspace:
             setattr(other, "pb_mapping" if analysis.run.element == "Pb" else "u_mapping", None)
         self.fractions.remove(fraction)
         return True, f"Merged {fraction.fraction_id} into fraction {new_id}.", other
+
+
+    def _slot_free(self, fraction: Fraction, element: str | None) -> bool:
+        if element not in ELEMENTS:
+            return False
+        return fraction.analysis(element) is None and not any(m.element == element for m in self.missing_of(fraction))
+
+    # ------------------------------------------------------------ session
+    def session_state(self) -> SessionState:
+        """What a session save writes: fractions, missing runs, and every run's mapping edit and source."""
+        edits: dict[str, MethodMapping] = {}
+        sources: dict[str, str] = {}
+        for fraction in self.fractions:
+            self.sync_mappings(fraction)
+            for analysis in (fraction.pb, fraction.u):
+                if analysis is None:
+                    continue
+                run_id = analysis.run.run_id
+                sources[run_id] = self.mapping_source(analysis)
+                if id(analysis) in self._edits:
+                    edits[run_id] = self._edits[id(analysis)]
+        return SessionState(fractions=list(self.fractions), mapping_edits=edits, mapping_sources=sources, missing=list(self.missing))
+
+    def restore(self, state: SessionState) -> list[SessionProblem]:
+        """Take the fractions of a loaded session (replacing what is open). Returns the mapping problems found.
+
+        Edits come back as edits. A mapping that was remembered or proposed is
+        resolved again here; when that gives other functions than the session
+        saved (for example a remembered mapping this viewer does not have), the
+        saved mapping is restored as an edit and reported, so the export does
+        not change silently.
+        """
+        self.fractions = list(state.fractions)
+        self.missing = list(state.missing)
+        self._edits.clear()
+        self._mappings.clear()
+        problems: list[SessionProblem] = []
+        for fraction in self.fractions:
+            for element in ELEMENTS:
+                analysis = fraction.analysis(element)
+                if analysis is None:
+                    continue
+                run_id = analysis.run.run_id
+                edit = state.mapping_edits.get(run_id)
+                if edit is not None:
+                    self._edits[id(analysis)] = edit
+                saved = state.saved_mappings.get(run_id)
+                current = self.mapping(analysis)
+                if saved is None or same_ratios(saved, _ratios_of(current)):
+                    continue
+                source = state.mapping_sources.get(run_id, "proposed")
+                self._edits[id(analysis)] = MethodMapping(method=analysis.run.metadata.method or "", element=saved.element,
+                                                          ratios=dict(saved.ratios), collector=saved.collector)
+                self.mapping(analysis)
+                problems.append(SessionProblem(
+                    "mapping",
+                    f"{fraction.fraction_id} {element}: the {source} mapping resolves to other functions here; "
+                    "the session's mapping is restored as an edit",
+                    fraction.fraction_id, element, run_id))
+        return problems
+
+
+def _ratios_of(mapping: ElementMapping | None) -> MethodMapping | None:
+    if mapping is None:
+        return None
+    return MethodMapping(method=mapping.method or "", element=mapping.element,
+                         ratios={ratio: mapped.to_dict() for ratio, mapped in mapping.ratios.items()}, collector=mapping.collector)
 
 
 def _slot(analysis: Analysis) -> str:

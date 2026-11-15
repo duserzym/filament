@@ -1,4 +1,4 @@
-"""Desktop entry point and main window (SPEC section 5, Phase 1 steps 5 and 6: GUI steps A and B).
+"""Desktop entry point and main window (SPEC section 5, Phase 1 steps 5-7: GUI steps A and B, sessions).
 
 The window has the workflow rail and the fraction list on the left, the
 review area in the centre (mode bar Ratios | Intensities | Table, the cycle
@@ -11,10 +11,22 @@ operations, so statistics, plots and table update at once and Undo/Redo walk
 the history. Nothing is rejected automatically (SPEC section 0, decision 3):
 a rule is previewed first and applied only on request.
 
+Sessions (SPEC F18, :mod:`rawtims.session`): File > New Session, Open
+Session…, Open Recent (per viewer, at most 8), Save (⌘S) and Save As… (⇧⌘S).
+Open Files… and drag and drop route by content, so a session file opens as a
+session. The title shows the session name and "Edited" while there are
+unsaved changes (the state is compared with what the file holds, so undoing
+back to the saved state is clean again). Closing, New Session and opening
+another session ask Save / Don't Save / Cancel first. Exported rows carry
+``Raw App Session`` only while the session is saved and unchanged. While
+there are unsaved changes a recovery copy is written to the app cache
+(:mod:`rawtims_gui.recovery`); one left by a crash is offered on the next
+launch in a bar above the review area, without a modal dialog.
+
 Command line (the executable name is branding.EXECUTABLE_NAME; the pip
 console script is set in pyproject.toml)::
 
-    <app> [--theme light|dark|system] [--open PATH ...]
+    <app> [--theme light|dark|system] [--open PATH ...]   # PATH: run files, folders or one session
     <app> --export png PATH [--open PATH ...]   # render the window offscreen and exit
     <app> --verify PATH ... --verification-output OUT.csv   # headless contract CSV, no window
     <app> --version
@@ -40,9 +52,11 @@ from rawtims import branding
 from rawtims.analysis import Analysis
 from rawtims.contract import ContractError, write_csv
 from rawtims.exports import CLIPBOARD_SEPARATOR, clipboard_text, write_cycles_csv
-from rawtims.fractions import Fraction, FractionError
+from rawtims import session as session_io
+from rawtims.fractions import Fraction, FractionError, SessionInfo
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping
 from rawtims.rules import RuleProposal
+from rawtims_gui import recovery
 from rawtims_gui.corrections_panel import CorrectionsPanel
 from rawtims_gui.cycle_table import CycleTable
 from rawtims_gui.export_panel import ExportPanel
@@ -69,7 +83,13 @@ GEOMETRY_KEY = "window/geometry"
 THEME_KEY = "theme_mode"
 THEME_MODES = ("light", "dark", "system")
 DEFAULT_INTENSITIES = 6
-RUN_FILTER = "Run files (*.xls *.XLS *.TIMSDP *.timsdp);;All files (*)"
+RUN_FILTER = (f"Run files and sessions (*.xls *.XLS *.TIMSDP *.timsdp *{branding.SESSION_EXTENSION});;"
+              f"Sessions (*{branding.SESSION_EXTENSION});;All files (*)")
+SESSION_FILTER = f"Sessions (*{branding.SESSION_EXTENSION})"
+RECENT_KEY = "sessions/recent"
+MAX_RECENT = 8
+AUTOSAVE_MS = 1500
+UNTITLED = "Untitled"
 LEGEND = "● used  ○ excluded  × invalid  — mean, bands 2SE · 1σ · 2σ   Click or drag: toggle · ⌘-click, ⇧-drag: select · B: block"
 LEGEND_TIP = ("Filled: used. Hollow red: excluded by hand or by block. Grey cross: invalid value (never used).\n"
               "Line: mean of the used cycles; bands from dark to light: 2SE, 1σ, 2σ.\n"
@@ -185,6 +205,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.skipped: list[tuple[str, str]] = []
         self._plotted: dict[int, dict[str, list[str]]] = {}
         self._workers: set[FunctionWorker] = set()
+        # The saved session: its path, the fingerprint of what it holds and its SHA-256 (None: never saved).
+        self.session_path: Path | None = None
+        self._saved_fingerprint: str | None = None
+        self._session_sha: str | None = None
+        self._pending_recovery: recovery.Recovery | None = None
+        # Seam for the unsaved-changes question: returns "save", "discard" or "cancel".
+        self.unsaved_prompt = self._ask_unsaved
+        self._autosave_timer = QtCore.QTimer(self)
+        self._autosave_timer.setSingleShot(True)
+        self._autosave_timer.setInterval(AUTOSAVE_MS)
+        self._autosave_timer.timeout.connect(self.write_recovery)
         self.setWindowTitle(branding.DISPLAY_NAME)
         self.setMinimumSize(MINIMUM_SIZE)
         self.setAcceptDrops(True)
@@ -231,6 +262,13 @@ class MainWindow(QtWidgets.QMainWindow):
         return action
 
     def _build_actions(self) -> None:
+        self.new_session_action = self._action("New Session", self.new_session, QtGui.QKeySequence.StandardKey.New,
+                                                tip="Close the open fractions and start an empty session")
+        self.open_session_action = self._action("Open Session…", self.choose_session, tip="Open a saved session")
+        self.save_action = self._action("Save", self.save_session, QtGui.QKeySequence.StandardKey.Save,
+                                        tip="Save the session (⌘S)")
+        self.save_as_action = self._action("Save As…", lambda: self.save_session_as(), QtGui.QKeySequence.StandardKey.SaveAs,
+                                           tip="Save the session under a new name (⇧⌘S)")
         self.open_files_action = self._action("Open Files…", self.choose_files, QtGui.QKeySequence.StandardKey.Open)
         self.open_folder_action = self._action("Open Folder…", self.choose_folder, "Ctrl+Shift+O")
         self.quit_action = self._action("Quit", self.close, QtGui.QKeySequence.StandardKey.Quit)
@@ -263,7 +301,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def _build_menus(self) -> None:
         bar = self.menuBar()
         file_menu = bar.addMenu("File")
+        file_menu.addActions([self.new_session_action, self.open_session_action])
+        self.recent_menu = file_menu.addMenu("Open Recent")
+        self.recent_menu.aboutToShow.connect(self._rebuild_recent_menu)
+        self._rebuild_recent_menu()
+        file_menu.addSeparator()
         file_menu.addActions([self.open_files_action, self.open_folder_action])
+        file_menu.addSeparator()
+        file_menu.addActions([self.save_action, self.save_as_action])
         file_menu.addSeparator()
         file_menu.addAction(self.quit_action)
         edit = bar.addMenu("Edit")
@@ -339,6 +384,7 @@ class MainWindow(QtWidgets.QMainWindow):
         frame.setObjectName("CentrePanel")
         layout = QtWidgets.QVBoxLayout(frame)
         layout.setContentsMargins(14, 12, 14, 12)
+        layout.addWidget(self._build_recovery_bar())
         self.centre_stack = QtWidgets.QStackedWidget()
         layout.addWidget(self.centre_stack)
         self.import_page = self._build_import_page()
@@ -346,6 +392,26 @@ class MainWindow(QtWidgets.QMainWindow):
         self.centre_stack.addWidget(self.import_page)
         self.centre_stack.addWidget(self.review_page)
         return frame
+
+    def _build_recovery_bar(self) -> QtWidgets.QWidget:
+        """A non-modal offer to restore unsaved work left by a crash (hidden until there is some)."""
+        bar = QtWidgets.QFrame()
+        bar.setObjectName("RecoveryBar")
+        row = QtWidgets.QHBoxLayout(bar)
+        row.setContentsMargins(10, 6, 6, 6)
+        row.setSpacing(6)
+        self.recovery_label = QtWidgets.QLabel("")
+        self.recovery_label.setWordWrap(True)
+        row.addWidget(self.recovery_label, 1)
+        self.recovery_restore_button = QtWidgets.QPushButton("Restore")
+        self.recovery_restore_button.clicked.connect(lambda: self.restore_recovery())
+        self.recovery_discard_button = QtWidgets.QPushButton("Discard")
+        self.recovery_discard_button.clicked.connect(self.discard_recovery)
+        row.addWidget(self.recovery_restore_button)
+        row.addWidget(self.recovery_discard_button)
+        bar.setVisible(False)
+        self.recovery_bar = bar
+        return bar
 
     def _build_import_page(self) -> QtWidgets.QWidget:
         page = QtWidgets.QWidget()
@@ -507,6 +573,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.export_panel.saveContractRequested.connect(lambda: self.save_contract_csv())
         self.export_panel.copyClipboardRequested.connect(lambda: self.copy_clipboard())
         self.export_panel.saveCyclesRequested.connect(lambda: self.save_cycles_csv())
+        self.export_panel.saveSessionFirstRequested.connect(lambda: self.save_session_then_export())
         self.inspector_tabs.addTab(self.export_panel, "Export")
         elide_tab_titles(self.inspector_tabs)
         self.inspector_tabs.currentChanged.connect(self._inspector_tab_changed)
@@ -557,9 +624,19 @@ class MainWindow(QtWidgets.QMainWindow):
             self.open_paths([folder])
 
     def open_paths(self, paths: Sequence[str], *, synchronous: bool = False) -> None:
-        """Read files and folders on the shared thread pool (or here, for scripted use) and add them."""
+        """Read files and folders on the shared thread pool (or here, for scripted use) and add them.
+
+        A session file among them (recognised by content) opens as the session
+        first; the other paths are then added to it.
+        """
         paths = [str(path) for path in paths]
         if not paths:
+            return
+        sessions = [path for path in paths if Path(path).is_file() and session_io.looks_like_session(path)]
+        if sessions:
+            others = [path for path in paths if path not in sessions]
+            extra = [(path, "only one session opens at a time; open it on its own") for path in sessions[1:]]
+            self.open_session(sessions[0], synchronous=synchronous, then_open=others, extra_problems=extra)
             return
         if synchronous:
             self._import_finished(read_paths(paths))
@@ -583,6 +660,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.select_run(self.workspace.fraction_of(first), first.run.element)
         else:
             self.fraction_list.set_fractions(self.workspace.fractions, self.current)
+            self._refresh_export()
+            self._update_titles()
         runs, fractions = len(result.added), len(result.fractions)
         message = f"Opened {runs} run{'s' if runs != 1 else ''} in {fractions} fraction{'s' if fractions != 1 else ''}"
         if result.skipped:
@@ -595,16 +674,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.import_summary.setVisible(True)
         self.importFinished.emit(result)
 
-    def _show_skipped(self, skipped: list[tuple[str, str]]) -> None:
+    def _show_skipped(self, skipped: list[tuple[str, str]], *, noun: str = "skipped") -> None:
+        """The non-modal list in the status bar: files skipped by an import, or problems of a session."""
         self.skipped_list.clear()
         for path, reason in skipped:
-            item = QtWidgets.QListWidgetItem(f"{describe_path(path)}: {reason}")
+            item = QtWidgets.QListWidgetItem(f"{describe_path(path)}: {reason}" if noun == "skipped" else reason)
             item.setToolTip(path)
             self.skipped_list.addItem(item)
         count = len(skipped)
         self.skipped_list.setFixedHeight(min(280, 28 * max(1, count) + 12))
-        self.skipped_button.setText(f"{count} skipped")
-        self.skipped_button.setToolTip("Files that were not opened, and why")
+        if noun == "skipped":
+            self.skipped_button.setText(f"{count} skipped")
+            self.skipped_button.setToolTip("Files that were not opened, and why")
+        else:
+            self.skipped_button.setText(f"{count} problem{'s' if count != 1 else ''}")
+            self.skipped_button.setToolTip("What the session could not restore as saved, and why")
         self.skipped_button.setVisible(bool(count))
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:  # noqa: N802 - Qt API
@@ -659,7 +743,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fraction_list.set_fractions(self.workspace.fractions, self.current)
         if message:
             self.statusBar().showMessage(message, 8000)
-        self._update_titles()
+        self._after_edit()
         return ok
 
     def _workflow_step_changed(self, row: int) -> None:
@@ -757,9 +841,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def fraction_reports(self) -> list[tuple[Fraction, str, list[str], Any, str | None]]:
         """(fraction, state, reasons, row or None, error or None) for every open fraction."""
         now = datetime.now().astimezone()
+        info = self.session_info(verify=True)
         reports = []
         for fraction in self.workspace.fractions:
-            state, reasons, row, error = self.workspace.fraction_report(fraction, now)
+            state, reasons, row, error = self.workspace.fraction_report(fraction, now, info)
             reports.append((fraction, state, reasons, row, error))
         return reports
 
@@ -773,6 +858,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 row, error = f_row, f_error
         self.export_panel.update_panel(fraction, [(f, state, reasons) for f, state, reasons, _r, _e in reports], row, error,
                                        self.current[1] if self.current is not None else None)
+        self.export_panel.set_session_state(self.session_state_name(), self.session_name())
 
     def stats_keys(self) -> list[str]:
         keys = self.plotted_keys("ratios")
@@ -781,16 +867,20 @@ class MainWindow(QtWidgets.QMainWindow):
         return keys
 
     def _update_titles(self) -> None:
+        modified = self._session_changed()
         analysis = self.analysis
+        base = self._window_title(modified)
         if analysis is None or self.current is None:
-            self.setWindowTitle(branding.DISPLAY_NAME)
+            self.setWindowTitle(base)
+            self.setWindowModified(modified)
             self.run_title.setText("")
             self.run_label.setText("No run selected")
             self.cycles_label.setText("")
             self.history_label.setText("")
             return
         fraction, element = self.current
-        self.setWindowTitle(f"{branding.DISPLAY_NAME} — {fraction.fraction_id} {element}")
+        self.setWindowTitle(f"{base} — {fraction.fraction_id} {element}")
+        self.setWindowModified(modified)
         self.run_title.setText(f"{fraction.fraction_id} · {element} · {analysis.run.raw.name}")
         run_text = f"{analysis.run.raw.name} ({element})"
         self.run_label.setText(self.run_label.fontMetrics().elidedText(run_text, QtCore.Qt.TextElideMode.ElideMiddle, 300))
@@ -1189,7 +1279,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def save_contract_csv(self, path: str | None = None) -> Path | None:
         """Write every exportable fraction to an idtims-fractions/1 file (atomic). Asks for the path when none is given."""
-        rows, left_out = self.workspace.export_rows(datetime.now().astimezone())
+        info = self.session_info(verify=True)
+        rows, left_out = self.workspace.export_rows(datetime.now().astimezone(), session_info=info)
         if not rows:
             reasons = "; ".join(f"{fid}: {reason}" for fid, reason in left_out) or "no fractions open"
             self.statusBar().showMessage(f"Nothing to export ({reasons})", 10000)
@@ -1208,8 +1299,16 @@ class MainWindow(QtWidgets.QMainWindow):
         message = f"Saved {len(rows)} fraction{'s' if len(rows) != 1 else ''} to {written.name}"
         if left_out:
             message += f"; left out: {', '.join(fid for fid, _ in left_out)} (see the Export tab)"
+        if info is None:
+            message += f"; Raw App Session left empty ({self.session_unlinked_reason()})"
         self.statusBar().showMessage(message, 10000)
         return written
+
+    def save_session_then_export(self, contract_path: str | None = None) -> Path | None:
+        """"Save session first": save the session (asking for a name if it has none), then save the contract CSV."""
+        if self.save_session() is None or self.is_modified():
+            return None
+        return self.save_contract_csv(contract_path)
 
     def copy_clipboard(self) -> str | None:
         """Copy the current fraction as Tripoli clipboard blocks (Pb then U)."""
@@ -1246,6 +1345,346 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings.setValue(EXPORT_DIR_KEY, str(written.parent))
         self.statusBar().showMessage(f"Saved the cycles of {analysis.run.raw.name} to {written.name}", 8000)
         return written
+
+    # ----------------------------------------------------------- session
+    def session_name(self) -> str:
+        return self.session_path.name if self.session_path is not None else UNTITLED
+
+    def is_modified(self) -> bool:
+        """Unsaved changes: an untitled session with something open, or a state other than the saved file holds."""
+        if self.session_path is None:
+            return bool(self.workspace.fractions or self.workspace.missing)
+        if self._saved_fingerprint is None:
+            return True
+        return session_io.session_fingerprint(self.workspace.session_state(), self.session_path) != self._saved_fingerprint
+
+    def session_state_name(self) -> str:
+        """``empty``, ``untitled``, ``modified`` or ``saved`` (for the Export tab)."""
+        if self.session_path is None:
+            return "untitled" if self.workspace.fractions or self.workspace.missing else "empty"
+        if self.is_modified():
+            return "modified"
+        return "saved" if self.session_info(verify=True) is not None else "unlinked"
+
+    def session_info(self, *, verify: bool = False) -> SessionInfo | None:
+        """The session the rows point to, only while it is saved and unchanged. ``verify`` re-hashes the file."""
+        if self.session_path is None or self._session_sha is None or self.is_modified():
+            return None
+        if verify:
+            try:
+                if session_io.session_sha256(self.session_path) != self._session_sha:
+                    return None
+            except OSError:
+                return None
+        return SessionInfo(self.session_path.name, self._session_sha)
+
+    def session_unlinked_reason(self) -> str:
+        state = self.session_state_name()
+        if state == "untitled":
+            return "the session is not saved"
+        if state == "modified":
+            return "the session has unsaved changes"
+        return "the session file changed or is missing on disk"
+
+    def _window_title(self, modified: bool) -> str:
+        if self.session_path is None and not modified:
+            return branding.DISPLAY_NAME
+        return f"{self.session_name()}[*]{' — Edited' if modified else ''} — {branding.DISPLAY_NAME}"
+
+    def _session_changed(self) -> bool:
+        """After any change: (re)start the debounced recovery copy, or drop it when nothing is unsaved."""
+        modified = self.is_modified()
+        if modified:
+            self._autosave_timer.start()
+        else:
+            self._autosave_timer.stop()
+            recovery.discard()
+        self.save_action.setEnabled(bool(self.workspace.fractions or self.workspace.missing or self.session_path))
+        return modified
+
+    def _ask_unsaved(self, name: str) -> str:
+        dialog = QtWidgets.QMessageBox(self)
+        dialog.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+        dialog.setWindowTitle("Unsaved session")
+        dialog.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        dialog.setText(f"Save changes to “{name}”?")
+        dialog.setInformativeText("Your changes will be lost if you don't save them.")
+        buttons = QtWidgets.QMessageBox.StandardButton
+        dialog.setStandardButtons(buttons.Save | buttons.Discard | buttons.Cancel)
+        dialog.setDefaultButton(buttons.Save)
+        dialog.setEscapeButton(buttons.Cancel)
+        dialog.button(buttons.Discard).setText("Don't Save")
+        choice = dialog.exec()
+        return {buttons.Save: "save", buttons.Discard: "discard"}.get(buttons(choice), "cancel")
+
+    def maybe_save(self, reason: str = "") -> bool:
+        """Before closing or replacing the session: True to go on (saved or discarded), False to stay."""
+        del reason
+        if not self.is_modified():
+            return True
+        answer = self.unsaved_prompt(self.session_name())
+        if answer == "save":
+            return self.save_session() is not None and not self.is_modified()
+        if answer == "discard":
+            self._autosave_timer.stop()
+            recovery.discard()
+            return True
+        return False
+
+    def _install_workspace(self, workspace: Workspace, path: Path | None, fingerprint: str | None) -> None:
+        """Replace what is open (new or loaded session) and show its first run."""
+        self.workspace = workspace
+        self.current = None
+        self.preview = None
+        self.selection = set()
+        self.focus_key = None
+        self.last_row = None
+        self._plotted = {}
+        self.session_path = path
+        self._saved_fingerprint = fingerprint
+        self._session_sha = None
+        if path is not None and fingerprint is not None:
+            try:
+                self._session_sha = session_io.session_sha256(path)
+            except OSError:
+                self._session_sha = None
+        self.fraction_list.set_fractions(workspace.fractions, None)
+        analyses = workspace.analyses()
+        if analyses:
+            first = analyses[0]
+            self.select_run(workspace.fraction_of(first), first.run.element)
+        else:
+            self._rebuild_view()
+            self.set_workflow_step("Import")
+            self.centre_stack.setCurrentWidget(self.import_page)
+
+    def new_session(self) -> bool:
+        if not self.maybe_save("new"):
+            return False
+        workspace = Workspace(self.workspace.remembered)
+        self._install_workspace(workspace, None, None)
+        self.skipped_button.setVisible(False)
+        self.import_summary.setVisible(False)
+        self.statusBar().showMessage("New session", 5000)
+        return True
+
+    def choose_session(self) -> None:
+        folder = str(self.session_path.parent) if self.session_path is not None else self._export_folder()
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open session", folder, SESSION_FILTER + ";;All files (*)")
+        if path:
+            self.open_session(path)
+
+    @staticmethod
+    def _read_session(path: Path) -> tuple:
+        """Load on a worker thread: ``("ok", state, problems)`` or ``("error", message)``."""
+        try:
+            state, problems = session_io.load_session(path)
+        except (session_io.SessionError, OSError) as error:
+            return ("error", str(error))
+        return ("ok", state, problems)
+
+    def open_session(self, path: str | Path, *, synchronous: bool = False, then_open: Sequence[str] = (),
+                     extra_problems: Sequence[tuple[str, str]] = ()) -> bool:
+        """Open a saved session in place of what is open (asks to save unsaved changes first)."""
+        if not self.maybe_save("open"):
+            return False
+        path = Path(path).expanduser().resolve(strict=False)
+        then_open, extra_problems = list(then_open), list(extra_problems)
+
+        def finished(payload) -> bool:
+            ok = self._session_read(path, payload, extra_problems)
+            if ok and then_open:
+                self.open_paths(then_open, synchronous=synchronous)
+            return ok
+
+        if synchronous:
+            return finished(self._read_session(path))
+        self.statusBar().showMessage(f"Opening session {path.name}…")
+        worker = FunctionWorker(lambda: self._read_session(path))
+        worker.signals.succeeded.connect(finished)
+        worker.signals.failed.connect(lambda message, _trace: self.statusBar().showMessage(f"Could not open the session: {message}"))
+        worker.signals.finished.connect(lambda w=worker: self._workers.discard(w))
+        self._workers.add(worker)
+        QtCore.QThreadPool.globalInstance().start(worker)
+        return True
+
+    def _session_read(self, path: Path, payload: tuple, extra_problems: Sequence[tuple[str, str]] = (),
+                      recovered: recovery.Recovery | None = None) -> bool:
+        if payload[0] == "error":
+            message = payload[1]
+            self._show_skipped([(str(path), message), *extra_problems], noun="problems")
+            self.statusBar().showMessage(f"Could not open the session: {message}", 12000)
+            if recovered is None and not path.exists():
+                self._forget_recent(path)
+            return False
+        _ok, state, problems = payload
+        workspace = Workspace(self.workspace.remembered)
+        problems = [*problems, *workspace.restore(state)]
+        if recovered is None:
+            target, fingerprint = path, session_io.session_fingerprint(workspace.session_state(), path)
+        else:
+            original = Path(recovered.session_path) if recovered.session_path else None
+            target = original if original is not None and original.parent.is_dir() else None
+            fingerprint = None  # restored work is unsaved until the user saves it
+        self._install_workspace(workspace, target, fingerprint)
+        if recovered is None:
+            self._remember_recent(path)
+        items = [(p.path or "", p.message) for p in problems] + list(extra_problems)
+        if items:
+            self._show_skipped(items, noun="problems")
+        else:
+            self.skipped_button.setVisible(False)
+        runs = len(workspace.analyses())
+        what = "Restored unsaved work" if recovered is not None else f"Opened session {path.name}"
+        message = f"{what}: {runs} run{'s' if runs != 1 else ''} in {len(workspace.fractions)} fraction{'s' if len(workspace.fractions) != 1 else ''}"
+        if items:
+            message += f"; {len(items)} problem{'s' if len(items) != 1 else ''} (list in the status bar)"
+        self.statusBar().showMessage(message, 12000)
+        self.import_summary.setText(message)
+        self.import_summary.setVisible(True)
+        self._update_titles()
+        self._refresh_export()
+        return True
+
+    def save_session(self) -> Path | None:
+        """Save to the session's file, or ask for one when it has none (⌘S)."""
+        if self.session_path is None:
+            return self.save_session_as()
+        return self._write_session(self.session_path)
+
+    def save_session_as(self, path: str | Path | None = None) -> Path | None:
+        """Save under a new name (⇧⌘S); asks for the path when none is given."""
+        if path is None:
+            folder = self.session_path.parent if self.session_path is not None else Path(self._export_folder())
+            name = self.session_path.name if self.session_path is not None else f"{date.today().isoformat()}{branding.SESSION_EXTENSION}"
+            chosen, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save session", str(folder / name), SESSION_FILTER)
+            if not chosen:
+                return None
+            path = chosen
+        return self._write_session(Path(path))
+
+    def _write_session(self, path: Path) -> Path | None:
+        state = self.workspace.session_state()
+        try:
+            written = session_io.save_session(state, path).resolve(strict=False)
+            sha = session_io.session_sha256(written)
+        except (OSError, ValueError) as error:
+            self.statusBar().showMessage(f"Could not save the session: {error}", 12000)
+            return None
+        self.session_path = written
+        self._saved_fingerprint = session_io.session_fingerprint(state, written)
+        self._session_sha = sha
+        self._autosave_timer.stop()
+        recovery.discard()
+        self._remember_recent(written)
+        self._update_titles()
+        self._refresh_export()
+        self.statusBar().showMessage(f"Saved session {written.name}", 6000)
+        return written
+
+    # ------------------------------------------------------ recent files
+    def recent_sessions(self) -> list[str]:
+        text = self.settings.value(RECENT_KEY, "", type=str) or ""
+        try:
+            data = json.loads(text) if text else []
+        except ValueError:
+            return []
+        paths = list(dict.fromkeys(item for item in data if isinstance(item, str) and Path(item).is_file()))[:MAX_RECENT] if isinstance(data, list) else []
+        if paths != data:
+            self.settings.setValue(RECENT_KEY, json.dumps(paths))
+        return paths
+
+    def _store_recent(self, paths: list[str]) -> None:
+        if paths:
+            self.settings.setValue(RECENT_KEY, json.dumps(paths[:MAX_RECENT]))
+        else:
+            self.settings.remove(RECENT_KEY)
+        self._rebuild_recent_menu()
+
+    def _remember_recent(self, path: str | Path) -> None:
+        path = str(Path(path).resolve(strict=False))
+        self._store_recent([path, *(p for p in self.recent_sessions() if p != path)])
+
+    def _forget_recent(self, path: str | Path) -> None:
+        path = str(Path(path).resolve(strict=False))
+        self._store_recent([p for p in self.recent_sessions() if p != path])
+
+    def clear_recent(self) -> None:
+        self._store_recent([])
+
+    def remove_missing_recent(self) -> None:
+        self._store_recent([p for p in self.recent_sessions() if Path(p).is_file()])
+
+    def _rebuild_recent_menu(self) -> None:
+        menu = self.recent_menu
+        menu.clear()
+        recent = self.recent_sessions()
+        for path in recent:
+            exists = Path(path).is_file()
+            action = menu.addAction(Path(path).name.replace("&", "&&"))
+            action.setData(path)
+            action.setEnabled(exists)
+            action.setToolTip(path if exists else f"Missing: {path}")
+            action.setStatusTip(path if exists else f"Missing: {path}")
+            action.triggered.connect(lambda _checked=False, p=path: self.open_recent(p))
+        if not recent:
+            menu.addAction("No recent sessions").setEnabled(False)
+        menu.addSeparator()
+        missing = any(not Path(p).is_file() for p in recent)
+        remove = menu.addAction("Remove Missing", self.remove_missing_recent)
+        remove.setEnabled(missing)
+        menu.addAction("Clear Menu", self.clear_recent).setEnabled(bool(recent))
+
+    def open_recent(self, path: str, *, synchronous: bool = False) -> bool:
+        if not Path(path).is_file():
+            self._forget_recent(path)
+            self.statusBar().showMessage(f"{Path(path).name} is no longer there; removed from Open Recent", 8000)
+            return False
+        return self.open_session(path, synchronous=synchronous)
+
+    # --------------------------------------------------------- recovery
+    def write_recovery(self) -> Path | None:
+        """Write the recovery copy now (the debounce timer calls this). Nothing is written without unsaved changes."""
+        if not self.is_modified():
+            return None
+        try:
+            return recovery.write_recovery(self.workspace.session_state(), self.session_path)
+        except (OSError, ValueError) as error:
+            self.statusBar().showMessage(f"Recovery copy not written: {error}", 8000)
+            return None
+
+    def check_recovery(self) -> recovery.Recovery | None:
+        """Offer the newest recovery copy left by a crash, in the bar above the review area (non-modal)."""
+        found = recovery.pending()
+        self._pending_recovery = found[0] if found else None
+        item = self._pending_recovery
+        if item is None:
+            self.recovery_bar.setVisible(False)
+            return None
+        when = item.saved_at.astimezone().strftime("%d %b %H:%M") if item.saved_at is not None else "an earlier run"
+        self.recovery_label.setText(f"Unsaved work in “{item.session_name}” from {when} was kept when the app last "
+                                    "closed unexpectedly. Restore it?")
+        self.recovery_label.setToolTip(str(item.path))
+        theme_accent = self.palette().color(QtGui.QPalette.ColorRole.Highlight).name()
+        self.recovery_bar.setStyleSheet(f"#RecoveryBar {{ border: 1px solid {theme_accent}; border-radius: 8px; }}")
+        self.recovery_bar.setVisible(True)
+        return item
+
+    def restore_recovery(self) -> bool:
+        item = self._pending_recovery
+        if item is None or not self.maybe_save("restore"):
+            return False
+        ok = self._session_read(item.path, self._read_session(item.path), recovered=item)
+        if ok:
+            recovery.discard(item.path)
+            self.write_recovery()
+        self.check_recovery()
+        return ok
+
+    def discard_recovery(self) -> None:
+        if self._pending_recovery is not None:
+            recovery.discard(self._pending_recovery.path)
+        self.check_recovery()
 
     # ------------------------------------------------------------- theme
     def set_theme(self, mode: str) -> None:
@@ -1310,6 +1749,11 @@ class MainWindow(QtWidgets.QMainWindow):
         paint_wallpaper(self)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # noqa: N802 - Qt API
+        if not self.maybe_save("closing"):
+            event.ignore()
+            return
+        self._autosave_timer.stop()
+        recovery.discard()
         self.persist_geometry()
         super().closeEvent(event)
 
@@ -1325,7 +1769,7 @@ def export_window(window: QtWidgets.QMainWindow, output_path: str) -> bool:
 def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog=branding.EXECUTABLE_NAME, description=f"{branding.DISPLAY_NAME}: raw ID-TIMS data review")
     parser.add_argument("--theme", choices=THEME_MODES, help="Theme for this launch (default: the saved choice, else light)")
-    parser.add_argument("--open", nargs="+", metavar="PATH", help="Open run files or folders at start")
+    parser.add_argument("--open", nargs="+", metavar="PATH", help="Open run files, folders or a saved session at start")
     parser.add_argument("--export", nargs=2, metavar=("FORMAT", "PATH"), help="Render the window to PATH and exit; FORMAT must be png")
     parser.add_argument("--version", action="version", version=branding.RAW_APP_LABEL)
     parser.add_argument("--verify", nargs="+", metavar="PATH",
@@ -1372,6 +1816,7 @@ def main(argv: list[str] | None = None) -> int:
     window.show()
     if args.open:
         window.open_paths(args.open)
+    QtCore.QTimer.singleShot(0, window.check_recovery)
     return app.exec()
 
 

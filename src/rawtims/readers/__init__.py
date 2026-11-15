@@ -19,6 +19,7 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 
+from rawtims.branding import SESSION_FORMAT
 from rawtims.model import FORMAT_IONVANTAGE_XLS, FORMAT_ISOLINX_TIMSDP, Run
 from rawtims.readers._xls import OLE2_MAGIC, open_xls
 from rawtims.readers.functions import suggest_fraction_id
@@ -68,6 +69,8 @@ def _sniff_bytes(data: bytes) -> Sniff:
     head = text.lstrip()[:200]
     if head.startswith(("New Tripoli", "Tripoli")):
         return Sniff(None, "Tripoli report, not a raw run file")
+    if head.startswith("{") and SESSION_FORMAT in text[:4096]:
+        return Sniff(None, "saved session, not a run file (open it on its own, or with File > Open Session…)")
     ok, reason = looks_like_timsdp(text)
     return Sniff(FORMAT_ISOLINX_TIMSDP) if ok else Sniff(None, reason)
 

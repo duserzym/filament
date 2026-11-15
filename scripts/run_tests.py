@@ -143,8 +143,9 @@ SOURCE_DIRS = {"src", "scripts"}
 def map_path(root: Path = ROOT) -> Path:
     """Return the checkout-specific runtime map outside the repository."""
     cache = Path.home() / "Library/Caches" if sys.platform == "darwin" else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    app_cache = Path(os.environ["RAWTIMS_CACHE_DIR"]) if os.environ.get("RAWTIMS_CACHE_DIR") else cache / CACHE_DIR_NAME
     key = hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:12]
-    return cache / CACHE_DIR_NAME / "test-map" / (key + ".json")
+    return app_cache / "test-map" / (key + ".json")
 
 
 def load_test_map(root: Path = ROOT) -> dict | None:

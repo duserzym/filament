@@ -11,7 +11,11 @@ messages and :meth:`rawtims.contract.FractionRow.problems`, in plain words.
 Below it, the cells of the current fraction's row. "Save contract CSV…" writes
 every exportable fraction (atomically); "Copy Tripoli clipboard" copies the
 current fraction's block; "Save cycles CSV…" writes the current run's cycles.
-``Raw App Session`` stays empty until sessions can be saved.
+
+Above the buttons a line says where ``Raw App Session`` stands: filled with the
+session file name and its SHA-256 while the session is saved and unchanged;
+otherwise it says plainly that the column stays empty and offers "Save session
+first" (save the session, then save the contract CSV).
 """
 
 from __future__ import annotations
@@ -67,6 +71,7 @@ class ExportPanel(QtWidgets.QWidget):
     saveContractRequested = QtCore.Signal()
     copyClipboardRequested = QtCore.Signal()
     saveCyclesRequested = QtCore.Signal()
+    saveSessionFirstRequested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -193,6 +198,16 @@ class ExportPanel(QtWidgets.QWidget):
 
         layout.addStretch(1)
 
+        self.session_note = QtWidgets.QLabel("")
+        self.session_note.setObjectName("SessionNote")
+        self.session_note.setWordWrap(True)
+        outer.addWidget(self.session_note)
+        self.session_first_button = QtWidgets.QPushButton("Save session first")
+        self.session_first_button.setObjectName("SaveSessionFirst")
+        self.session_first_button.setToolTip("Save the session, then save the contract CSV with Raw App Session filled")
+        self.session_first_button.clicked.connect(self.saveSessionFirstRequested)
+        outer.addWidget(self.session_first_button)
+        self.session_state = "empty"
         buttons = QtWidgets.QGridLayout()
         buttons.setSpacing(4)
         self.save_button = QtWidgets.QPushButton("Save contract CSV…")
@@ -383,6 +398,25 @@ class ExportPanel(QtWidgets.QWidget):
             value.setToolTip(text)
             self.row_table.setItem(index, 0, key)
             self.row_table.setItem(index, 1, value)
+
+    def set_session_state(self, state: str, name: str | None) -> None:
+        """``saved`` (unchanged since saved), ``modified``, ``untitled`` (never saved) or ``empty`` (nothing open)."""
+        from rawtims_gui.studio.theme import active_theme
+
+        theme = active_theme()
+        self.session_state = state
+        texts = {
+            "saved": f"Rows point to the saved session “{name}” (Raw App Session and its SHA-256).",
+            "modified": f"The session “{name}” has unsaved changes, so Raw App Session stays empty in the rows.",
+            "untitled": "This session is not saved, so Raw App Session stays empty in the rows.",
+            "unlinked": "The saved session file changed or is missing on disk, so Raw App Session stays empty in the rows.",
+            "empty": "",
+        }
+        self.session_note.setText(texts[state])
+        self.session_note.setVisible(state != "empty")
+        color = theme.muted if state == "saved" else theme.text
+        self.session_note.setStyleSheet(f"#SessionNote {{ color: {color}; font-size: 12px; }}")
+        self.session_first_button.setVisible(state in ("modified", "untitled", "unlinked"))
 
     def row_cells(self) -> dict[str, str]:
         return {self.row_table.item(i, 0).text(): self.row_table.item(i, 1).text() for i in range(self.row_table.rowCount())}
