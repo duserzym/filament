@@ -63,7 +63,7 @@ from rawtims_gui.export_panel import ExportPanel
 from rawtims_gui.fraction_list import FractionList
 from rawtims_gui.inspector import StatsPanel
 from rawtims_gui.plots import PlotState, PlotWall
-from rawtims_gui.rules_panel import RulesPanel
+from rawtims_gui.rules_panel import RulesPanel, SHARED_SELECTION_TOOLTIP
 from rawtims_gui.studio.theme import NeumorphicFrame, WallpaperWidget, apply_theme, build_application, paint_wallpaper
 from rawtims_gui.studio.widgets import ElidedLabel, SegmentButton, SegmentedBar, _WorkflowRailDelegate, elide_tab_titles, scrolling_page
 from rawtims_gui.studio.workers import FunctionWorker
@@ -98,7 +98,7 @@ LEGEND_TIP = ("Filled: used. Hollow red: excluded by hand or by block. Grey cros
               "Click a point to toggle that cycle; drag a box to toggle the cycles inside.\n"
               "⌘-click (Ctrl-click) adds a point to the selection; ⇧-drag selects a box.\n"
               "Delete or Backspace rejects the selection; B toggles its block; right-click for the block menu.\n"
-              "SYNCH on: edits apply to every contract-mapped function. ⌘ + wheel zooms a plot.\n"
+              "Group ratios always share selection. SYNCH controls free functions only. ⌘ + wheel zooms a plot.\n"
               "Amber square: a cycle the previewed rule would reject (Rules tab).")
 
 
@@ -419,6 +419,18 @@ class MainWindow(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout(frame)
         layout.setContentsMargins(14, 12, 14, 12)
         layout.addWidget(self._build_recovery_bar())
+        self.legacy_bar = QtWidgets.QFrame()
+        legacy_layout = QtWidgets.QVBoxLayout(self.legacy_bar)
+        legacy_layout.setContentsMargins(6, 4, 6, 4)
+        self.legacy_notice = QtWidgets.QLabel()
+        self.legacy_notice.setWordWrap(True)
+        self.legacy_notice.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+        legacy_layout.addWidget(self.legacy_notice)
+        self.legacy_union_button = QtWidgets.QPushButton("Use the union of rejections")
+        self.legacy_union_button.clicked.connect(self.use_union_of_rejections)
+        legacy_layout.addWidget(self.legacy_union_button)
+        self.legacy_bar.hide()
+        layout.addWidget(self.legacy_bar)
         self.centre_stack = QtWidgets.QStackedWidget()
         layout.addWidget(self.centre_stack)
         self.import_page = self._build_import_page()
@@ -540,6 +552,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.synch_button = _tool(self.synch_action, "SYNCH")
         controls.addWidget(self.log_button)
         controls.addWidget(self.synch_button)
+        self.why_link = QtWidgets.QLabel('<a href="shared">Why?</a>')
+        self.why_link.linkActivated.connect(lambda _url: self.show_shared_selection_help())
+        controls.addWidget(self.why_link)
         self.fit_all_button = _tool(self.fit_all_action, "Fit all points")
         controls.addWidget(self.fit_all_button)
         controls.addWidget(_divider())
@@ -614,6 +629,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rules_panel.discardRequested.connect(self.discard_preview)
         self.rules_panel.parametersEdited.connect(self.discard_preview)
         self.rules_panel.synchToggled.connect(self.set_synch)
+        self.rules_panel.whyRequested.connect(self.show_shared_selection_help)
         self.rules_panel.setObjectName("RulesPage")
         self.inspector_tabs.addTab(fitted_page(self.rules_panel), "Rules")
         self.corrections_panel = CorrectionsPanel()
@@ -627,6 +643,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inspector_tabs.addTab(fitted_page(self.corrections_panel), "Corrections")
         self.export_panel = ExportPanel()
         self.export_panel.fieldEdited.connect(self.set_fraction_field)
+        self.export_panel.compareLegacyRequested.connect(self.compare_legacy)
         self.export_panel.saveContractRequested.connect(lambda: self.save_contract_csv())
         self.export_panel.copyClipboardRequested.connect(lambda: self.copy_clipboard())
         self.export_panel.saveCyclesRequested.connect(lambda: self.save_cycles_csv())
@@ -853,10 +870,7 @@ class MainWindow(QtWidgets.QMainWindow):
         analysis = self.analysis
         if proposal is None or analysis is None:
             return {}
-        if proposal.synced:
-            union = frozenset(proposal.cycles)
-            return {key: union for key in analysis.keys} if union else {}
-        return {key: frozenset(rows) for key, rows in proposal.rejected.items() if rows}
+        return {key: frozenset(rows) for key, rows in analysis.rule_targets(proposal).items() if rows}
 
     def _rebuild_view(self) -> None:
         """New run, mode or function set: rebuild the plots and the table."""
@@ -884,6 +898,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self._refresh_export()
         self._sync_controls()
         self._update_titles()
+        self._refresh_legacy_notice()
+
+    def _refresh_legacy_notice(self) -> None:
+        analysis = self.analysis
+        pending = analysis is not None and (analysis.legacy_pending or not analysis.group_consistent())
+        self.legacy_bar.setVisible(pending)
+        if pending:
+            lines = ["per-ratio selection (legacy) — contract export blocked. Differing rejections by ratio:"]
+            for key, cycles in analysis.group_differences().items():
+                lines.append(f"{key}: {', '.join(map(str, cycles)) or 'none'}")
+            self.legacy_notice.setText("\n".join(lines))
+
+    def use_union_of_rejections(self) -> dict | None:
+        if self.analysis is None:
+            return None
+        op = self.analysis.use_union_of_rejections()
+        self._after_edit()
+        return op
 
     def _refresh_corrections(self) -> None:
         analysis = self.analysis
@@ -942,7 +974,8 @@ class MainWindow(QtWidgets.QMainWindow):
         fraction, element = self.current
         self.setWindowTitle(f"{base} — {fraction.fraction_id} {element}")
         self.setWindowModified(modified)
-        self.run_title.setText(f"{fraction.fraction_id} · {element} · {analysis.run.raw.name}")
+        self.run_title.setText(f"{fraction.fraction_id} · {element} · {analysis.run.raw.name}"
+                               + (" · per-ratio selection (legacy)" if analysis.legacy_pending else ""))
         run_text = f"{analysis.run.raw.name} ({element})"
         self.run_label.setText(self.run_label.fontMetrics().elidedText(run_text, QtCore.Qt.TextElideMode.ElideMiddle, 300))
         self.run_label.setToolTip(analysis.run.raw.path)
@@ -972,7 +1005,13 @@ class MainWindow(QtWidgets.QMainWindow):
             action.setEnabled(has_run)
         self.function_button.setEnabled(has_run)
         self.synch_action.blockSignals(True)
-        self.synch_action.setChecked(analysis.settings.synced if has_run else True)
+        locked = has_run and (self.focus_key in analysis.group_keys or
+                              (self.plot_mode == "table" and bool(analysis.group_keys)))
+        self.synch_action.setChecked(True if locked else analysis.settings.synced if has_run else True)
+        self.synch_action.setEnabled(has_run and not locked)
+        self.synch_action.setToolTip(SHARED_SELECTION_TOOLTIP if locked else "SYNCH applies to free functions only")
+        self.synch_button.setText("SYNCH · locked" if locked else "SYNCH")
+        self.why_link.setVisible(bool(locked))
         self.synch_action.blockSignals(False)
         self.log_action.blockSignals(True)
         self.log_action.setChecked(self.log_ratio)
@@ -1054,18 +1093,18 @@ class MainWindow(QtWidgets.QMainWindow):
     # --------------------------------------------------------- rejection
     def _set_focus_key(self, key: str) -> None:
         self.focus_key = key
+        self._sync_controls()
 
     def edit_keys(self, key: str | None) -> list[str] | None:
-        """Functions an edit addresses: SYNCH on → every mapped function (and the one clicked); off → the one clicked."""
+        """Group edits always expand; SYNCH controls only free functions."""
         analysis = self.analysis
         assert analysis is not None
         key = key or self.focus_key
+        if key in analysis.group_keys:
+            return analysis.group_keys
         if not analysis.settings.synced:
-            return [key] if key else None
-        mapping = self.mapping
-        base = list(mapping.function_keys) if mapping is not None and mapping.function_keys else self.plotted_keys("ratios")
-        keys = list(dict.fromkeys([*base, *([key] if key else [])]))
-        return keys or None
+            return [key] if key else []
+        return [k for k in analysis.keys if k not in analysis.group_keys]
 
     def request_toggle(self, key: str, rows: list[int]) -> dict | None:
         """A click or box on a plot: exclude the cycles when any is included in that function, else include them."""
@@ -1078,7 +1117,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.last_row = int(rows[-1])
         self._after_edit()
         count = len(op["cycles"])
-        scope = "every contract-mapped function" if analysis.settings.synced else key
+        scope = "all group ratios" if key in analysis.group_keys else "free functions" if analysis.settings.synced else key
         self.statusBar().showMessage(f"{'Included' if include else 'Excluded'} {count} cycle{'s' if count != 1 else ''} in {scope}", 5000)
         return op
 
@@ -1156,25 +1195,53 @@ class MainWindow(QtWidgets.QMainWindow):
         for block in sorted({int(analysis.run.block[row]) for row in rows}):
             self.toggle_block(block)
 
+    def show_shared_selection_help(self) -> None:
+        path = Path(__file__).resolve().parents[2] / "docs" / "shared-cycle-selection.md"
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Why one cycle selection?")
+        dialog.resize(820, 520)
+        layout = QtWidgets.QVBoxLayout(dialog)
+        browser = QtWidgets.QTextBrowser()
+        browser.setMarkdown(path.read_text(encoding="utf-8") if path.is_file() else
+                            "All contract-mapped ratios of a run share one accepted-cycle mask.\n\n" + SHARED_SELECTION_TOOLTIP)
+        layout.addWidget(browser)
+        dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+        dialog.show()
+
     def set_synch(self, checked: bool) -> None:
         analysis = self.analysis
         if analysis is None:
             return
+        if self.focus_key in analysis.group_keys or (self.plot_mode == "table" and analysis.group_keys):
+            self._sync_controls()
+            return
         if analysis.settings.synced != bool(checked):
             analysis.set_setting("synced", bool(checked))
-            self.statusBar().showMessage("SYNCH on: rejections apply to every contract-mapped function" if checked
-                                         else "SYNCH off: rejections apply only to the function clicked", 5000)
+            self.statusBar().showMessage("SYNCH on: rejections apply to free functions" if checked
+                                         else "SYNCH off: rejections apply only to the free function clicked", 5000)
         self._after_edit()
 
     def undo(self) -> None:
         analysis = self.analysis
-        if analysis is not None and analysis.undo() is not None:
-            self._after_edit()
+        if analysis is not None:
+            old_mapping = self.mapping
+            op = analysis.undo()
+            if op is not None:
+                if op["op"] == "set_mapping":
+                    self._replot_mapping(analysis, old_mapping)
+                else:
+                    self._after_edit()
 
     def redo(self) -> None:
         analysis = self.analysis
-        if analysis is not None and analysis.redo() is not None:
-            self._after_edit()
+        if analysis is not None:
+            old_mapping = self.mapping
+            op = analysis.redo()
+            if op is not None:
+                if op["op"] == "set_mapping":
+                    self._replot_mapping(analysis, old_mapping)
+                else:
+                    self._after_edit()
 
     def reset_analysis(self, *, confirm: bool = True) -> bool:
         analysis = self.analysis
@@ -1207,8 +1274,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 analysis.set_setting(name, params[name])
         mapping = self.mapping
         keys: list[str] | None = None
-        if params["function_set"] == "plotted" or mapping is None or not mapping.function_keys:
-            keys = [key for key in self.plotted_keys("ratios")] or None
+        if params["function_set"] == "one":
+            keys = [params["ratio_key"]] if params["ratio_key"] else None
+        elif params["function_set"] == "plotted" or mapping is None or not mapping.function_keys:
+            keys = list(self.plotted_keys()) or None
         propose = analysis.propose_chauvenet if rule == "chauvenet" else analysis.propose_k_sigma
         try:
             proposal = propose(keys, mapping=mapping if mapping is not None and mapping.function_keys else None, scope=params["scope"])
@@ -1286,7 +1355,7 @@ class MainWindow(QtWidgets.QMainWindow):
         old = self.mapping
         try:
             mapping = self.workspace.set_mapping(analysis, choice)
-        except MappingError as error:
+        except (MappingError, ValueError) as error:
             self.statusBar().showMessage(f"Mapping not changed: {error}", 8000)
             return None
         self._replot_mapping(analysis, old)
@@ -1351,6 +1420,14 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         setattr(self.current[0], attribute, value)
         self._after_edit(keep_preview=True)
+
+    def compare_legacy(self):
+        from rawtims_gui.legacy_comparison import LegacyComparisonDialog
+        if self.analysis is None or self.mapping is None:
+            return None
+        dialog = LegacyComparisonDialog(self.analysis, self.mapping, self)
+        dialog.show()
+        return dialog
 
     def _export_folder(self) -> str:
         folder = self.settings.value(EXPORT_DIR_KEY, "", type=str) or ""

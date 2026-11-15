@@ -125,6 +125,7 @@ class ExportPanel(QtWidgets.QWidget):
     copyClipboardRequested = QtCore.Signal()
     saveCyclesRequested = QtCore.Signal()
     saveSessionFirstRequested = QtCore.Signal()
+    compareLegacyRequested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -190,6 +191,12 @@ class ExportPanel(QtWidgets.QWidget):
         self.full_precision = QtWidgets.QCheckBox("Full precision")
         self.full_precision.setObjectName("ClipboardFullPrecision")
         self.full_precision.setToolTip("Off: legacy clipboard format (C# E7, eight significant digits). On: every digit. Contract CSV always keeps full precision.")
+        self.compare_legacy_button = QtWidgets.QPushButton("Compare with legacy Tripoli (per-ratio)")
+        self.compare_legacy_button.setObjectName("CompareLegacy")
+        self.compare_legacy_button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
+        self.compare_legacy_button.setToolTip("Compare with legacy Tripoli (per-ratio) — read-only, comparison only")
+        self.compare_legacy_button.clicked.connect(self.compareLegacyRequested)
+        layout.addWidget(self.compare_legacy_button)
         title = QtWidgets.QLabel("Fraction")
         title.setObjectName("SectionTitle")
         layout.addWidget(title)
@@ -415,6 +422,7 @@ class ExportPanel(QtWidgets.QWidget):
         self.save_button.setText(f"Save contract CSV… ({len(ready)} fraction{'s' if len(ready) != 1 else ''})" if statuses else "Save contract CSV…")
         self.copy_button.setEnabled(row is not None)
         self.cycles_button.setEnabled(element is not None)
+        self.compare_legacy_button.setEnabled(element is not None)
 
     def _fill_fractions(self, statuses: list[tuple[Fraction, str, list[str]]]) -> None:
         from rawtims_gui.studio.theme import active_theme

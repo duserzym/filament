@@ -139,6 +139,13 @@ class RuleProposal:
     synced: bool
     rejected: dict[str, tuple[int, ...]] = field(default_factory=dict)
 
+    targets: dict[str, tuple[int, ...]] | None = None
+    group_keys: tuple[str, ...] = ()
+    evaluation: str = "per_function"
+    free_synced: bool | None = None
+    flagged: dict[str, tuple[int, ...]] = field(default_factory=dict)
+    before_after: dict[str, dict[str, Any]] = field(default_factory=dict)
+
     @property
     def cycles(self) -> tuple[int, ...]:
         """The union of rejected rows across the examined functions, ascending."""
@@ -161,7 +168,7 @@ class RuleProposal:
         return f"{head} ({self.scope}, {mode}): {len(self.cycles)} cycles"
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "rule": self.rule,
             "params": dict(self.params),
             "scope": self.scope,
@@ -169,6 +176,12 @@ class RuleProposal:
             "synced": self.synced,
             "rejected": {key: list(rows) for key, rows in self.rejected.items()},
         }
+        if self.targets is not None:
+            result.update(targets={k: list(v) for k, v in self.targets.items()},
+                          group_keys=list(self.group_keys), evaluation=self.evaluation, free_synced=self.free_synced,
+                          flagged={k: list(v) for k, v in self.flagged.items()},
+                          before_after=self.before_after)
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> RuleProposal:
@@ -179,6 +192,12 @@ class RuleProposal:
             keys=tuple(data["keys"]),
             synced=bool(data["synced"]),
             rejected={key: tuple(int(i) for i in rows) for key, rows in data["rejected"].items()},
+            targets={k: tuple(v) for k, v in data["targets"].items()} if "targets" in data else None,
+            group_keys=tuple(data.get("group_keys", ())),
+            evaluation=data.get("evaluation", "per_function"),
+            free_synced=data.get("free_synced"),
+            flagged={k: tuple(v) for k, v in data.get("flagged", {}).items()},
+            before_after=dict(data.get("before_after", {})),
         )
 
 

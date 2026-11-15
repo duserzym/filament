@@ -27,17 +27,21 @@ def test_default_matches_legacy_arithmetic_stats_on_accepted_cycles():
     assert stats.se_pct == pytest.approx(100 * stats.se / stats.mean, rel=1e-14)
     proposal = analysis.propose_chauvenet().to_dict()
     analysis.set_setting("stat_mode", "geometric")
-    assert analysis.propose_chauvenet().to_dict() == proposal  # rule always uses raw values
+    assert analysis.propose_chauvenet().to_dict()["rejected"] == proposal["rejected"]  # raw rule values; preview stats follow the chosen statistic
 
 
 @pytest.mark.parametrize("path", ALL_FILES, ids=lambda p: p.stem)
 def test_opening_rejects_nothing(path):
     analysis = Analysis(read(path))
     assert analysis.included.all() and analysis.block_included.all()
-    assert np.array_equal(analysis.effective, ~analysis.invalid)
+    expected = ~analysis.invalid.copy()
+    columns = [analysis.index(k) for k in analysis.group_keys]
+    if columns:
+        expected[:, columns] &= expected[:, columns].all(axis=1)[:, None]
+    assert np.array_equal(analysis.effective, expected)
     assert analysis.history == [] and not analysis.can_undo and not analysis.can_redo
     for key in analysis.keys:
-        assert analysis.stats(key).n_used == int((~analysis.invalid[:, analysis.index(key)]).sum())
+        assert analysis.stats(key).n_used == int(expected[:, analysis.index(key)].sum())
 
 
 def _snapshot(analysis: Analysis):
@@ -61,7 +65,7 @@ def test_preview_does_not_change_the_mask_apply_and_undo_restore_it():
     assert op["description"].startswith("Chauvenet P=0.5 n>=20 (run, synced)")
     excluded_rows = np.flatnonzero(~analysis.included.all(axis=1)).tolist()
     assert excluded_rows == list(proposal.cycles)
-    assert (~analysis.included[proposal.cycles, :]).all()  # synced: every function, oxide columns included
+    assert (~analysis.included[np.ix_(proposal.cycles, [analysis.index(k) for k in analysis.group_keys])]).all()
     analysis.undo()
     assert _same(before, _snapshot(analysis))
     analysis.redo()
@@ -73,7 +77,7 @@ def test_per_function_rule_touches_only_its_keys():
     proposal = analysis.propose_chauvenet(["270/267", "272/270"], synced=False)
     analysis.apply_rule(proposal)
     for key in analysis.keys:
-        rejected = set(proposal.rejected.get(key, ()))
+        rejected = set(analysis.rule_targets(proposal).get(key, ()))
         assert set(np.flatnonzero(~analysis.included[:, analysis.index(key)]).tolist()) == rejected, key
 
 
@@ -139,7 +143,7 @@ def test_settings_validation_and_correlation():
         analysis.set_setting("colour", "red")
     with pytest.raises(ValueError):
         AnalysisSettings(stat_mode="median")
-    assert analysis.propose_chauvenet().synced is False
+    assert analysis.propose_chauvenet().synced is True
     assert analysis.history == []
     # 238/235oc is built from 270/267 and 265/267: strongly correlated with 270/267, over identical cycle sets.
     analysis.toggle_cycles([0, 1, 2], ["270/267"], include=False)

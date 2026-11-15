@@ -38,7 +38,7 @@ import os
 from pathlib import Path
 
 from rawtims.analysis import Analysis
-from rawtims.fractions import Fraction, FractionError
+from rawtims.fractions import Fraction, FractionError, require_shared_selection
 from rawtims.mapping import MappingError, element_ratios, ratio_stats
 
 CLIPBOARD_SEPARATOR = "  "
@@ -50,6 +50,7 @@ def clipboard_entries(fraction: Fraction, element: str) -> list[tuple[str, float
     analysis = fraction.analysis(element)
     if analysis is None:
         return []
+    require_shared_selection(analysis)
     mapping = fraction.mapping(element)
     assert mapping is not None
     if not mapping.complete:
@@ -94,6 +95,7 @@ def clipboard_text(fraction: Fraction, element: str | None = None, *, separator:
 
 def cycles_csv_text(analysis: Analysis, keys: Sequence[str] | None = None) -> str:
     """The cycles CSV of one analysis (see the module docstring); ``keys`` default to every function."""
+    require_shared_selection(analysis)
     keys = list(analysis.keys if keys is None else keys)
     columns = [analysis.index(key) for key in keys]
     effective = analysis.effective

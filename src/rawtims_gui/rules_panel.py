@@ -28,7 +28,9 @@ from rawtims.rules import RuleProposal
 
 RULES = {"chauvenet": "Chauvenet", "k_sigma": "k-σ, iterative"}
 SCOPES = {"run": "Whole run", "block": "Per block"}
-FUNCTION_SETS = {"mapped": "Contract ratios", "plotted": "Plotted ratios"}
+FUNCTION_SETS = {"mapped": "Group union", "one": "One chosen ratio", "plotted": "Plotted functions"}
+SHARED_SELECTION_TOOLTIP = ("Correlated ratios share one cycle selection: their errors are correlated through "
+                            "205Pb (Pb) or the 267 beam (U).")
 TRIPOLI_NOTE = ("Tripoli's Chauvenet: raw cycle values (not ln r), each function on its own upstream (no SYNCH), "
                 "one pass, only with n ≥ 20 included values, P = 0.5.")
 SETTING_LABELS = {
@@ -74,6 +76,8 @@ def describe_op(analysis: Analysis, op: dict[str, Any]) -> str:
     if kind == "apply_rule":
         changed = {int(row) for row, _ in op.get("changed", [])}
         return f"Rule: {op.get('description', op.get('rule'))}, {len(changed)} cycle{'s' if len(changed) != 1 else ''} newly excluded"
+    if kind == "set_mapping":
+        return "Mapping changed; joining functions adopted the shared selection"
     if kind == "set_setting":
         name = op.get("name", "")
         return f"Setting: {SETTING_LABELS.get(name, name)} {_value_text(op.get('old'))} → {_value_text(op.get('new'))}"
@@ -115,6 +119,7 @@ class RulesPanel(QtWidgets.QWidget):
     discardRequested = QtCore.Signal()
     parametersEdited = QtCore.Signal()
     synchToggled = QtCore.Signal(bool)
+    whyRequested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -173,12 +178,25 @@ class RulesPanel(QtWidgets.QWidget):
         _narrow(self.function_combo)
         for key, label in FUNCTION_SETS.items():
             self.function_combo.addItem(label, key)
-        self.function_combo.setToolTip("The functions the rule examines: those mapped to the contract, or the ratios plotted now")
-        form.addRow("Functions", self.function_combo)
+        self.function_combo.setToolTip("Group union evaluates every group ratio; one chosen ratio evaluates only that ratio. Both reject group-wide. Plotted functions also allows free functions.")
+        form.addRow("Evaluate", self.function_combo)
+        self.ratio_combo = QtWidgets.QComboBox()
+        _narrow(self.ratio_combo)
+        form.addRow("Chosen ratio", self.ratio_combo)
+        self.ratio_combo.currentIndexChanged.connect(self._edited)
         self.synch_box = QtWidgets.QCheckBox("SYNCH (union in all)")
         self.synch_box.setObjectName("RuleSynch")
         self.synch_box.setToolTip("On: a cycle any examined function flags is excluded in every function. Off: each function loses only its own cycles.")
-        form.addRow("", self.synch_box)
+        lock_row = QtWidgets.QWidget()
+        lock_layout = QtWidgets.QHBoxLayout(lock_row)
+        lock_layout.setContentsMargins(0, 0, 0, 0)
+        self.synch_box.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
+        self.synch_box.setMinimumWidth(80)
+        lock_layout.addWidget(self.synch_box, 1)
+        self.why_link = QtWidgets.QLabel('<a href="shared">Why?</a>')
+        self.why_link.linkActivated.connect(lambda _url: self.whyRequested.emit())
+        lock_layout.addWidget(self.why_link)
+        form.addRow("", lock_row)
         outer.addLayout(form)
         self.note = QtWidgets.QLabel(TRIPOLI_NOTE)
         self.note.setObjectName("SecondaryText")
@@ -213,6 +231,25 @@ class RulesPanel(QtWidgets.QWidget):
         self.result_list.setStyleSheet("QListWidget { font-size: 12px; }")
         outer.addWidget(self.result_list, 2)
 
+        self.preview_caption = QtWidgets.QLabel("Before → after (dry run). Flags: each ratio alone.")
+        self.preview_caption.setWordWrap(True)
+        outer.addWidget(self.preview_caption)
+        self.preview_table = QtWidgets.QTableWidget(0, 4)
+        self.preview_table.setObjectName("RuleBeforeAfter")
+        self.preview_table.setHorizontalHeaderLabels(["Ratio", "Flags", "n →", "% SE →"])
+        self.preview_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.preview_table.verticalHeader().hide()
+        self.preview_table.verticalHeader().setDefaultSectionSize(24)
+        self.preview_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.preview_table.setMinimumWidth(0)
+        self.preview_table.setStyleSheet("QTableWidget { font-size: 11px; padding: 0; } QTableWidget::item { padding: 0; } QHeaderView::section { font-size: 11px; padding: 2px; }")
+        header = self.preview_table.horizontalHeader()
+        header.setMinimumSectionSize(28)
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        for col, width in ((1, 30), (2, 54), (3, 100)):
+            header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.Fixed)
+            self.preview_table.setColumnWidth(col, width)
+        outer.addWidget(self.preview_table)
         history_title = QtWidgets.QLabel("History")
         history_title.setObjectName("SectionTitle")
         outer.addWidget(history_title)
@@ -233,7 +270,7 @@ class RulesPanel(QtWidgets.QWidget):
         for spin in (self.probability, self.min_n, self.k, self.max_iterations):
             spin.valueChanged.connect(self._edited)
         self.scope_combo.currentIndexChanged.connect(self._edited)
-        self.function_combo.currentIndexChanged.connect(self._edited)
+        self.function_combo.currentIndexChanged.connect(self._functions_changed)
         self.synch_box.toggled.connect(self.synchToggled)
         self.preview_button.clicked.connect(self.previewRequested)
         self.apply_button.clicked.connect(self.applyRequested)
@@ -251,6 +288,7 @@ class RulesPanel(QtWidgets.QWidget):
             "k_sigma_max_iterations": int(self.max_iterations.value()),
             "scope": self.scope_combo.currentData(),
             "function_set": self.function_combo.currentData(),
+            "ratio_key": self.ratio_combo.currentData(),
         }
 
     def set_rule(self, rule: str) -> None:
@@ -259,6 +297,10 @@ class RulesPanel(QtWidgets.QWidget):
     def _rule_changed(self, *_args) -> None:
         self.param_stack.setCurrentIndex(0 if self.rule_combo.currentData() == "chauvenet" else 1)
         self.note.setVisible(self.rule_combo.currentData() == "chauvenet")
+        self._edited()
+
+    def _functions_changed(self, *_args) -> None:
+        self.ratio_combo.setEnabled(self.function_combo.currentData() == "one")
         self._edited()
 
     def _edited(self, *_args) -> None:
@@ -278,26 +320,64 @@ class RulesPanel(QtWidgets.QWidget):
                 self.min_n.setValue(settings.chauvenet_min_n)
                 self.k.setValue(settings.k_sigma)
                 self.max_iterations.setValue(settings.k_sigma_max_iterations)
-                self.synch_box.setChecked(settings.synced)
+                group = bool(analysis.group_keys) and self.function_combo.currentData() != "plotted"
+                self.synch_box.blockSignals(True)
+                self.synch_box.setChecked(True if group else settings.synced)
+                self.synch_box.blockSignals(False)
+                self.synch_box.setEnabled(not group)
+                self.synch_box.setText("SYNCH · locked" if group else "SYNCH (free functions)")
+                self.synch_box.setToolTip(SHARED_SELECTION_TOOLTIP if group else "Apply the union to free functions only")
+                chosen = self.ratio_combo.currentData()
+                wanted = analysis.group_keys
+                if [self.ratio_combo.itemData(i) for i in range(self.ratio_combo.count())] != wanted:
+                    self.ratio_combo.clear()
+                    for key in wanted:
+                        self.ratio_combo.addItem(key, key)
+                    if chosen in wanted:
+                        self.ratio_combo.setCurrentIndex(wanted.index(chosen))
+                self.ratio_combo.setEnabled(self.function_combo.currentData() == "one")
+                self.note.setText("Flagged cycles will be rejected in every group ratio. Preview first, then Apply."
+                                  if group else TRIPOLI_NOTE)
             self.param_stack.setCurrentIndex(0 if self.rule_combo.currentData() == "chauvenet" else 1)
         finally:
             self._loading = False
         self.apply_button.setEnabled(proposal is not None and not proposal.is_empty)
         self.discard_button.setEnabled(proposal is not None)
         self.result_list.clear()
+        has_table = proposal is not None and bool(proposal.before_after)
+        self.preview_caption.setVisible(has_table)
+        self.preview_table.setVisible(has_table)
+        self.result_list.setVisible(not has_table)
+        self.preview_table.setRowCount(0)
+        if has_table:
+            from rawtims_gui.plots import format_number
+            self.preview_table.setRowCount(len(proposal.before_after))
+            self.preview_table.setFixedHeight(28 + 24 * len(proposal.before_after))
+            for row, (key, change) in enumerate(proposal.before_after.items()):
+                b, a = change["before"], change["after"]
+                cells = [key, str(len(proposal.flagged.get(key, ()))), f'{b["n"]}→{a["n"]}',
+                         f'{format_number(b["se_pct"], 3)}→{format_number(a["se_pct"], 3)}']
+                for col, text in enumerate(cells):
+                    item = QtWidgets.QTableWidgetItem(text)
+                    item.setToolTip(f'{key}: {len(proposal.flagged.get(key, ()))} flags; cycles '
+                                    f'{_cycles_text(analysis, proposal.flagged.get(key, ()), 100)}; '
+                                    f'n {b["n"]} → {a["n"]}; % SE {b["se_pct"]} → {a["se_pct"]}'
+                                    + (" (diagnostic only; not chosen)" if key not in proposal.keys else ""))
+                    self.preview_table.setItem(row, col, item)
         if analysis is None:
             self.result_label.setText("Open a run to preview a rule.")
         elif proposal is None:
             self.result_label.setText("No preview. Preview shows what the rule would reject; nothing changes until Apply.")
         else:
             cycles = proposal.cycles
-            mode = "in every function (SYNCH)" if proposal.synced else "each in its own function"
+            mode = "in all group ratios" if proposal.group_keys else "in free functions (SYNCH)" if proposal.synced else "each in its own function"
             if not cycles:
                 self.result_label.setText(f"{proposal.describe()}. Nothing would be rejected.")
             else:
                 self.result_label.setText(
                     f"Would reject {len(cycles)} cycle{'s' if len(cycles) != 1 else ''} {mode}: "
-                    f"{_cycles_text(analysis, cycles, 10)}. Highlighted on the plots and in the table.")
+                    f"{_cycles_text(analysis, cycles, 10)}. Union: {len(cycles)}. "
+                    + ("One ratio chosen; other counts are diagnostic." if proposal.evaluation == "one" else "Highlighted in every group plot."))
             for key in proposal.keys:
                 rows = proposal.rejected.get(key, ())
                 item = QtWidgets.QListWidgetItem(f"{key}: {len(rows)}" + (f"  (cycles {_cycles_text(analysis, rows, 5)})" if rows else ""))

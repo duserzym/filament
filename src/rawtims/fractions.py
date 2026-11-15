@@ -40,6 +40,7 @@ from rawtims.analysis import Analysis
 from rawtims.branding import APP_NAME, RAW_APP_LABEL
 from rawtims.contract import (
     CONTRACT_ID,
+    COLUMNS,
     FractionRow,
     mean_column,
     rho_column,
@@ -114,6 +115,13 @@ class Fraction:
             analysis = getattr(self, slot)
             if analysis is not None and analysis.run.element not in (None, element):
                 raise FractionError(f"the {element} slot holds a {analysis.run.element} run ({analysis.run.raw.name})")
+        for element in ("Pb", "U"):
+            analysis = self.analysis(element)
+            if analysis is not None:
+                stored = self.pb_mapping if element == "Pb" else self.u_mapping
+                mapping = stored or propose_mapping(analysis, element, collector=self.collector if element == "Pb" else None)
+                if not analysis.legacy_pending:
+                    analysis.set_mapping(mapping)
         if self.timezone is not None:
             try:
                 ZoneInfo(self.timezone)
@@ -240,6 +248,12 @@ def _require(condition: bool, message: str) -> None:
         raise FractionError(message)
 
 
+def require_shared_selection(analysis: Analysis) -> None:
+    consistent = analysis.group_consistent()  # Check at every ordinary export boundary.
+    _require(consistent and not analysis.legacy_pending,
+             f"{analysis.run.raw.name}: per-ratio selection (legacy); use the union of rejections before exporting")
+
+
 def fraction_row(fraction: Fraction, exported_at: datetime, session_info: SessionInfo | None = None) -> FractionRow:
     """The contract row of one fraction. Raises :class:`FractionError` when a block cannot be exported.
 
@@ -274,6 +288,7 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         run = analysis.run
         mapping = fraction.mapping(element)
         assert mapping is not None
+        require_shared_selection(analysis)
         _require(
             mapping.complete,
             f"fraction {fraction.fraction_id!r}: the {element} run {run.raw.name} lacks contract ratios: {mapping.describe_missing()}",
@@ -311,6 +326,10 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         values[f"{element} Cycles Used"] = int(used.sum())
         values[f"{element} Cycles Total"] = run.n_cycles
         values[f"{element} Mean Statistic"] = analysis.settings.stat_mode
+        # TODO clarification 8: enable only after the agreed contract adds these columns.
+        selection_column = f"{element} Cycle Selection"
+        if any(column.name == selection_column for column in COLUMNS):
+            values[selection_column] = "shared"
         start, note = _iso_start(analysis, fraction.timezone)
         values[f"{element} Run Start"] = start
         if note:

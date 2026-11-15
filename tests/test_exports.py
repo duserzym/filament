@@ -128,7 +128,7 @@ def test_cycles_csv_layout_values_and_flags(tmp_path):
     assert np.array_equal(values, analysis.values[:, [analysis.index(k) for k in keys]])
     flags = np.array([[r[4] == "1", r[6] == "1", r[8] == "1"] for r in body])
     assert np.array_equal(flags, analysis.effective[:, [analysis.index(k) for k in keys]])
-    assert body[0][4] == "0" and body[0][6] == "1"
+    assert body[0][4] == "0" and body[0][6] == "0"
     assert all(r[4] == r[6] == "0" for r in body if r[0] == "3")
     assert [int(r[1]) for r in body] == analysis.run.cycle.tolist() and [int(r[0]) for r in body] == analysis.run.block.tolist()
     every = cycles_csv_text(analysis)

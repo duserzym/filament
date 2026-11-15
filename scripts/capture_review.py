@@ -99,6 +99,16 @@ def main() -> None:
             window.preview_rule()
             window.statusBar().clearMessage()
             capture("02_rules")
+            capture("06_rules_union_preview")
+            if theme == "light" and width == 1280:
+                proposal = window.current_proposal()
+                report["b998_union_preview"] = {
+                    "flagged": {k: len(v) for k, v in proposal.flagged.items()},
+                    "flagged_cycles": {k: run.cycle[list(v)].astype(int).tolist() for k, v in proposal.flagged.items()},
+                    "union_size": len(proposal.cycles),
+                    "union_cycles": run.cycle[list(proposal.cycles)].astype(int).tolist(),
+                    "before_after": proposal.before_after,
+                }
             window.set_plot_mode("table")
             window.inspector_tabs.setCurrentIndex(gui.INSPECTOR_TABS.index("Stats"))
             window.preview_rule()

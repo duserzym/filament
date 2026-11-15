@@ -86,6 +86,7 @@ class Workspace:
         # Runs of a loaded session that could not be opened (kept for the next save).
         self.missing: list[MissingRun] = []
         self.stat_mode = "arithmetic"
+        self._restoring = False
 
     def set_stat_mode(self, mode: str) -> None:
         """Set the project default and update every run through its undoable history.
@@ -154,16 +155,29 @@ class Workspace:
         """The function-to-contract mapping of a run (None when the element is unknown); see the module docstring."""
         key = self._cache_key(analysis)
         cached = self._mappings.get(id(analysis))
+        if cached is not None and cached[1] is not analysis.mapping:
+            # Mapping undo/redo takes precedence even if a setting changed before
+            # the next workspace query.
+            resolved = _ratios_of(analysis.mapping)
+            if resolved is not None:
+                self._edits[id(analysis)] = resolved
+            key = self._cache_key(analysis)
+            self._mappings[id(analysis)] = cached = (key, analysis.mapping, "edited")
         if cached is None or cached[0] != key:
             try:
                 mapping, source = self._resolve(analysis)
             except MappingError:
                 mapping, source = None, "proposed"
-            self._mappings[id(analysis)] = (key, mapping, source)
-            fraction = self.fraction_of(analysis)
-            if fraction is not None and analysis.run.element in ELEMENTS:
-                setattr(fraction, "pb_mapping" if analysis.run.element == "Pb" else "u_mapping", mapping)
-        return self._mappings[id(analysis)][1]
+            if self._restoring:
+                data = _ratios_of(mapping)
+                analysis.restore_mapping(data.to_dict() if data is not None else None)
+            else:
+                analysis.set_mapping(mapping)
+            self._mappings[id(analysis)] = (key, analysis.mapping, source)
+        fraction = self.fraction_of(analysis)
+        if fraction is not None and analysis.run.element in ELEMENTS:
+            setattr(fraction, "pb_mapping" if analysis.run.element == "Pb" else "u_mapping", analysis.mapping)
+        return analysis.mapping
 
     def mapping_source(self, analysis: Analysis) -> str:
         """``edited``, ``remembered`` or ``proposed``: where :meth:`mapping` took the run's mapping from."""
@@ -177,12 +191,15 @@ class Workspace:
             raise MappingError(f"cannot map a run whose element is {element!r}")
         fraction = self.fraction_of(analysis)
         chosen = {ratio: dict(entry) for ratio, entry in ratios.items() if entry is not None}
-        self._edits[id(analysis)] = MethodMapping(
+        edit = MethodMapping(
             method=analysis.run.metadata.method or "",
             element=element,
             ratios=chosen,
             collector=fraction.collector if fraction is not None and element == "Pb" else None,
         )
+        if analysis.legacy_pending or not analysis.group_consistent():
+            raise MappingError("per-ratio selection (legacy): use the union of rejections before changing the mapping")
+        self._edits[id(analysis)] = edit
         return self.mapping(analysis)
 
     def clear_mapping_edit(self, analysis: Analysis) -> ElementMapping | None:
@@ -389,6 +406,7 @@ class Workspace:
         saved mapping is restored as an edit and reported, so the export does
         not change silently.
         """
+        self._restoring = True
         self.fractions = list(state.fractions)
         self.stat_mode = state.stat_mode
         self.missing = list(state.missing)
@@ -417,6 +435,9 @@ class Workspace:
                     f"{fraction.fraction_id} {element}: the {source} mapping resolves to other functions here; "
                     "the session's mapping is restored as an edit",
                     fraction.fraction_id, element, run_id))
+        self._restoring = False
+        for analysis in self.analyses():
+            analysis.remember_legacy_masks()
         return problems
 
 

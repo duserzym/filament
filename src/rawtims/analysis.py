@@ -107,6 +107,13 @@ class Analysis:
         self._applied = 0
         self._derive()
         self.included = np.ones(self.values.shape, dtype=bool)
+        # Analysis owns the resolved mapping. The workspace supplies remembered/edited
+        # mappings through set_mapping; standalone analyses start with the proposal.
+        from rawtims.mapping import propose_mapping
+        self.mapping = propose_mapping(self) if run.element in ("Pb", "U") else None
+        self._replaying = False
+        self.legacy_masks: dict[str, np.ndarray] = {}
+        self.legacy_pending = False
 
     # ------------------------------------------------------------------ data
     def _derive(self) -> None:
@@ -189,10 +196,103 @@ class Analysis:
     @property
     def effective(self) -> np.ndarray:
         """Cycle flag AND block flag AND not invalid, ``n_cycles × n_functions``."""
-        return self.included & self.block_included[self._row_block][:, None] & ~self.invalid
+        effective = self.included & self.block_included[self._row_block][:, None] & ~self.invalid
+        columns = [self.index(k) for k in self.group_keys]
+        if columns and self.group_consistent():
+            effective[:, columns] &= ~self.invalid[:, columns].any(axis=1)[:, None]
+        return effective
 
     def included_for(self, key: str) -> np.ndarray:
         return self.effective[:, self.index(key)]
+
+    @property
+    def group_keys(self) -> list[str]:
+        """Contract functions plus the actual U oxide inputs and derived outputs."""
+        keys = list(self.mapping.function_keys) if self.mapping is not None else []
+        if self.run.element == "U":
+            from rawtims.oxide import find_inputs
+            inputs = find_inputs(self.run)
+            if inputs is not None:
+                keys.extend(inputs[1])
+            keys.extend(f.key for f in self.derived)
+        return list(dict.fromkeys(keys))
+
+    def group_consistent(self) -> bool:
+        """Whether the group's user selection flags agree (validity is shared too)."""
+        columns = [self.index(k) for k in self.group_keys]
+        return not columns or bool((self.included[:, columns] == self.included[:, columns[0], None]).all())
+
+    def expanded_keys(self, keys: Sequence[str]) -> list[str]:
+        keys = list(dict.fromkeys(keys))
+        if not self._replaying and set(keys).intersection(self.group_keys):
+            keys = list(dict.fromkeys([*self.group_keys, *keys]))
+        return keys
+
+    def _mapping_data(self) -> dict | None:
+        if self.mapping is None:
+            return None
+        from rawtims.mapping import MethodMapping
+        return MethodMapping(self.mapping.method or "", self.mapping.element,
+                             {r: m.to_dict() for r, m in self.mapping.ratios.items()},
+                             self.mapping.collector).to_dict()
+
+    def restore_mapping(self, data: dict | None) -> None:
+        """Bind saved mapping without mask changes; only for exact session restoration."""
+        from rawtims.mapping import MethodMapping
+        self.mapping = MethodMapping.from_dict(data).apply(self) if data is not None else None
+
+    def set_mapping(self, mapping: Any) -> dict[str, Any] | None:
+        """Change mapping and adopt the previous group mask in one undoable entry.
+
+        Leaving functions retain their flags. A legacy mismatch must first be
+        reconciled explicitly, so a mapping change cannot silently resolve it.
+        """
+        old = self._mapping_data()
+        previous = self.mapping
+        old_keys = self.group_keys
+        self.mapping = mapping
+        new = self._mapping_data()
+        if old == new:
+            return None
+        self.mapping = previous
+        if self.legacy_pending or not self.group_consistent():
+            raise ValueError("per-ratio selection (legacy): use the union of rejections before changing the mapping")
+        mask = self.included[:, self.index(old_keys[0])].copy() if old_keys else np.ones(self.n_cycles, dtype=bool)
+        self.mapping = mapping
+        changes = []
+        for key in self.group_keys:
+            col = self.index(key)
+            for row in np.flatnonzero(self.included[:, col] != mask):
+                changes.append([int(row), key, bool(self.included[row, col]), bool(mask[row])])
+            self.included[:, col] = mask
+        return self._push({"op": "set_mapping", "old": old, "new": new, "mask_changes": changes})
+
+    def remember_legacy_masks(self) -> None:
+        if not self.group_consistent():
+            self.legacy_pending = True
+        if self.legacy_pending and not self.legacy_masks:
+            self.legacy_masks = {k: self.included_for(k).copy() for k in self.group_keys}
+
+    def group_differences(self) -> dict[str, list[int]]:
+        """Instrument cycle numbers rejected here but accepted by another group member."""
+        if self.group_consistent():
+            return {}
+        columns = [self.index(k) for k in self.group_keys]
+        masks = self.included[:, columns]
+        differing = masks.any(axis=1) & ~masks.all(axis=1)
+        return {k: self.run.cycle[differing & ~masks[:, j]].astype(int).tolist()
+                for j, k in enumerate(self.group_keys)}
+
+    def use_union_of_rejections(self) -> dict[str, Any]:
+        self.remember_legacy_masks()
+        columns = [self.index(k) for k in self.group_keys]
+        rows = np.flatnonzero(~self.included[:, columns].all(axis=1)) if columns else []
+        pending_before = self.legacy_pending
+        self.toggle_cycles(rows, self.group_keys, False)
+        self._ops[-1]["legacy_resolution"] = True
+        self._ops[-1]["legacy_pending_before"] = pending_before
+        self.legacy_pending = False
+        return copy.deepcopy(self._ops[-1])
 
     # ----------------------------------------------------------- statistics
     def stats(self, key: str) -> _stats.Stats:
@@ -224,35 +324,53 @@ class Analysis:
 
     # ---------------------------------------------------------------- rules
     def _proposal(self, rule: str, keys: Sequence[str] | None, mapping: Any, scope: str, synced: bool | None, params: dict[str, Any]) -> _rules.RuleProposal:
-        mapped: set[str] = set()
+        mapped = set(self.mapping.function_keys) if self.mapping is not None else set()
         if mapping is not None:
-            mapped = set(mapping.function_keys)
-        if keys is None:
-            keys = list(mapping.function_keys) if mapping is not None else self.ratio_keys
-            if not keys:
-                raise ValueError("the mapping has no functions to examine")
-        keys = list(keys)
-        columns = [self.index(key) for key in keys]
-        effective = self.effective
-        return _rules.propose(
-            rule,
-            self.values[:, columns],
-            effective[:, columns],
-            keys,
-            # Mapped functions are contract ratios even when the file names them in shorthand (IsoLinx ``R64``).
+            mapped.update(mapping.function_keys)
+        requested = list(keys) if keys is not None else (self.group_keys or self.ratio_keys)
+        if not requested:
+            raise ValueError("the mapping has no functions to examine")
+        group = self.group_keys if set(requested).intersection(self.group_keys) else []
+        # Every group ratio gets an independent diagnostic count, even in one-ratio
+        # mode. Only the chosen ratio's flags enter the proposed rejection then.
+        examined = list(dict.fromkeys([*group, *requested]))
+        columns = [self.index(key) for key in examined]
+        proposal = _rules.propose(
+            rule, self.values[:, columns], self.effective[:, columns], examined,
             [self.functions[c].is_ratio or self.functions[c].key in mapped for c in columns],
-            self.run.block,
-            scope=scope,  # type: ignore[arg-type]
-            synced=self._settings.synced if synced is None else synced,
+            self.run.block, scope=scope,
+            synced=True if group else (self._settings.synced if synced is None else synced),
             **params,
         )
+        selected = requested if len(requested) == 1 or not group else examined
+        rejected = {k: proposal.rejected[k] for k in selected}
+        proposal = replace(proposal, keys=tuple(selected), rejected=rejected,
+                           group_keys=tuple(group), evaluation="one" if group and len(selected) == 1 else "union" if group else "per_function",
+                           flagged=dict(proposal.rejected),
+                           free_synced=self._settings.synced if synced is None else synced)
+        targets = self.rule_targets(proposal)
+        # Dry run: manipulate a private mask only, never an Analysis or its history.
+        effective = self.effective
+        after = effective.copy()
+        for key, rows in targets.items():
+            after[list(rows), self.index(key)] = False
+        comparison = {}
+        for key in group:
+            col = self.index(key)
+            before_stat = _stats.describe(self.column(key), effective[:, col], mode=self.settings.stat_mode)
+            after_stat = _stats.describe(self.column(key), after[:, col], mode=self.settings.stat_mode)
+            def summary(stat):
+                return {"n": stat.n_used, "se_pct": stat.se_pct if math.isfinite(stat.se_pct) else None}
+            comparison[key] = {"before": summary(before_stat), "after": summary(after_stat)}
+        return replace(proposal, targets=targets, before_after=comparison)
 
     def propose_chauvenet(self, keys: Sequence[str] | None = None, *, mapping: Any = None, scope: str = "run", synced: bool | None = None, log_ratios: bool = False) -> _rules.RuleProposal:
         """Preview Chauvenet's criterion with the current settings.
 
-        ``keys`` default to the functions mapped to contract ratios when a
-        ``mapping`` (:class:`rawtims.mapping.ElementMapping`) is given, else to
-        every ratio function. Explicit ``keys`` always win.
+        By default evaluate every group function and reject the union in the
+        group. One explicit group key evaluates that ratio only. Every group
+        member still gets a diagnostic count and before/after statistics.
+        Free functions retain their SYNCH behaviour.
         """
         params = {"probability": self._settings.chauvenet_probability, "min_n": self._settings.chauvenet_min_n, "log_ratios": log_ratios}
         return self._proposal("chauvenet", keys, mapping, scope, synced, params)
@@ -289,6 +407,7 @@ class Analysis:
         turned off; otherwise all are turned on. Returns the recorded operation.
         """
         rows = self._rows(cycles)
+        keys = None if keys is None else self.expanded_keys(keys)
         columns = list(range(len(self.functions))) if keys is None else [self.index(key) for key in keys]
         cells = [(row, col) for row in rows for col in columns]
         if include is None:
@@ -308,16 +427,34 @@ class Analysis:
         return self._push({"op": "toggle_block", "block": int(block), "include": new, "changed": old != new})
 
     def apply_rule(self, proposal: _rules.RuleProposal) -> dict[str, Any]:
-        """Apply a rule proposal: synced rejects its union of cycles in every function, otherwise each key's own cycles."""
+        """Apply a preview's group union and the free-function SYNCH targets."""
         for key in proposal.keys:
             self.index(key)
-        if proposal.synced:
-            cells = [(row, col) for row in self._rows(proposal.cycles) for col in range(len(self.functions))]
-        else:
-            cells = [(row, self.index(key)) for key, rows in proposal.rejected.items() for row in self._rows(rows)]
+        targets = self.rule_targets(proposal)
+        cells = [(row, self.index(key)) for key, rows in targets.items() for row in self._rows(rows)]
         changed = self._set_cells(cells, False)
-        op = {"op": "apply_rule", "description": proposal.describe(), **proposal.to_dict(), "changed": changed}
+        op = {"op": "apply_rule", "description": proposal.describe(), **proposal.to_dict(), "targets": {k: list(v) for k, v in targets.items()}, "changed": changed}
         return self._push(op)
+
+    def rule_targets(self, proposal: _rules.RuleProposal) -> dict[str, tuple[int, ...]]:
+        if self._replaying:
+            if proposal.targets is not None:
+                return proposal.targets
+            # Pre-shared-mask sessions retain the historical SYNCH semantics.
+            return ({k: proposal.cycles for k in self.keys} if proposal.synced else dict(proposal.rejected))
+        group = set(self.group_keys)
+        targets = {}
+        if group.intersection(proposal.keys):
+            union = tuple(sorted({r for k, rows in proposal.rejected.items() if k in group for r in rows}))
+            targets.update({k: union for k in self.group_keys})
+        free = {k: v for k, v in proposal.rejected.items() if k not in group}
+        free_synced = proposal.synced if proposal.free_synced is None else proposal.free_synced
+        if free and free_synced:
+            union = tuple(sorted({r for rows in free.values() for r in rows}))
+            targets.update({k: union for k in self.keys if k not in group})
+        else:
+            targets.update(free)
+        return targets
 
     def set_setting(self, name: str, value: Any) -> dict[str, Any]:
         """Change one setting (undoable). Changing ``r18`` or ``oxide_formula`` recomputes the derived columns."""
@@ -372,6 +509,10 @@ class Analysis:
         elif kind == "toggle_block":
             if op["changed"]:
                 self.block_included[int(np.flatnonzero(self.blocks == op["block"])[0])] = not op["include"]
+        elif kind == "set_mapping":
+            self.restore_mapping(op["old"])
+            for row, key, before, _after in op["mask_changes"]:
+                self.included[row, self.index(key)] = before
         elif kind == "set_setting":
             self._apply_setting(op["name"], op["old"])
         elif kind == "reset":
@@ -379,6 +520,8 @@ class Analysis:
                 self.included[row, col] = False
             for block in op["blocks_changed"]:
                 self.block_included[int(np.flatnonzero(self.blocks == block)[0])] = False
+        if op.get("legacy_resolution"):
+            self.legacy_pending = op.get("legacy_pending_before", True)
         return copy.deepcopy(op)
 
     def redo(self) -> dict[str, Any] | None:
@@ -393,12 +536,18 @@ class Analysis:
                 self.included[row, col] = value
         elif kind == "toggle_block":
             self.block_included[int(np.flatnonzero(self.blocks == op["block"])[0])] = op["include"]
+        elif kind == "set_mapping":
+            self.restore_mapping(op["new"])
+            for row, key, _before, after in op["mask_changes"]:
+                self.included[row, self.index(key)] = after
         elif kind == "set_setting":
             self._apply_setting(op["name"], op["new"])
         elif kind == "reset":
             self.included[:] = True
             self.block_included[:] = True
         self._applied += 1
+        if op.get("legacy_resolution"):
+            self.legacy_pending = False
         return copy.deepcopy(op)
 
     @property
@@ -430,6 +579,7 @@ def replay(run: Run, history: Sequence[dict[str, Any]], settings: AnalysisSettin
     flags it recorded; otherwise :class:`ReplayMismatch` is raised.
     """
     analysis = Analysis(run, settings)
+    analysis._replaying = True
     for position, op in enumerate(history):
         kind = op.get("op")
         if kind == "toggle_cycles":
@@ -438,6 +588,10 @@ def replay(run: Run, history: Sequence[dict[str, Any]], settings: AnalysisSettin
             result = analysis.toggle_block(op["block"], op["include"])
         elif kind == "apply_rule":
             result = analysis.apply_rule(_rules.RuleProposal.from_dict(op))
+        elif kind == "set_mapping":
+            analysis.restore_mapping(op["old"])
+            from rawtims.mapping import MethodMapping
+            result = analysis.set_mapping(MethodMapping.from_dict(op["new"]).apply(analysis))
         elif kind == "set_setting":
             result = analysis.set_setting(op["name"], op["new"])
         elif kind == "reset":
@@ -445,11 +599,16 @@ def replay(run: Run, history: Sequence[dict[str, Any]], settings: AnalysisSettin
         else:
             raise ValueError(f"history entry {position}: unknown operation {kind!r}")
         if strict:
-            for field_name in ("changed", "blocks_changed"):
+            for field_name in ("changed", "blocks_changed", "mask_changes"):
                 if field_name in op and _normalise(result.get(field_name)) != _normalise(op[field_name]):
                     raise ReplayMismatch(f"history entry {position} ({kind}) changed different flags on replay")
             if kind == "set_setting" and op.get("old") is not None and not _same(result["old"], op["old"]):
                 raise ReplayMismatch(f"history entry {position}: setting {op['name']} was {result['old']!r}, recorded {op['old']!r}")
+        # Keep old histories verbatim after checking their recorded effects.
+        analysis._ops[-1] = copy.deepcopy(op)
+        if op.get("legacy_resolution"):
+            analysis.legacy_pending = False
+    analysis._replaying = False
     return analysis
 
 

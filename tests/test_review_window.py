@@ -174,18 +174,17 @@ def test_click_rejects_through_the_history_with_undo_and_redo(b998):
     assert window.undo_action.shortcut().matches(QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Undo)) != QtGui.QKeySequence.SequenceMatch.NoMatch
 
 
-def test_synch_off_rejects_only_the_function_clicked(b998):
+def test_synch_off_cannot_disable_the_group_mask(b998):
     window = b998
     analysis = window.analysis
     assert window.synch_action.isChecked() and analysis.settings.synced
     window.synch_action.trigger()
-    assert not analysis.settings.synced and analysis.history[-1]["op"] == "set_setting"
+    assert analysis.settings.synced and not window.synch_action.isEnabled() and analysis.history == []
     plot = window.plot_wall.plot("206/207 D")
     plot._on_click(plot.point_of(30), NO_MODIFIER)
-    assert analysis.history[-1]["keys"] == ["206/207 D"]
+    assert analysis.history[-1]["keys"] == B998_MAPPED
     assert not analysis.included[30, analysis.index("206/207 D")]
-    assert analysis.included[30, analysis.index("206/204 D")]
-    window.undo_action.trigger()
+    assert not analysis.included[30, analysis.index("206/204 D")]
     window.undo_action.trigger()
     assert analysis.settings.synced and window.synch_action.isChecked()
 

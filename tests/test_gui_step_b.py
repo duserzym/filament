@@ -90,7 +90,7 @@ def test_preview_does_not_change_the_mask_and_apply_is_the_proposal(window):
     assert analysis.history[-1]["rule"] == "chauvenet"
     excluded = {int(row) for row, _key in op["changed"]}
     assert excluded == set(proposal.cycles)
-    assert all(not analysis.included[row, :].any() for row in proposal.cycles)  # synced: every function
+    assert all(not analysis.included[row, [analysis.index(k) for k in analysis.group_keys]].any() for row in proposal.cycles)
     assert window.preview is None and plot.preview_rows == frozenset()
     assert "Rule: Chauvenet" in window.rules_panel.history_texts()[-1]
     assert "◀ now" in window.rules_panel.history_texts()[-1]

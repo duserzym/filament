@@ -69,7 +69,9 @@ def _tripoli_view(analysis: Analysis, key: str):
     if (stem, key) in NONPOSITIVE:
         values = analysis.column(key)
         return describe(values, np.isfinite(values), mode="arithmetic")
-    return analysis.stats(key)
+    # These oracle reports use per-ratio validity, before shared selection.
+    return describe(analysis.column(key), ~analysis.invalid[:, analysis.index(key)],
+                    mode="geometric" if analysis.function(key).is_ratio else "arithmetic")
 
 
 def test_every_short_report_is_paired():
@@ -82,7 +84,7 @@ def test_mean_and_percent_se_match_the_short_report(report_name):
     entries = read_short_report(SHORT / report_name)
     run = read(raw_path)
     analysis = Analysis(run, TRIPOLI_OXIDE)
-    assert analysis.history == [] and analysis.effective.sum() == (~analysis.invalid).sum()
+    assert analysis.history == [] and analysis.included.all() and analysis.group_consistent()
     worst_mean = worst_pct = 0.0
     keys = list(_keyed(name for name, _, _ in entries))
     for key, (_, mean, pct) in zip(keys, entries):

@@ -7,8 +7,9 @@ analysis settings before and after its history, the history itself
 (:attr:`rawtims.analysis.Analysis.history`), a SHA-256 of the resulting
 include flags, the fraction identity and setup fields, and the
 function-to-contract mapping of each run (the user's edit, if any, and the
-mapping in effect). Mapping edits are not part of the analysis history, so
-they are saved here.
+mapping in effect). New mapping changes also live in the analysis history,
+including the flags adopted by joining functions. Optional legacy comparison
+masks preserve the original per-ratio selections after reconciliation.
 
 Format (``format`` = :data:`rawtims.branding.SESSION_FORMAT`)::
 
@@ -221,6 +222,8 @@ def _run_record(analysis: Analysis, session_dir: Path | None) -> dict[str, Any]:
         "history": analysis.history,
         "redo_history": analysis.redo_history,
         "mask_sha256": mask_sha256(analysis),
+        "legacy_pending": analysis.legacy_pending,
+        "legacy_masks": {k: np.flatnonzero(~v).astype(int).tolist() for k, v in analysis.legacy_masks.items()},
     }
 
 
@@ -450,6 +453,15 @@ def _restore_run(record: Mapping[str, Any], session_dir: Path, where: str) -> tu
             raise ReplayMismatch("the include flags after the history differ from the saved ones")
     except (ReplayMismatch, KeyError, IndexError, TypeError, ValueError, AttributeError) as error:
         return problem("replay", f"the edit history of {name} does not replay exactly ({error})", chosen)
+    try:
+        analysis.legacy_pending = bool(record.get("legacy_pending", False))
+        for key, rejected in record.get("legacy_masks", {}).items():
+            analysis.index(key)
+            mask = np.ones(analysis.n_cycles, dtype=bool)
+            mask[analysis._rows(rejected)] = False
+            analysis.legacy_masks[key] = mask
+    except (KeyError, IndexError, TypeError, ValueError) as error:
+        return problem("replay", f"the legacy comparison masks of {name} cannot be read ({error})", chosen)
     return analysis, None
 
 
@@ -518,7 +530,8 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
             analyses[element] = restored[str(run_id)]
         fields = {name: value for name, value in dict(entry.get("fields") or {}).items() if name in FRACTION_FIELDS}
         try:
-            fraction = Fraction(fraction_id=fid, pb=analyses["Pb"], u=analyses["U"], **fields)
+            fraction = Fraction(fraction_id=fid, **fields)
+            fraction.pb, fraction.u = analyses["Pb"], analyses["U"]
         except (FractionError, TypeError) as error:
             raise SessionError(f"{path.name}: fraction {fid!r} cannot be restored ({error})") from None
         state.fractions.append(fraction)
@@ -536,9 +549,13 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
                     state.mapping_edits[run_id] = MethodMapping.from_dict(saved["edit"])
                 if saved.get("resolved") is not None:
                     state.saved_mappings[run_id] = MethodMapping.from_dict(saved["resolved"])
+                    analysis.restore_mapping(saved["resolved"])
+                    setattr(fraction, "pb_mapping" if element == "Pb" else "u_mapping", analysis.mapping)
             except (MappingError, KeyError, TypeError) as error:
                 problems.append(SessionProblem("mapping", f"{fid} {element}: the saved mapping cannot be read ({error}); "
                                                           "the mapping is proposed again", fid, element, run_id))
+    for analysis in state.analyses():
+        analysis.remember_legacy_masks()
     if set(runs) != used:
         raise SessionError(f"{path.name}: runs without a fraction: {', '.join(sorted(set(runs) - used))}")
     if "stat_mode" not in document:

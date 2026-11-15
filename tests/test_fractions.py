@@ -86,7 +86,7 @@ def test_writer_records_each_blocks_mean_statistic(mode):
 @pytest.mark.parametrize("mode", ["arithmetic", "geometric"])
 def test_correlations_are_bounded_and_equal_a_direct_numpy_computation(mode):
     fraction = ghr1_fraction(AnalysisSettings(stat_mode=mode), settings_pb=AnalysisSettings(stat_mode=mode))
-    fraction.pb.toggle_cycles([3, 4], ["206/204"], include=False)  # different include sets for one function
+    fraction.pb.toggle_cycles([3, 4], ["206/204"], include=False)  # the edit expands to the correlated group
     row = fraction_row(fraction, EXPORTED_AT)
     for element, analysis, oracle in (("Pb", fraction.pb, PB_ORACLE), ("U", fraction.u, U_ORACLE)):
         pairs = ratio_pairs(element)
@@ -146,7 +146,7 @@ def test_filter_rule_text_from_history():
     analysis.reset()
     assert filter_rule_text(analysis) == "none"
     analysis.apply_rule(analysis.propose_k_sigma(["270/267"], synced=False, scope="block"))
-    assert filter_rule_text(analysis).startswith("k-sigma k=2 max 10 passes (block scope, per function, ")
+    assert filter_rule_text(analysis).startswith("k-sigma k=2 max 10 passes (block scope, synced, ")
 
 
 def test_rejection_changes_the_exported_numbers_and_counts():

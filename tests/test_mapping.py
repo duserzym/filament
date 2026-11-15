@@ -178,7 +178,7 @@ def test_inversion_is_exact_for_geometric_means_and_percent_se():
     analysis = Analysis(read(TIMSDP_FILES["NBS981 210325b-392"]), AnalysisSettings(stat_mode="geometric"))
     forced = MethodMapping("m", "Pb", {"206Pb/204Pb": {"function": "204/206", "inverted": True}}).apply(analysis)
     inverted = ratio_stats(analysis, forced.ratios["206Pb/204Pb"])
-    direct = analysis.stats("206/204")
+    direct = describe(analysis.column("206/204"), analysis.included_for("204/206"), mode="geometric")
     assert inverted.mean == pytest.approx(direct.mean, rel=1e-9)
     assert inverted.se_pct == pytest.approx(direct.se_pct, rel=1e-7)
     assert inverted.mean * analysis.stats("204/206").mean == pytest.approx(1.0, abs=1e-14)  # exact against its own column
@@ -233,7 +233,7 @@ def test_rule_proposals_default_to_mapped_functions_when_a_mapping_is_given():
     proposal = analysis.propose_chauvenet(mapping=mapping)
     assert list(proposal.keys) == list(PB_D.values())
     assert list(analysis.propose_k_sigma(mapping=mapping).keys) == list(PB_D.values())
-    assert list(analysis.propose_chauvenet().keys) == analysis.ratio_keys  # no mapping: every ratio, as before
+    assert list(analysis.propose_chauvenet().keys) == analysis.group_keys  # the analysis owns the proposed mapping
     assert len(analysis.ratio_keys) > len(PB_D)
     assert list(analysis.propose_chauvenet(["206/204 D"], mapping=mapping).keys) == ["206/204 D"]  # explicit keys win
 
@@ -244,7 +244,7 @@ def test_shorthand_functions_are_ratios_for_mapped_k_sigma():
     with_mapping = analysis.propose_k_sigma(mapping=mapping)
     as_ratio = analysis.propose_k_sigma(list(mapping.function_keys), log_ratios=True)
     assert set(with_mapping.keys) == set(mapping.function_keys)
-    # Without the mapping, "other" functions are clipped on their linear values; with it, on ln r.
+    # Owned mappings also identify shorthand functions as ratios for ln r clipping.
     assert with_mapping.params["log_ratios"] and as_ratio.keys == with_mapping.keys
 
 
