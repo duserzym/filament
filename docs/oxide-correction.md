@@ -73,21 +73,59 @@ For the magnitudes in Yiming's BSU spreadsheets (238/235 ≈ 0.34-0.47, 233/235 
 the current Tripoli form would come out **0.22-0.28 % lower** than the ET_Redux form. That would affect
 Yiming's numbers only if Tripoli applied the correction to them, which is not established (next section).
 
-## BSU: the correction is applied by IonVantage (confirmed by Yiming, 2026-11-14)
+## Where Yiming's existing BSU numbers come from (facts established 2026-11-14)
 
-Yiming confirmed that at Boise State the oxide correction is applied in IonVantage, before Tripoli. For
-BSU files, the oxide-corrected function columns (`238/235 oxide R18 0.00206`, `233/235 oxide R18 0.00206`,
-`238/233 oxide`) are therefore the source of truth:
+Yiming first said the BSU oxide correction is applied in IonVantage, then corrected this the same day: "the
+correction is selected in tripoli reduction". The code says the following.
 
-- filament passes them through unchanged, whatever its own r18 and formula settings;
-- it records R18 from the function name (0.00206) and `U Oxide Formula` = `instrument`;
-- the Corrections step says which case the run is in.
+1. **Yiming's numbers came from the legacy C# Tripoli, not the Java one.** Yiming's sheets carry headers like
+   `206/204 D  (Mean, %StdErr)`, with **two** spaces, and values with at most 8 significant digits
+   (`0.33835222`, `0.19342769`, `240.43714`).
+   - Legacy C# Tripoli writes exactly that: `ActiveRatios.Name + "  (Mean, %StdErr)"` with values formatted
+     `ToString("E7")` (OGTripoli `source/forms/frmRatioGraph.cs`, lines 1726-1735, "Copy All Ratio Means with
+     PctStdErr").
+   - Java Tripoli writes one space and full double precision (`MeasuredUserFunction.showClipBoardOutput`,
+     lines 116-123; added 2024-05-11, commit 04b6d9d1).
+   - Legacy statistics are **arithmetic**: mean, SD (n−1), SE = SD/√n, % SE = 100·SE/mean
+     (`source/RawRatio.cs` `CalcStats`, lines 804-876). Java uses geometric means.
+2. **No Tripoli code builds the name `238/235 oxide R18 0.00206`.**
+   - Legacy Tripoli renames the ratios it corrects to `238/235 OxideCor:(<original 270/267 name>)` and
+     `238/233 OxideCor:(…)` (`source/TripoliWorkProduct.cs`, lines 2681-2722). Its automatic correction runs
+     only on ratios whose simplified name contains `270/267` and `265/267` (lines 2495-2612).
+   - Java Tripoli names its results `233/235oc`, `238/235oc` and `238/233oc` (`AnalysisMethod.java`,
+     lines 141-170).
+   - The string `oxide R18` appears nowhere in the full Java history (1823 commits, `git log -S`) or in the
+     legacy source.
+   - So the name is a function name that reached Tripoli from outside: most likely a BSU IonVantage user
+     function, like the `206/204 D` set in the BSU Pb workbook, or a name typed by a user.
+   - Legacy Tripoli would pass a column with that name through unchanged, because it does not contain
+     `270/267`.
+   - How this fits "selected in Tripoli" (for example, choosing that column in Tripoli) is for Yiming to say.
+3. **If legacy Tripoli did apply the correction, it used the derived form** (R265/267 in both denominators,
+   lines 2655-2672), the same as filament's default `isobar_233_18O`. The Java form (`tripoli_java_00dc941`)
+   cannot have produced Yiming's numbers: the format proves those came from the C# app. The Java form has
+   been unchanged since it first appeared on 2024-04-25 (commit e92e34a0) through 96dad08f (2026-05-04).
+4. **What settles it:**
+   - one BSU **U** workbook (`.xls`) for a fraction already in a Grenville spreadsheet;
+   - Yiming's Tripoli version (Help > About) and the Tripoli work file (`.trip`) for that fraction.
 
-filament's own correction (default `isobar_233_18O`) applies only to files without such columns.
-`tests/test_no_double_oxide_correction.py` checks that a file carrying both the corrected functions and the
-raw 270/267 and 265/267 columns is never corrected twice.
+   If the workbook's CYCLE sheet has a `238/235 oxide R18 0.00206` column, IonVantage computed it, and its
+   formula can be tested cycle by cycle against the workbook's own `270/267` and `265/267` columns. Either
+   way, filament's arithmetic-mode mean and % SE of that column can be compared with the number in the sheet.
 
-## Which formula IonVantage uses at BSU: not testable yet
+Until then, filament's behaviour is unchanged:
+- A file that demonstrably carries a corrected column is passed through, never corrected twice
+  (`tests/test_no_double_oxide_correction.py`), and exported with `U Oxide Formula` = `instrument`, whose
+  contract meaning is "arrived already corrected; the writer did not recompute".
+- A file with only raw 270/267 and 265/267 is corrected with `isobar_233_18O` by default.
+- Nothing claims that BSU's correction was done by the instrument.
+
+**Statistics matter as much as the formula for continuity.** On the BSU B998 Pb run, arithmetic and geometric
+means differ by 0.227 % for 206/204 D and 0.151 % for 204/205 D, and by under 0.04 % for the others.
+filament has both modes, and arithmetic mode reproduces legacy Tripoli's statistics. Which one is the default
+is a decision for Yiming.
+
+## Earlier note: testing which formula produced the BSU numbers
 
 The only Boise State file in Tripoli's repository is a **Pb** run
 (`isotopxPhoenixTIMS/boiseState/B998_F11_13223M02_iz1_Pb1-14973.xls`). It has no U columns. No BSU U

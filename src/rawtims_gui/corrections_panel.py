@@ -2,9 +2,8 @@
 
 **Oxide (U runs).** The status says what the engine does with the run
 (:attr:`rawtims.analysis.Analysis.oxide`): *computed* by this app with the
-chosen formula and 18O/16O; *pass-through* of oxide-corrected functions from
-the instrument software (18O/16O read from the function names, formula not
-verified); or *not applicable*. The 18O/16O field (default 0.00205, quick
+chosen formula and 18O/16O; *pass-through* of functions the file already carries
+oxide-corrected (18O/16O read from the function names, formula not known); or *not applicable*. The 18O/16O field (default 0.00205, quick
 button for Boise State's 0.00206) and the formula go through
 ``Analysis.set_setting``, so they are in the history and undoable. The
 ``tripoli_java_00dc941`` formula is a labelled comparison option with a
@@ -40,7 +39,7 @@ FORMULA_CHOICES = {
 FORMULA_WARNING = ("Comparison only. This is the 238/235 form of current Tripoli (Java, commit 00dc941); its correction "
                    "grows with the sample-to-spike ratio, and the exported row says U Oxide Formula = tripoli_java_00dc941. "
                    "Use isobar_233_18O for results.")
-PASS_THROUGH_TEXT = "from instrument software, not verified"
+PASS_THROUGH_TEXT = "already oxide-corrected in the file; passed through, not recomputed (formula not known)"
 COLLECTOR_CHOICES = ((None, "Not set (Daly preferred)"), ("D", "D: Daly"), ("F", "F: Faraday"))
 ISSUE_COLORS = {"missing": "danger", "refused": "danger", "ambiguous": "warning", "warning": "warning"}
 WARNING_COLORS = {"light": "#a26300", "dark": "#f0b429"}
@@ -73,7 +72,7 @@ def oxide_status_text(analysis: Analysis | None) -> tuple[str, str]:
     if oxide.status == "pass_through":
         r18 = f"{oxide.r18:g}" if oxide.r18 is not None else "not in the names"
         keys = ", ".join(oxide.pass_through_keys)
-        text = (f"Pass-through: oxide-corrected functions {PASS_THROUGH_TEXT} ({keys}). "
+        text = (f"Pass-through: {keys} are {PASS_THROUGH_TEXT}. "
                 f"18O/16O = {r18} (from the function names). Nothing is recomputed; the export says U Oxide Formula = instrument.")
         if oxide.reason:
             text += f" Note: {oxide.reason}."

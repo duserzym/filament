@@ -1,7 +1,7 @@
-"""A file whose U functions were already oxide-corrected by the instrument software is never corrected again.
+"""A file that already carries oxide-corrected U columns is never corrected again.
 
-Yiming confirmed on 2026-11-14 that at Boise State the `238/235 oxide R18 0.00206` functions are computed in
-IonVantage. These are behaviour tests on the synthetic BSU-style U workbook (no BSU agreement is claimed):
+Where BSU's `238/235 oxide R18 0.00206` columns are computed is still open (docs/oxide-correction.md). These
+are behaviour tests on the synthetic BSU-style U workbook (no BSU agreement is claimed):
 the file carries both the corrected functions and the raw 270/267 and 265/267 columns, which is exactly
 the situation where a double correction could happen.
 """

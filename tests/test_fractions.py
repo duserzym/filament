@@ -215,7 +215,7 @@ def test_inverted_mapping_through_fraction_row(tmp_path):
 def test_u_pass_through_and_missing_r18():
     row = fraction_row(Fraction("SYN U", u=Analysis(read(SYNTHETIC_U))), EXPORTED_AT)
     assert row.values["U Oxide 18O/16O"] == 0.00206 and row.values["U Oxide Formula"] == "instrument"
-    assert "applied by the instrument software, formula not verified" in row.values["Notes"]
+    assert "already carries oxide-corrected columns; passed through, not recomputed" in row.values["Notes"]
     assert set(U_RATIOS) <= {k.removesuffix(" Mean") for k in row.values}
 
 

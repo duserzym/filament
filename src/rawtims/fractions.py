@@ -329,7 +329,7 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
                 notes.append(f"U: oxide correction by {APP_NAME} ({formula} formula)")
             else:
                 formula = "instrument"
-                notes.append("U: oxide correction applied by the instrument software, formula not verified")
+                notes.append("U: the file already carries oxide-corrected columns; passed through, not recomputed (formula not known)")
             if r18_values:
                 values["U Oxide 18O/16O"] = r18_values.pop()
                 values["U Oxide Formula"] = formula
