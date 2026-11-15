@@ -60,8 +60,8 @@ def test_too_few_values_give_nan_not_errors():
 
 def test_function_stats_picks_the_mode_by_kind():
     values = np.array([1.0, 2.0, 4.0])
-    assert function_stats(values, is_ratio=True).mode == "geometric"
-    assert function_stats(values, is_ratio=True, ratio_mode="arithmetic").mode == "arithmetic"
+    assert function_stats(values, is_ratio=True).mode == "arithmetic"
+    assert function_stats(values, is_ratio=True, ratio_mode="geometric").mode == "geometric"
     assert function_stats(values, is_ratio=False).mode == "arithmetic"
     assert function_stats(values, is_ratio=False, ratio_mode="geometric").mean == pytest.approx(7 / 3)
 
@@ -94,7 +94,7 @@ def test_block_weighted_mean_standard_and_tripoli_conventions():
     assert tripoli.convention == "tripoli" and tripoli.center == pytest.approx(center)
     assert tripoli.mswd == pytest.approx(((2 - center) ** 2 + (6 - center) ** 2) / variance / 1)
 
-    ratio = block_weighted_mean(np.exp(values / 10), None, block, is_ratio=True, convention="standard")
+    ratio = block_weighted_mean(np.exp(values / 10), None, block, is_ratio=True, ratio_mode="geometric", convention="standard")
     assert ratio.mode == "geometric" and ratio.mean == pytest.approx(math.exp(ratio.center))
     assert ratio.sigma_pct == pytest.approx(math.expm1(ratio.sigma) * 100)
     skipped = block_weighted_mean(values, None, block, is_ratio=False, block_included={1: False})
@@ -106,8 +106,8 @@ def test_correlation_perfect_and_anti():
     perfect = correlation(x, 3 * x + 1, mode_a="arithmetic", mode_b="arithmetic")
     assert perfect.r == pytest.approx(1.0, abs=1e-15) and perfect.n == 25
     # In geometric mode, r = x² and r = x³ have perfectly correlated logs.
-    assert correlation(x**2, x**3).r == pytest.approx(1.0, abs=1e-15)
-    assert correlation(x, 1 / x).r == pytest.approx(-1.0, abs=1e-15)
+    assert correlation(x**2, x**3, mode_a="geometric", mode_b="geometric").r == pytest.approx(1.0, abs=1e-15)
+    assert correlation(x, 1 / x, mode_a="geometric", mode_b="geometric").r == pytest.approx(-1.0, abs=1e-15)
 
 
 def test_correlation_uses_cycles_included_in_both():

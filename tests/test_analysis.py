@@ -14,6 +14,22 @@ U239 = TIMSDP_FILES["GHR1 230921F03 U-239"]
 ALL_FILES = [B998, GHR1_PB_XLS, GHR1_U_XLS, NBS981_XLS, *TIMSDP_FILES.values(), SYNTHETIC_U, SYNTHETIC_PB]
 
 
+def test_default_matches_legacy_arithmetic_stats_on_accepted_cycles():
+    analysis = Analysis(read(B998))
+    assert analysis.settings.stat_mode == AnalysisSettings().stat_mode == "arithmetic"
+    analysis.toggle_cycles([0, 1], include=False)
+    key = "206/204 D"
+    accepted = analysis.column(key)[analysis.included_for(key)]
+    stats = analysis.stats(key)
+    assert stats.mean == pytest.approx(accepted.mean(), rel=1e-14)
+    assert stats.sd == pytest.approx(accepted.std(ddof=1), rel=1e-14)
+    assert stats.se == pytest.approx(stats.sd / np.sqrt(accepted.size), rel=1e-14)
+    assert stats.se_pct == pytest.approx(100 * stats.se / stats.mean, rel=1e-14)
+    proposal = analysis.propose_chauvenet().to_dict()
+    analysis.set_setting("stat_mode", "geometric")
+    assert analysis.propose_chauvenet().to_dict() == proposal  # rule always uses raw values
+
+
 @pytest.mark.parametrize("path", ALL_FILES, ids=lambda p: p.stem)
 def test_opening_rejects_nothing(path):
     analysis = Analysis(read(path))
@@ -77,8 +93,8 @@ def test_toggles_settings_reset_history_and_replay():
     assert analysis.stats("238/235oc").mean != stats_before.mean
     assert analysis.function("238/235oc").metadata["r18"] == 0.00206
     analysis.apply_rule(analysis.propose_k_sigma(["270/267"], synced=False))
-    analysis.set_setting("stat_mode", "arithmetic")
-    assert analysis.stats("270/267").mode == "arithmetic"
+    analysis.set_setting("stat_mode", "geometric")
+    assert analysis.stats("270/267").mode == "geometric"
 
     history = analysis.history
     assert [op["op"] for op in history] == ["toggle_cycles", "toggle_cycles", "toggle_cycles", "toggle_block", "set_setting", "apply_rule", "set_setting"]

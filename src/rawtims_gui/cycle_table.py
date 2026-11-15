@@ -159,12 +159,16 @@ class CycleTableModel(QtCore.QAbstractTableModel):
 
 
 class CycleTable(QtWidgets.QTableView):
-    """The table view with Include, Block and Cycle frozen at the left edge."""
+    """The table view, with function columns paged to fit without horizontal scrolling."""
 
     rowsSelected = QtCore.Signal(list)
+    columnPageChanged = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
+        self._first_function = 0
+        self._page_capacity = 1
+        self._fitting = False
         self.setObjectName("CycleTable")
         self.cycle_model = CycleTableModel(self)
         self.setModel(self.cycle_model)
@@ -172,10 +176,12 @@ class CycleTable(QtWidgets.QTableView):
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setAlternatingRowColors(True)
         self.setWordWrap(False)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.verticalHeader().setVisible(False)
         self.verticalHeader().setDefaultSectionSize(24)
         self.horizontalHeader().setStretchLastSection(False)
         self.horizontalHeader().setDefaultSectionSize(96)
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
         self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.frozen = FrozenColumnsView(self, FROZEN_NAMES)
         self.frozen.setSortingEnabled(False)
@@ -191,6 +197,40 @@ class CycleTable(QtWidgets.QTableView):
             if column < self.cycle_model.columnCount():
                 self.setColumnWidth(column, width)
         self.frozen._refresh()
+        self._fit_columns()
+
+    @property
+    def visible_function_range(self) -> tuple[int, int, int]:
+        total = len(self.cycle_model.keys)
+        return self._first_function, min(total, self._first_function + self._page_capacity), total
+
+    def change_column_page(self, direction: int) -> None:
+        total = len(self.cycle_model.keys)
+        self._first_function = max(0, min(max(0, total - 1), self._first_function + direction * self._page_capacity))
+        self._fit_columns()
+
+    def _fit_columns(self) -> None:
+        if self._fitting or not hasattr(self, "frozen"):
+            return
+        self._fitting = True
+        try:
+            fixed = len(FIXED_COLUMNS)
+            total = len(self.cycle_model.keys)
+            available = max(1, self.viewport().width() - sum(self.columnWidth(c) for c in range(fixed)))
+            self._page_capacity = max(1, available // 116)
+            self._first_function = min(self._first_function, max(0, total - 1))
+            count = min(self._page_capacity, total - self._first_function)
+            width = available // max(1, count)
+            for position in range(total):
+                shown = self._first_function <= position < self._first_function + count
+                self.setColumnHidden(fixed + position, not shown)
+                if shown:
+                    self.setColumnWidth(fixed + position, width)
+            self.horizontalScrollBar().setValue(0)
+            self.frozen.update_geometry()
+        finally:
+            self._fitting = False
+        self.columnPageChanged.emit()
 
     def apply_theme(self) -> None:
         theme = active_theme()
@@ -224,6 +264,7 @@ class CycleTable(QtWidgets.QTableView):
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # noqa: N802 - Qt API
         super().resizeEvent(event)
+        self._fit_columns()
         self.frozen.update_geometry()
 
     def updateGeometries(self) -> None:  # noqa: N802 - Qt API

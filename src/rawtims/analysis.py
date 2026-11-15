@@ -44,7 +44,7 @@ HISTORY_VERSION = 1
 class AnalysisSettings:
     """Per-analysis settings. Changing one through :meth:`Analysis.set_setting` is an undoable operation."""
 
-    stat_mode: str = "geometric"
+    stat_mode: str = "arithmetic"
     r18: float = DEFAULT_R18
     oxide_formula: str = "isobar_233_18O"
     chauvenet_probability: float = _rules.CHAUVENET_PROBABILITY

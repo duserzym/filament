@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 
 from oracle_reports import read_short_report
-from rawtims.analysis import Analysis
-from rawtims.exports import CLIPBOARD_SEPARATOR, clipboard_entries, clipboard_text, cycles_csv_text, write_cycles_csv
+from rawtims.analysis import Analysis, AnalysisSettings
+from rawtims.exports import CLIPBOARD_SEPARATOR, clipboard_entries, clipboard_text, legacy_e7, cycles_csv_text, write_cycles_csv
 from rawtims.fractions import Fraction, FractionError
 from rawtims.mapping import MappedRatio, propose_mapping
 from reader_fixtures import B998, SYNTHETIC_PB, SYNTHETIC_U, TIMSDP_FILES, TRIPOLI, read
@@ -30,8 +30,28 @@ BSU_SHEET_HEADERS_U = [
 
 
 def _blocks(text: str) -> list[list[str]]:
-    assert text.endswith("\n") and not text.endswith("\n\n")
-    return [block.split("\n") for block in text.rstrip("\n").split("\n\n")]
+    assert text.endswith("\r\n\r\n")
+    assert "\n" not in text.replace("\r\n", "")
+    return [block.split("\r\n") for block in text[:-4].split("\r\n\r\n")]
+
+
+@pytest.mark.parametrize("value,expected", [
+    (9235.343, "9.2353430E+003"), (0.0054346663, "5.4346663E-003"),
+    (-9235.343, "-9.2353430E+003"), (-0.0054346663, "-5.4346663E-003"),
+    (0, "0.0000000E+000"), (1e100, "1.0000000E+100"),
+])
+def test_legacy_csharp_e7(value, expected):
+    assert legacy_e7(value) == expected
+
+
+def test_clipboard_complete_legacy_block_and_full_precision():
+    fraction = Fraction("iz1", pb=Analysis(read(B998)))
+    entries = clipboard_entries(fraction, "Pb")
+    expected = "".join(f"{name}  (Mean, %StdErr)\r\n{legacy_e7(mean)}\r\n{legacy_e7(pct)}\r\n\r\n"
+                       for name, mean, pct in entries)
+    assert clipboard_text(fraction) == expected
+    for block, (_, mean, pct) in zip(_blocks(clipboard_text(fraction, full_precision=True)), entries):
+        assert float(block[1]) == mean and float(block[2]) == pct
 
 
 def test_b998_clipboard_headers_and_order_match_the_bsu_sheet():
@@ -42,7 +62,7 @@ def test_b998_clipboard_headers_and_order_match_the_bsu_sheet():
     for block, key in zip(blocks, ("206/204 D", "206/207 D", "206/205 D", "207/205 D", "204/205 D", "208/205 D")):
         assert len(block) == 3
         stats = analysis.stats(key)
-        assert float(block[1]) == stats.mean and float(block[2]) == stats.se_pct  # full precision, exact round trip
+        assert block[1] == legacy_e7(stats.mean) and block[2] == legacy_e7(stats.se_pct)
     assert CLIPBOARD_SEPARATOR == "  "
 
 
@@ -69,9 +89,9 @@ def test_whole_fraction_clipboard_is_pb_then_u():
 
 
 def test_single_space_separator_reproduces_the_tripoli_short_report(tmp_path):
-    fraction = Fraction("GHR1", pb=Analysis(read(TIMSDP_FILES["GHR1 230921 F08b-216"])))
+    fraction = Fraction("GHR1", pb=Analysis(read(TIMSDP_FILES["GHR1 230921 F08b-216"]), AnalysisSettings(stat_mode="geometric")))
     path = tmp_path / "clip.txt"
-    path.write_text(clipboard_text(fraction, "Pb", separator=" "), encoding="utf-8")
+    path.write_text(clipboard_text(fraction, "Pb", separator=" ", full_precision=True), encoding="utf-8")
     ours = read_short_report(path)
     oracle = {name: (mean, pct) for name, mean, pct in read_short_report(SHORT / "Oracle-GHR1 230921 F08b-216.txt")}
     assert len(ours) == 6
@@ -80,7 +100,7 @@ def test_single_space_separator_reproduces_the_tripoli_short_report(tmp_path):
 
 
 def test_inverted_clipboard_names_say_so():
-    analysis = Analysis(read(TIMSDP_FILES["NBS981 230024a-145"]))
+    analysis = Analysis(read(TIMSDP_FILES["NBS981 230024a-145"]), AnalysisSettings(stat_mode="geometric"))
     fraction = Fraction("NBS", pb=analysis)
     with pytest.raises(FractionError, match="lacks contract ratios"):
         clipboard_entries(fraction, "Pb")

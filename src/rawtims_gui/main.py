@@ -185,6 +185,34 @@ def default_intensities(analysis: Analysis) -> list[str]:
     return [f.key for f in (daly or intensities)[:DEFAULT_INTENSITIES]]
 
 
+class FittedStatusBar(QtWidgets.QStatusBar):
+    """Keep transient messages readable with an ellipsis and the full text on hover."""
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+        self.message_label = ElidedLabel("")
+        self.addWidget(self.message_label, 1)
+        self._message = ""
+        self._timer = QtCore.QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self.clearMessage)
+
+    def showMessage(self, message: str, timeout: int = 0) -> None:
+        self._timer.stop()
+        self._message = message
+        self.message_label.setText(message)
+        self.message_label.setToolTip(message)
+        self.messageChanged.emit(message)
+        if timeout > 0:
+            self._timer.start(timeout)
+
+    def currentMessage(self) -> str:
+        return self._message
+
+    def clearMessage(self) -> None:
+        self.showMessage("")
+
+
 class MainWindow(QtWidgets.QMainWindow):
     """The single main window."""
 
@@ -528,6 +556,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view_stack.addWidget(self.plot_wall)
         self.view_stack.addWidget(self.cycle_table)
         layout.addWidget(self.view_stack, 1)
+        self.table_navigation = QtWidgets.QWidget()
+        navigation = QtWidgets.QHBoxLayout(self.table_navigation)
+        navigation.setContentsMargins(0, 0, 0, 0)
+        self.table_columns_label = QtWidgets.QLabel()
+        self.table_columns_label.setObjectName("SecondaryText")
+        navigation.addWidget(self.table_columns_label, 1)
+        self.table_previous = QtWidgets.QPushButton("Previous")
+        self.table_next = QtWidgets.QPushButton("Next")
+        for button, direction in ((self.table_previous, -1), (self.table_next, 1)):
+            button.setToolTip("Show the next or previous group of function columns")
+            button.clicked.connect(lambda _checked=False, d=direction: self.cycle_table.change_column_page(d))
+            navigation.addWidget(button)
+        self.cycle_table.columnPageChanged.connect(self._update_table_navigation)
+        layout.addWidget(self.table_navigation)
+        self.table_navigation.setVisible(False)
         self.legend = ElidedLabel(LEGEND)
         self.legend.setObjectName("SecondaryText")
         self.legend.setToolTip(LEGEND_TIP)
@@ -536,6 +579,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.legend.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.legend)
         return page
+
+    def _update_table_navigation(self) -> None:
+        first, end, total = self.cycle_table.visible_function_range
+        self.table_columns_label.setText(f"Functions {first + 1}–{end} of {total}" if total else "No functions")
+        self.table_previous.setEnabled(first > 0)
+        self.table_next.setEnabled(end < total)
 
     def _build_inspector(self) -> QtWidgets.QWidget:
         frame = NeumorphicFrame()
@@ -581,6 +630,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return frame
 
     def _build_status_bar(self) -> None:
+        self.setStatusBar(FittedStatusBar(self))
         status = self.statusBar()
         self.run_label = QtWidgets.QLabel("")
         self.run_label.setObjectName("StatusRun")
@@ -929,6 +979,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mode_buttons[mode].setChecked(True)
         self.mode_bar.select_checked()
         self.view_stack.setCurrentWidget(self.cycle_table if mode == "table" else self.plot_wall)
+        self.table_navigation.setVisible(mode == "table")
         self._rebuild_view()
 
     def set_log_ratio(self, checked: bool) -> None:
@@ -1318,7 +1369,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.workspace.sync_mappings(fraction)
         separator = self.export_panel.separator.currentData() or CLIPBOARD_SEPARATOR
         try:
-            text = clipboard_text(fraction, separator=separator)
+            text = clipboard_text(fraction, separator=separator, full_precision=self.export_panel.full_precision.isChecked())
         except FractionError as error:
             self.statusBar().showMessage(f"Nothing copied: {error}", 10000)
             return None

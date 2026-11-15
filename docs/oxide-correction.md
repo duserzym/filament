@@ -144,7 +144,7 @@ correction is selected in tripoli reduction". The code says the following.
    formula can be tested cycle by cycle against the workbook's own `270/267` and `265/267` columns. Either
    way, filament's arithmetic-mode mean and % SE of that column can be compared with the number in the sheet.
 
-Until then, filament's behaviour is unchanged:
+Until then, filament's oxide behaviour is unchanged:
 - A file that demonstrably carries a corrected column is passed through, never corrected twice
   (`tests/test_no_double_oxide_correction.py`), and exported with `U Oxide Formula` = `instrument`, whose
   contract meaning is "arrived already corrected; the writer did not recompute".
@@ -153,8 +153,15 @@ Until then, filament's behaviour is unchanged:
 
 **Statistics matter as much as the formula for continuity.** On the BSU B998 Pb run, arithmetic and geometric
 means differ by 0.227 % for 206/204 D and 0.151 % for 204/205 D, and by under 0.04 % for the others.
-filament has both modes, and arithmetic mode reproduces legacy Tripoli's statistics. Which one is the default
-is a decision for Yiming.
+filament now defaults to **arithmetic, as legacy Tripoli**, to preserve continuity with Yiming's past BSU
+numbers. Geometric (Java Tripoli) remains selectable through an undoable setting saved in sessions;
+Java oracle tests explicitly choose it. The earlier geometric default followed the Java oracles before
+Yiming identified the older Windows Tripoli as the source of the BSU sheets.
+
+The clipboard now defaults to the **legacy clipboard format**: two spaces before `(Mean, %StdErr)`,
+CRLF line endings, C# `E7` values (e.g. `9.2353430E+003`), and a blank line after every ratio block.
+Full precision remains an option, and contract CSV always retains full precision. The earlier output
+kept full precision like Java Tripoli; the verified legacy code and BSU headers explain the change.
 
 ## Earlier note: testing which formula produced the BSU numbers
 

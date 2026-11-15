@@ -128,7 +128,10 @@ class ExportPanel(QtWidgets.QWidget):
         self.separator.setObjectName("ClipboardSeparator")
         for value, label in SEPARATORS:
             self.separator.addItem(label, value)
-        self.separator.setToolTip("Space before “(Mean, %StdErr)”: two as in the BSU sheet headers, one as in Tripoli's reports")
+        self.separator.setToolTip("Space before “(Mean, %StdErr)”: two as in legacy Tripoli, one as in Java Tripoli's reports")
+        self.full_precision = QtWidgets.QCheckBox("Full precision")
+        self.full_precision.setObjectName("ClipboardFullPrecision")
+        self.full_precision.setToolTip("Off: legacy clipboard format (C# E7, eight significant digits). On: every digit. Contract CSV always keeps full precision.")
         title = QtWidgets.QLabel("Fraction")
         title.setObjectName("SectionTitle")
         layout.addWidget(title)
@@ -136,7 +139,7 @@ class ExportPanel(QtWidgets.QWidget):
         form.setContentsMargins(0, 0, 0, 0)
         form.setHorizontalSpacing(8)
         form.setVerticalSpacing(4)
-        form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.DontWrapRows)
+        form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapLongRows)
         form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self.fields: dict[str, QtWidgets.QWidget] = {}
@@ -189,6 +192,7 @@ class ExportPanel(QtWidgets.QWidget):
         form.addRow("Time zone", self.timezone)
         self.fields["timezone"] = self.timezone
         form.addRow("Clipboard", self.separator)
+        form.addRow("", self.full_precision)
         layout.addLayout(form)
         self.form_message = QtWidgets.QLabel("")
         self.form_message.setObjectName("FormMessage")

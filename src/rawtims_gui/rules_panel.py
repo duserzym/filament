@@ -208,6 +208,8 @@ class RulesPanel(QtWidgets.QWidget):
         self.result_list = QtWidgets.QListWidget()
         self.result_list.setObjectName("RuleResultList")
         self.result_list.setMinimumHeight(60)
+        self.result_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.result_list.setWordWrap(True)
         self.result_list.setStyleSheet("QListWidget { font-size: 12px; }")
         outer.addWidget(self.result_list, 2)
 
@@ -218,6 +220,7 @@ class RulesPanel(QtWidgets.QWidget):
         self.history_list.setObjectName("HistoryList")
         self.history_list.setMinimumHeight(80)
         self.history_list.setWordWrap(True)
+        self.history_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.history_list.setStyleSheet("QListWidget { font-size: 12px; }")
         self.history_list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
         outer.addWidget(self.history_list, 3)
@@ -301,6 +304,7 @@ class RulesPanel(QtWidgets.QWidget):
                 item.setData(QtCore.Qt.ItemDataRole.UserRole, key)
                 if not rows:
                     item.setForeground(QtGui.QBrush(self.palette().color(QtGui.QPalette.ColorRole.PlaceholderText)))
+                item.setToolTip(item.text())
                 self.result_list.addItem(item)
         self._fill_history(analysis)
 
@@ -319,6 +323,9 @@ class RulesPanel(QtWidgets.QWidget):
         font.setBold(True)
         current.setFont(font)
         current.setText(current.text() + "   ◀ now")
+        for index in range(self.history_list.count()):
+            item = self.history_list.item(index)
+            item.setToolTip(item.text())
         self.history_list.scrollToItem(current)
         note = f"{len(history)} edit{'s' if len(history) != 1 else ''} applied."
         if analysis.can_redo:

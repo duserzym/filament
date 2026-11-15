@@ -3,7 +3,7 @@
 Tripoli made its ``Oracle-*`` reports with every cycle included, geometric
 statistics for ratios and arithmetic statistics for everything else, and its
 current oxide formula with 18O/16O = 0.00205. An analysis opened with
-default settings includes every valid cycle, so its numbers must match.
+geometric statistics and the Java oxide formula includes every valid cycle, so its numbers must match.
 
 Two documented differences:
 
@@ -49,7 +49,7 @@ SHORT_PAIRS = {
 }
 # Ratio columns in which Tripoli found values <= 0 and switched to arithmetic statistics.
 NONPOSITIVE = {("NBS981 210325b-392", "205/206"), ("NBS981 230024a-145", "205/206 Daly")}
-TRIPOLI_OXIDE = AnalysisSettings(oxide_formula="tripoli_java_00dc941", r18=0.00205)
+TRIPOLI_OXIDE = AnalysisSettings(stat_mode="geometric", oxide_formula="tripoli_java_00dc941", r18=0.00205)
 
 
 def _rel(actual: float, expected: float) -> float:
@@ -97,7 +97,7 @@ def test_mean_and_percent_se_match_the_short_report(report_name):
 
 @pytest.mark.parametrize("stem,key", sorted(NONPOSITIVE))
 def test_filament_excludes_nonpositive_ratio_values_where_tripoli_goes_arithmetic(stem, key):
-    analysis = Analysis(read(TIMSDP_FILES[stem]))
+    analysis = Analysis(read(TIMSDP_FILES[stem]), AnalysisSettings(stat_mode="geometric"))
     function = analysis.function(key)
     assert function.is_ratio and analysis.invalid[:, function.index].any()
     stats = analysis.stats(key)
@@ -109,7 +109,7 @@ def test_ku_ghr1_u239_oxide_columns_tripoli_form_matches_isobar_233_18O_differs(
     report = {name: (mean, pct) for name, mean, pct in read_short_report(SHORT / "KU_IGL/IsolinxVersion2/Oracle-GHR1 230921F03 U-239.txt")}
     run = read(TIMSDP_FILES["GHR1 230921F03 U-239"])
     tripoli = Analysis(run, TRIPOLI_OXIDE)
-    isobar_233_18O = Analysis(run)
+    isobar_233_18O = Analysis(run, AnalysisSettings(stat_mode="geometric"))
     assert isobar_233_18O.settings.oxide_formula == "isobar_233_18O" and isobar_233_18O.settings.r18 == 0.00205
     for name in ("233/235oc", "238/235oc", "238/233oc"):
         mean, pct = report[name]

@@ -9,8 +9,8 @@ Exported values:
 
 * ``<ratio> Mean`` and ``<ratio> % Standard Error``: the statistics of the
   mapped function over its accepted cycles (:func:`rawtims.mapping.ratio_stats`,
-  identical to ``Analysis.stats`` for a direct mapping): in the default
-  geometric mode exp(mean ln r) and Tripoli's smaller-side 1σ % SE of the mean.
+  identical to ``Analysis.stats`` for a direct mapping): arithmetic by default,
+  as legacy Tripoli (mean and 100·SD/√n/mean); geometric mode remains optional.
 * ``rho A|B`` for every pair of mapped ratios of the same run, over the cycles
   included and usable for both (:func:`rawtims.mapping.ratio_correlation`).
 * ``<El> Cycles Used``: the cycles accepted (included and usable) for **every**
@@ -315,8 +315,7 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         if note:
             notes.append(f"{element}: {note}")
         rules.append((element, filter_rule_text(analysis)))
-        if analysis.settings.stat_mode != "geometric":
-            notes.append(f"{element}: {analysis.settings.stat_mode} statistics")
+        notes.append(f"{element}: {analysis.settings.stat_mode} statistics")
         if run.metadata.instrument:
             instruments.append(run.metadata.instrument)
         if element == "U":

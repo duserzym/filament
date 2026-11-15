@@ -75,6 +75,7 @@ def _table(columns: Sequence[str]) -> QtWidgets.QTableWidget:
     table.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
     # The numbers keep their full width; the name column gives way and elides (full name in the tooltip).
     header = table.horizontalHeader()
+    header.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
     header.setMinimumSectionSize(36)
     header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
     for column in range(1, len(columns)):
@@ -121,7 +122,7 @@ class StatsPanel(QtWidgets.QWidget):
     def update_stats(self, analysis: Analysis | None, mapping: ElementMapping | None, plotted: Sequence[str]) -> None:
         self.analysis, self.mapping = analysis, mapping
         self.rows = stats_rows(analysis, mapping, plotted) if analysis is not None else []
-        mode = analysis.settings.stat_mode if analysis is not None else "geometric"
+        mode = analysis.settings.stat_mode if analysis is not None else "arithmetic"
         self.note.setText(
             "Open a run to see its statistics." if analysis is None else
             f"{'Geometric' if mode == 'geometric' else 'Arithmetic'} means for ratios, arithmetic for intensities. "

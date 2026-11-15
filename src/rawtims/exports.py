@@ -15,7 +15,9 @@ Tripoli's ``Oracle-*`` short reports use one space. The default separator
 ``separator=" "`` gives the short-report form. The header is only a label: the
 spreadsheet reads the two value rows. Names are the functions' names as in the
 file; an inverted mapping is written ``1/(<name>)`` with the inverted values.
-Numbers are written in full precision (Python ``repr``).
+The default is the legacy clipboard format: C# ``E7`` numbers, CRLF lines,
+and a blank line after every block, including the last. ``full_precision=True``
+keeps all digits (Python ``repr``) with the same block structure.
 
 **Cycles CSV.** One header row (no comment lines), then one row per cycle:
 ``Block``, ``Cycle``, ``Time (s)``, then for each function two columns,
@@ -70,14 +72,24 @@ def _number(value: float) -> str:
     return "" if value is None or (isinstance(value, float) and math.isnan(value)) else repr(float(value))
 
 
-def clipboard_text(fraction: Fraction, element: str | None = None, *, separator: str = CLIPBOARD_SEPARATOR) -> str:
+def legacy_e7(value: float) -> str:
+    """C# ``ToString("E7")``: eight significant digits and a signed, 3-digit exponent."""
+    if not math.isfinite(value):
+        return "NaN" if math.isnan(value) else ("-Infinity" if value < 0 else "Infinity")
+    mantissa, exponent = format(value, ".7E").split("E")
+    return f"{mantissa}E{int(exponent):+04d}"
+
+
+def clipboard_text(fraction: Fraction, element: str | None = None, *, separator: str = CLIPBOARD_SEPARATOR,
+                   full_precision: bool = False) -> str:
     """Tripoli-style clipboard text for one element (``"Pb"``/``"U"``) or, with ``element=None``, Pb then U."""
     elements = ("Pb", "U") if element is None else (element,)
+    number = _number if full_precision else legacy_e7
     blocks = []
     for item in elements:
         for name, mean, pct in clipboard_entries(fraction, item):
-            blocks.append(f"{name}{separator}{CLIPBOARD_SUFFIX}\n{_number(mean)}\n{_number(pct)}")
-    return "\n\n".join(blocks) + "\n" if blocks else ""
+            blocks.append(f"{name}{separator}{CLIPBOARD_SUFFIX}\r\n{number(mean)}\r\n{number(pct)}\r\n\r\n")
+    return "".join(blocks)
 
 
 def cycles_csv_text(analysis: Analysis, keys: Sequence[str] | None = None) -> str:
@@ -106,4 +118,4 @@ def write_cycles_csv(analysis: Analysis, path: str | os.PathLike[str], keys: Seq
     return path
 
 
-__all__ = ["CLIPBOARD_SEPARATOR", "CLIPBOARD_SUFFIX", "clipboard_entries", "clipboard_text", "cycles_csv_text", "write_cycles_csv"]
+__all__ = ["CLIPBOARD_SEPARATOR", "CLIPBOARD_SUFFIX", "clipboard_entries", "clipboard_text", "legacy_e7", "cycles_csv_text", "write_cycles_csv"]

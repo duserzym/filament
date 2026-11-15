@@ -33,13 +33,13 @@ def _oracle(name: str) -> dict[str, tuple[float, float]]:
     return {fn: (mean, pct) for fn, mean, pct in read_short_report(SHORT / name)}
 
 
-def ghr1_fraction(settings_u: AnalysisSettings | None = None, **fields) -> Fraction:
+def ghr1_fraction(settings_u: AnalysisSettings | None = None, *, settings_pb: AnalysisSettings | None = None, **fields) -> Fraction:
     """KU GHR1: the Pb run F08b-216 and the U run U-239 are the same sample, exported as one fraction."""
-    return Fraction("GHR1", pb=Analysis(read(PB_FILE)), u=Analysis(read(U_FILE), settings_u), **fields)
+    return Fraction("GHR1", pb=Analysis(read(PB_FILE), settings_pb), u=Analysis(read(U_FILE), settings_u), **fields)
 
 
 def test_ku_ghr1_pb_matches_the_tripoli_short_report():
-    row = fraction_row(ghr1_fraction(), EXPORTED_AT)
+    row = fraction_row(ghr1_fraction(AnalysisSettings(stat_mode="geometric"), settings_pb=AnalysisSettings(stat_mode="geometric")), EXPORTED_AT)
     oracle = _oracle("Oracle-GHR1 230921 F08b-216.txt")
     for ratio, name in PB_ORACLE.items():
         mean, pct = oracle[name]
@@ -49,7 +49,7 @@ def test_ku_ghr1_pb_matches_the_tripoli_short_report():
 
 
 def test_ku_ghr1_u_oxide_plumbing_matches_tripoli_with_its_formula():
-    row = fraction_row(ghr1_fraction(AnalysisSettings(oxide_formula="tripoli_java_00dc941", r18=0.00205)), EXPORTED_AT)
+    row = fraction_row(ghr1_fraction(AnalysisSettings(stat_mode="geometric", oxide_formula="tripoli_java_00dc941", r18=0.00205)), EXPORTED_AT)
     oracle = _oracle("Oracle-GHR1 230921F03 U-239.txt")
     for ratio, name in U_ORACLE.items():
         mean, pct = oracle[name]
@@ -59,7 +59,7 @@ def test_ku_ghr1_u_oxide_plumbing_matches_tripoli_with_its_formula():
 
 
 def test_ku_ghr1_u_default_isobar_233_18O_values():
-    row = fraction_row(ghr1_fraction(), EXPORTED_AT)
+    row = fraction_row(ghr1_fraction(AnalysisSettings(stat_mode="geometric"), settings_pb=AnalysisSettings(stat_mode="geometric")), EXPORTED_AT)
     oracle = _oracle("Oracle-GHR1 230921F03 U-239.txt")
     assert _rel(row.mean("233U/235U"), oracle["233/235oc"][0]) <= TOLERANCE  # the same formula in both forms
     assert row.mean("238U/235U") == pytest.approx(2.43849557, rel=1e-8)
@@ -72,8 +72,9 @@ def test_ku_ghr1_u_default_isobar_233_18O_values():
     assert "isobar_233_18O formula" in row.values["Notes"]
 
 
-def test_correlations_are_bounded_and_equal_a_direct_numpy_computation():
-    fraction = ghr1_fraction()
+@pytest.mark.parametrize("mode", ["arithmetic", "geometric"])
+def test_correlations_are_bounded_and_equal_a_direct_numpy_computation(mode):
+    fraction = ghr1_fraction(AnalysisSettings(stat_mode=mode), settings_pb=AnalysisSettings(stat_mode=mode))
     fraction.pb.toggle_cycles([3, 4], ["206/204"], include=False)  # different include sets for one function
     row = fraction_row(fraction, EXPORTED_AT)
     for element, analysis, oracle in (("Pb", fraction.pb, PB_ORACLE), ("U", fraction.u, U_ORACLE)):
@@ -84,7 +85,8 @@ def test_correlations_are_bounded_and_equal_a_direct_numpy_computation():
             assert -1.0 <= r <= 1.0
             ka, kb = oracle[a], oracle[b]
             both = analysis.included_for(ka) & analysis.included_for(kb)
-            direct = np.corrcoef(np.log(analysis.column(ka)[both]), np.log(analysis.column(kb)[both]))[0, 1]
+            transform = np.log if mode == "geometric" else np.asarray
+            direct = np.corrcoef(transform(analysis.column(ka)[both]), transform(analysis.column(kb)[both]))[0, 1]
             assert r == pytest.approx(direct, abs=1e-12), (a, b)
     assert rho_column("206Pb/204Pb", "202Pb/205Pb") not in row.values  # 202 not measured
     assert len([k for k in row.values if k.startswith("rho ")]) == 15 + 3
@@ -182,7 +184,7 @@ def test_2535_without_202_is_refused():
 
 
 def test_remembered_mapping_checks_masses_and_incomplete_runs_are_refused():
-    analysis = Analysis(read(TIMSDP_FILES["NBS981 210325b-392"]))
+    analysis = Analysis(read(TIMSDP_FILES["NBS981 210325b-392"]), AnalysisSettings(stat_mode="geometric"))
     keys = {"206Pb/204Pb": ("204/206", True), "206Pb/207Pb": ("207/206", True), "206Pb/205Pb": ("205/206", True),
             "207Pb/205Pb": ("207/204", False), "204Pb/205Pb": ("204/208", False), "208Pb/205Pb": ("208/204", False)}
     # Not a physical mapping (NBS981 has no 205 spike): it only exercises inversion through a full row.
@@ -198,7 +200,7 @@ def test_remembered_mapping_checks_masses_and_incomplete_runs_are_refused():
 
 def test_inverted_mapping_through_fraction_row(tmp_path):
     # Build a complete Pb mapping for B998 where 206/204 comes from the inverted raw 204/206 column.
-    analysis = Analysis(read(B998))
+    analysis = Analysis(read(B998), AnalysisSettings(stat_mode="geometric"))
     base = propose_mapping(analysis).to_method_mapping().to_dict()
     base["ratios"]["206Pb/204Pb"] = {"function": "Pb204+Hg204/Pb206+At206 raw", "inverted": True}
     mapping = MethodMapping.from_dict(base).apply(analysis)

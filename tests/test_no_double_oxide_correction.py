@@ -36,10 +36,12 @@ def test_behaviour_file_has_both_raw_and_corrected_columns():
     assert {"270/267", "265/267"} <= keys and set(CORRECTED.values()) <= keys
 
 
+@pytest.mark.parametrize("stat_mode", ["arithmetic", "geometric"])
 @pytest.mark.parametrize("formula", FORMULAS)
 @pytest.mark.parametrize("r18", [0.00205, 0.00206, 0.0021])
-def test_behaviour_instrument_corrected_u_is_passed_through_whatever_the_settings(formula, r18):
+def test_behaviour_instrument_corrected_u_is_passed_through_whatever_the_settings(formula, r18, stat_mode):
     analysis = Analysis(read(SYNTHETIC_U))
+    analysis.set_setting("stat_mode", stat_mode)
     analysis.set_setting("r18", r18)
     analysis.set_setting("oxide_formula", formula)
     assert analysis.oxide.status == "pass_through"
@@ -48,4 +50,6 @@ def test_behaviour_instrument_corrected_u_is_passed_through_whatever_the_setting
     assert row.values["U Oxide Formula"] == "instrument"
     assert row.values["U Oxide 18O/16O"] == 0.00206  # from the function names, not the setting
     for ratio, key in CORRECTED.items():
-        assert row.mean(ratio) == pytest.approx(_geometric_mean(analysis, key), rel=1e-14)
+        values = analysis.run.column(key)
+        expected = _geometric_mean(analysis, key) if stat_mode == "geometric" else float(values[np.isfinite(values) & (values > 0)].mean())
+        assert row.mean(ratio) == pytest.approx(expected, rel=1e-14)

@@ -3,9 +3,9 @@
 Pure functions on 1-D NumPy arrays plus a boolean include mask; nothing here
 knows about runs, files or the GUI.
 
-Conventions (the behaviour of current CIRDLES Tripoli, re-implemented):
+Conventions (legacy C# Tripoli by default, Java Tripoli for comparison):
 
-* **Ratios, geometric mode** (the default): statistics are taken on ln r.
+* **Ratios, geometric mode** (an option): statistics are taken on ln r.
   ``center`` = mean of ln r, ``sd`` = sample SD of ln r (n − 1), ``se`` =
   sd / √n, reported ``mean`` = exp(center) (the geometric mean). The reported
   1σ percent standard error is the *smaller* of the two asymmetric sides,
@@ -14,7 +14,7 @@ Conventions (the behaviour of current CIRDLES Tripoli, re-implemented):
   the same smaller-side rule on sd. The upper sides (e^x − 1) · 100, which
   Tripoli writes into its full CSV report, are ``se_pct_upper`` and
   ``sd_pct_upper``.
-* **Arithmetic mode** (an option for ratios; always used for intensities and
+* **Arithmetic mode** (the default for ratios, as legacy Tripoli; always used for intensities and
   other functions): ``mean`` = ``center`` = arithmetic mean, ``sd`` (n − 1),
   ``se`` = sd / √n, ``se_pct`` = se / mean · 100, ``sd_pct`` = sd / mean · 100
   (signed, as Tripoli reports them for a negative mean).
@@ -108,7 +108,7 @@ def transform(values, mode: StatMode) -> np.ndarray:
     return out
 
 
-def describe(values, include=None, *, mode: StatMode = "geometric") -> Stats:
+def describe(values, include=None, *, mode: StatMode = "arithmetic") -> Stats:
     """Statistics of ``values[include]`` in the given mode. NaN fields when too few values are usable."""
     values, include = _as_arrays(values, include)
     ok = usable(values, include, mode=mode)
@@ -128,18 +128,18 @@ def describe(values, include=None, *, mode: StatMode = "geometric") -> Stats:
     return Stats(mean=mean, sd=sd, se=se, se_pct=se_pct, sd_pct=sd_pct, n_used=n, n_total=int(values.size), mode=mode, center=center)
 
 
-def mode_for(is_ratio: bool, ratio_mode: StatMode = "geometric") -> StatMode:
+def mode_for(is_ratio: bool, ratio_mode: StatMode = "arithmetic") -> StatMode:
     """Ratios use ``ratio_mode``; every other function is arithmetic."""
     _check_mode(ratio_mode)
     return ratio_mode if is_ratio else "arithmetic"
 
 
-def function_stats(values, include=None, *, is_ratio: bool, ratio_mode: StatMode = "geometric") -> Stats:
+def function_stats(values, include=None, *, is_ratio: bool, ratio_mode: StatMode = "arithmetic") -> Stats:
     """:func:`describe` with the mode chosen by the function kind."""
     return describe(values, include, mode=mode_for(is_ratio, ratio_mode))
 
 
-def block_stats(values, include, block, *, is_ratio: bool, ratio_mode: StatMode = "geometric") -> dict[int, Stats]:
+def block_stats(values, include, block, *, is_ratio: bool, ratio_mode: StatMode = "arithmetic") -> dict[int, Stats]:
     """The same statistics for each block separately, keyed by block number (ascending)."""
     values, include = _as_arrays(values, include)
     block = np.asarray(block)
@@ -177,7 +177,7 @@ def block_weighted_mean(
     block,
     *,
     is_ratio: bool,
-    ratio_mode: StatMode = "geometric",
+    ratio_mode: StatMode = "arithmetic",
     block_included: dict[int, bool] | None = None,
     convention: Literal["tripoli", "standard"] = "tripoli",
 ) -> WeightedMean:
@@ -244,7 +244,7 @@ class Correlation:
         return asdict(self)
 
 
-def correlation(values_a, values_b, include_a=None, include_b=None, *, mode_a: StatMode = "geometric", mode_b: StatMode = "geometric") -> Correlation:
+def correlation(values_a, values_b, include_a=None, include_b=None, *, mode_a: StatMode = "arithmetic", mode_b: StatMode = "arithmetic") -> Correlation:
     """Pearson correlation of two functions over the cycles included and usable for both.
 
     It is computed on the values the statistics use: ln r for a ratio in

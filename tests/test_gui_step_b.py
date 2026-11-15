@@ -126,6 +126,27 @@ def test_rule_parameters_are_undoable_settings_and_edits_discard_the_preview(win
 
 
 # ------------------------------------------------------------ corrections
+def test_statistics_switch_is_undoable_saved_and_updates_stats(window, tmp_path):
+    _open(window, B998)
+    panel = window.corrections_panel
+    assert panel.stat_mode.currentData() == "arithmetic"
+    assert "Arithmetic means for ratios" in window.stats_panel.note.text()
+    before = _row(window).mean("206Pb/204Pb")
+    panel.stat_mode.setCurrentIndex(panel.stat_mode.findData("geometric"))
+    assert window.analysis.settings.stat_mode == "geometric"
+    assert window.analysis.history[-1] == {"op": "set_setting", "name": "stat_mode", "old": "arithmetic", "new": "geometric"}
+    assert "Geometric means for ratios" in window.stats_panel.note.text()
+    assert _row(window).mean("206Pb/204Pb") != before
+    path = window.save_session_as(tmp_path / "statistics.rawtims")
+    window.undo_action.trigger()
+    assert panel.stat_mode.currentData() == "arithmetic" and _row(window).mean("206Pb/204Pb") == before
+    window.redo_action.trigger()
+    assert window.open_session(path, synchronous=True)
+    assert window.analysis.settings.stat_mode == panel.stat_mode.currentData() == "geometric"
+    window.undo_action.trigger()
+    assert window.analysis.settings.stat_mode == "arithmetic"
+
+
 def test_oxide_formula_switch_changes_u_values_and_the_exported_formula(window):
     _open(window, GHR1_U239)
     window.set_workflow_step("Correct")
@@ -295,6 +316,8 @@ def test_clipboard_text_matches_the_engine(window):
     assert text.count("(Mean, %StdErr)") == 9
     window.export_panel.separator.setCurrentIndex(1)
     assert window.copy_clipboard() == clipboard_text(fraction, separator=" ")
+    window.export_panel.full_precision.setChecked(True)
+    assert window.copy_clipboard() == clipboard_text(fraction, separator=" ", full_precision=True)
 
 
 def test_save_cycles_csv_writes_the_current_run(window, tmp_path):
@@ -317,8 +340,10 @@ def test_rail_steps_switch_the_inspector_and_follow_it(window):
 
 
 @pytest.mark.parametrize("size", [(1280, 800), (1440, 900), (1024, 640)])
-def test_inspector_pages_never_scroll_sideways(window, size):
+@pytest.mark.parametrize("theme", ["light", "dark"])
+def test_inspector_pages_never_scroll_sideways(window, size, theme):
     _open(window, GHR1_PB_XLS, GHR1_U_XLS)
+    window.set_theme(theme)
     window.resize(*size)
     for index in range(window.inspector_tabs.count()):
         window.inspector_tabs.setCurrentIndex(index)
@@ -328,6 +353,36 @@ def test_inspector_pages_never_scroll_sideways(window, size):
         for scroll in [page, *page.findChildren(QtWidgets.QScrollArea)]:
             if isinstance(scroll, QtWidgets.QScrollArea) and scroll.widget() is not None and scroll.isVisible():
                 assert scroll.widget().width() <= scroll.viewport().width(), (index, size)
+
+
+@pytest.mark.parametrize("size", [(1280, 800), (1440, 900), (1024, 640)])
+def test_cycle_table_pages_keep_all_functions_accessible_without_horizontal_scroll(window, size):
+    _open(window, B998)
+    window.resize(*size)
+    window.set_plot_mode("table")
+    QtWidgets.QApplication.processEvents()
+    table = window.cycle_table
+    seen = set()
+    while True:
+        QtWidgets.QApplication.processEvents()
+        assert not table.horizontalScrollBar().isVisible()
+        assert table.horizontalHeader().length() <= table.viewport().width()
+        visible = [column for column in range(4, table.model().columnCount()) if not table.isColumnHidden(column)]
+        assert visible
+        for column in visible:
+            key = table.model().headerData(column, QtCore.Qt.Orientation.Horizontal)
+            seen.add(key)
+            assert float(table.model().index(0, column).data()) == pytest.approx(window.analysis.column(key)[0], rel=1e-6)
+        if not window.table_next.isEnabled():
+            break
+        window.table_next.click()
+    assert seen == set(B998_MAPPED)
+    while window.table_previous.isEnabled():
+        window.table_previous.click()
+    assert not table.isColumnHidden(4)
+    # Paging and resizing leave the include model and its SYNCH edits intact.
+    table.cycle_model.setData(table.cycle_model.index(0, 0), QtCore.Qt.CheckState.Unchecked, QtCore.Qt.ItemDataRole.CheckStateRole)
+    assert all(not window.analysis.included_for(key)[0] for key in B998_MAPPED)
 
 
 # ------------------------------------------------------------------ verify

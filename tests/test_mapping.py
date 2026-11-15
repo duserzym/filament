@@ -102,7 +102,7 @@ def test_unlabelled_ku_functions_map_directly():
 
 
 def test_isolinx_shorthand_maps_by_name_and_formula():
-    analysis = Analysis(read(TIMSDP_FILES["WH205 z4 Pb-654"]))
+    analysis = Analysis(read(TIMSDP_FILES["WH205 z4 Pb-654"]), AnalysisSettings(stat_mode="geometric"))
     mapping = propose_mapping(analysis)
     assert mapping.complete
     assert _keys(mapping) == {
@@ -154,7 +154,7 @@ def test_u_function_that_is_not_oxide_corrected_is_refused():
 # ----------------------------------------------------------------- inversion
 def test_inverted_orientation_maps_in_geometric_mode_only():
     run = read(TIMSDP_FILES["NBS981 230024a-145"])
-    geometric = propose_mapping(Analysis(run))
+    geometric = propose_mapping(Analysis(run, AnalysisSettings(stat_mode="geometric")))
     entry = geometric.ratios["206Pb/204Pb"]
     assert entry.key == "204/206 Daly" and entry.inverted and "1/(204/206 Daly)" in entry.note
     arithmetic = propose_mapping(Analysis(run, AnalysisSettings(stat_mode="arithmetic")))
@@ -175,7 +175,7 @@ def test_inversion_is_exact_for_geometric_means_and_percent_se():
         assert abs(arithmetic * describe(values, mode="arithmetic").mean - 1.0) > 1e-8  # not exact arithmetically
     # Real file with both orientations as separate instrument columns: 1/(204/206) reproduces 206/204 to the
     # precision the file stores each column with (per cycle |1/x - y|/y <= 3.6e-10).
-    analysis = Analysis(read(TIMSDP_FILES["NBS981 210325b-392"]))
+    analysis = Analysis(read(TIMSDP_FILES["NBS981 210325b-392"]), AnalysisSettings(stat_mode="geometric"))
     forced = MethodMapping("m", "Pb", {"206Pb/204Pb": {"function": "204/206", "inverted": True}}).apply(analysis)
     inverted = ratio_stats(analysis, forced.ratios["206Pb/204Pb"])
     direct = analysis.stats("206/204")
@@ -186,7 +186,7 @@ def test_inversion_is_exact_for_geometric_means_and_percent_se():
 
 
 def test_inverted_values_refuse_arithmetic_mode():
-    analysis = Analysis(read(TIMSDP_FILES["NBS981 230024a-145"]))
+    analysis = Analysis(read(TIMSDP_FILES["NBS981 230024a-145"]), AnalysisSettings(stat_mode="geometric"))
     entry = propose_mapping(analysis).ratios["206Pb/204Pb"]
     analysis.set_setting("stat_mode", "arithmetic")
     with pytest.raises(MappingError, match="arithmetic"):
@@ -239,7 +239,7 @@ def test_rule_proposals_default_to_mapped_functions_when_a_mapping_is_given():
 
 
 def test_shorthand_functions_are_ratios_for_mapped_k_sigma():
-    analysis = Analysis(read(TIMSDP_FILES["WH205 z4 Pb-654"]))
+    analysis = Analysis(read(TIMSDP_FILES["WH205 z4 Pb-654"]), AnalysisSettings(stat_mode="geometric"))
     mapping = propose_mapping(analysis)
     with_mapping = analysis.propose_k_sigma(mapping=mapping)
     as_ratio = analysis.propose_k_sigma(list(mapping.function_keys), log_ratios=True)

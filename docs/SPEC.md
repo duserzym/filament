@@ -125,7 +125,16 @@ citations are in [tripoli-research-notes.md](tripoli-research-notes.md). The ess
   - Non-ratio functions use arithmetic statistics.
   - Block mode, an inverse-variance weighted mean of block means with MSWD, exists but is "abandoned for now"
     in the code.
-  - Legacy Tripoli used arithmetic statistics on the ratios.
+  - Legacy Tripoli uses arithmetic statistics on accepted ratios: mean, sample SD (n−1),
+    SE = SD/√n, % SE = 100·SE/mean (`source/RawRatio.cs`, `CalcStats`). Yiming confirmed that
+    this older Windows program produced the past BSU numbers. filament therefore defaults to
+    **arithmetic, as legacy Tripoli**; geometric remains an undoable, session-saved setting for
+    comparison with Java Tripoli. Java oracle tests explicitly select geometric.
+  - The **legacy clipboard format** is `name  (Mean, %StdErr)` (two spaces), CRLF lines,
+    mean and % SE formatted as C# `E7` (eight significant digits, signed three-digit exponent),
+    and a blank line after each block (`frmRatioGraph.cs`, `GetPctStdErrAsText`). This is
+    filament's default; full precision remains optional. Java's one-space, full-precision
+    output explains the earlier implementation choice; the BSU sheet headers identify the legacy source.
 - **Rejection:**
   - by hand ("sculpting"): click or box-select cycles, toggle whole blocks, SYNCH one selection across all
     plots;
@@ -222,12 +231,12 @@ Must = Phase 1. Later = designed for, built after Phase 1. Not = deliberately ou
 | F8 | Reject by hand: click a point, box-select, toggle a whole block, with SYNCH (apply the same cycles to all functions) on by default | sculpting mode, SYNCH | Must |
 | F9 | Reject by rule: Chauvenet (P, min n); iterative k-σ (legacy TwoSigma) as an option; scope run or block; per function or synced | Chauvenet button; legacy TwoSigma | Must |
 | F10 | Undo/redo of every rejection and setting change; Reset analysis | legacy undo history; current Reset Data | Must (better than current Tripoli) |
-| F11 | Statistics per function: geometric mean of ratios (Tripoli default) and arithmetic option; SD, SE, % SE (Tripoli's smaller-side convention), n used/total; per block too | `AnalysisStatsRecord`, `MeasuredUserFunction` | Must |
+| F11 | Cycle statistics: arithmetic, as legacy Tripoli, by default; geometric (Java Tripoli) selectable; mean, SD (n−1), SE, 1σ % SE, n used/total; intensities always arithmetic | legacy `RawRatio.CalcStats`; Java `AnalysisStatsRecord` | Must |
 | F12 | UO2 oxide correction from `270/267` and `265/267` with editable 18O/16O (default 0.00205, BSU 0.00206), ET_Redux formula; pass-through when the file already has oxide-corrected functions, recording r18 from the name | auto UO2 correction | Must |
 | F13 | Show the in-run 18O/16O monitor (`272/270`/2) when present | not in Tripoli; Triton `R18 = R4/2` | Later |
 | F14 | Map functions to contract ratios (`206/204 D` → `206Pb/204Pb`, `238/235 oxide…` → `238U/235U`), remembered per method name | ET_Redux name mapping; per-method defaults | Must |
 | F15 | Export `idtims-fractions/1` CSV with correlations from shared accepted cycles and provenance | ET_Redux XML export (role) | Must |
-| F16 | Copy the Tripoli clipboard block (`name (Mean, %StdErr)`) so Yiming can keep pasting into the BSU spreadsheet during the transition | Clipboard Export | Must |
+| F16 | Copy the legacy clipboard format (`name  (Mean, %StdErr)`, two spaces, CRLF, C# E7, blank line after each block) by default, with a full-precision option, for the BSU spreadsheet | legacy `frmRatioGraph.GetPctStdErrAsText` | Must |
 | F17 | Cycle export CSV with include flags (for audit) | Cycles Export | Must |
 | F18 | Session file: all analyses, pairings, flags, settings, history; JSON; re-reads raw files by hash on open | `.tripoli` session (but portable) | Must |
 | F19 | Concatenate two runs of the same fraction | Session Manager concatenate | Later |

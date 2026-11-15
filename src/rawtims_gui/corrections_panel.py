@@ -108,6 +108,17 @@ class CorrectionsPanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 6, 4, 4)
         layout.setSpacing(6)
 
+        title = QtWidgets.QLabel("Statistics")
+        title.setObjectName("SectionTitle")
+        layout.addWidget(title)
+        self.stat_mode = QtWidgets.QComboBox()
+        self.stat_mode.setObjectName("StatisticsMode")
+        _narrow(self.stat_mode)
+        self.stat_mode.addItem("arithmetic (legacy Tripoli)", "arithmetic")
+        self.stat_mode.addItem("geometric (Java Tripoli)", "geometric")
+        self.stat_mode.setToolTip("Ratio statistics; saved in the session. Undo reverts this change. Intensities always use arithmetic statistics.")
+        layout.addWidget(self.stat_mode)
+
         title = QtWidgets.QLabel("Oxide correction")
         title.setObjectName("SectionTitle")
         layout.addWidget(title)
@@ -217,6 +228,7 @@ class CorrectionsPanel(QtWidgets.QWidget):
         self.bsu_button.clicked.connect(lambda: self.settingRequested.emit("r18", BSU_R18))
         self.default_r18_button.clicked.connect(lambda: self.settingRequested.emit("r18", DEFAULT_R18))
         self.formula.currentIndexChanged.connect(self._formula_changed)
+        self.stat_mode.currentIndexChanged.connect(self._stat_mode_changed)
         self.collector.currentIndexChanged.connect(self._collector_changed)
         self.remember_button.clicked.connect(self.rememberRequested)
         self.forget_button.clicked.connect(self.forgetRequested)
@@ -224,6 +236,10 @@ class CorrectionsPanel(QtWidgets.QWidget):
         self.update_panel(None, None, None, "proposed", False)
 
     # ------------------------------------------------------------ signals
+    def _stat_mode_changed(self, *_args) -> None:
+        if not self._loading and self.analysis is not None and self.stat_mode.currentData() != self.analysis.settings.stat_mode:
+            self.settingRequested.emit("stat_mode", self.stat_mode.currentData())
+
     def _r18_edited(self) -> None:
         if not self._loading and self.analysis is not None and self.r18.value() != self.analysis.settings.r18:
             self.settingRequested.emit("r18", float(round(self.r18.value(), 5)))
@@ -257,6 +273,8 @@ class CorrectionsPanel(QtWidgets.QWidget):
         self.analysis, self.mapping = analysis, mapping
         self._loading = True
         try:
+            self.stat_mode.setEnabled(analysis is not None)
+            self.stat_mode.setCurrentIndex(self.stat_mode.findData(analysis.settings.stat_mode if analysis else "arithmetic"))
             state, text = oxide_status_text(analysis)
             self.oxide_status.setText(text)
             computed = state == "computed"
@@ -269,7 +287,7 @@ class CorrectionsPanel(QtWidgets.QWidget):
             if analysis is not None:
                 self.r18.setValue(analysis.settings.r18)
                 self.formula.setCurrentIndex(self.formula.findData(analysis.settings.oxide_formula))
-            self.formula_description.setVisible(self.oxide_controls.isVisible())
+            self.formula_description.setVisible(state in ("computed", "pass_through", "not_applicable"))
             self._show_formula_text()
             warning = _color("warning")
             self.formula_warning.setStyleSheet(f"#FormulaWarning {{ color: {warning}; font-weight: 600; }}")
