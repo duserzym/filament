@@ -73,7 +73,21 @@ For the magnitudes in Yiming's BSU spreadsheets (238/235 ≈ 0.34-0.47, 233/235 
 the current Tripoli form would come out **0.22-0.28 % lower** than the ET_Redux form. That would affect
 Yiming's numbers only if Tripoli applied the correction to them, which is not established (next section).
 
-## Which formula produced Yiming's existing BSU numbers: not testable yet
+## BSU: the correction is applied by IonVantage (confirmed by Yiming, 2026-11-14)
+
+Yiming confirmed that at Boise State the oxide correction is applied in IonVantage, before Tripoli. For
+BSU files, the oxide-corrected function columns (`238/235 oxide R18 0.00206`, `233/235 oxide R18 0.00206`,
+`238/233 oxide`) are therefore the source of truth:
+
+- filament passes them through unchanged, whatever its own r18 and formula settings;
+- it records R18 from the function name (0.00206) and `U Oxide Formula` = `instrument`;
+- the Corrections step says which case the run is in.
+
+filament's own correction (default `isobar_233_18O`) applies only to files without such columns.
+`tests/test_no_double_oxide_correction.py` checks that a file carrying both the corrected functions and the
+raw 270/267 and 265/267 columns is never corrected twice.
+
+## Which formula IonVantage uses at BSU: not testable yet
 
 The only Boise State file in Tripoli's repository is a **Pb** run
 (`isotopxPhoenixTIMS/boiseState/B998_F11_13223M02_iz1_Pb1-14973.xls`). It has no U columns. No BSU U
