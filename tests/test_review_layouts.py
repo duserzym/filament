@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 from PySide6 import QtCore, QtTest, QtWidgets
-from reader_fixtures import B998
+from reader_fixtures import B998, SYNTHETIC_PB
 from synthetic_review import install_synthetic_review
 
 from rawtims_gui import main as gui
@@ -259,3 +259,35 @@ def test_maximise_uses_hover_when_focus_is_in_inspector(wall, monkeypatch):
     assert not wall.review_shell.inspector.isVisible()
     wall.review_shell.restore()
     assert wall.review_shell.inspector.isVisible()
+
+
+@pytest.mark.parametrize('count', [6, 7])
+@pytest.mark.parametrize('width,height,minimum_visible', [(1280, 800, None), (1024, 640, 4)])
+def test_collapsed_ratios_fit_and_cycle_axes_align(wall, count, width, height, minimum_visible):
+    if count == 7:
+        wall.open_paths([str(SYNTHETIC_PB)], synchronous=True)
+        wall.select_run(wall.workspace.fractions[-1], 'Pb')
+        wall.plot_contract_ratios()
+        assert '202/205 D' in wall.plotted_keys()
+    assert len(wall.plotted_keys()) == count
+    wall.resize(width, height)
+    wall.review_shell.inspector.set_collapsed(True, animate=False)
+    settle()
+    view = wall.plot_wall
+    viewport = QtCore.QRect(QtCore.QPoint(0, 0), view.viewport().size())
+    complete = [c for c in view.cards if viewport.contains(
+        QtCore.QRect(c.mapTo(view.viewport(), QtCore.QPoint()), c.size()))]
+    assert len(complete) >= (count if minimum_visible is None else minimum_visible)
+    if width == 1280:
+        assert view.column_count() == 3
+        assert view.verticalScrollBar().maximum() == 0
+    ranges = [p.view_box.viewRange()[0] for p in view.plots]
+    np.testing.assert_allclose(ranges, np.tile(ranges[0], (count, 1)))
+    for col in range(view.column_count()):
+        plots = view.plots[col::view.column_count()]
+        lefts = [p.view_box.mapViewToScene(QtCore.QPointF(23, 0)).x() for p in plots]
+        assert max(lefts) - min(lefts) < .01
+    # X zooms remain shared as well, including across different ratio scales.
+    view.plots[0].getPlotItem().setXRange(10, 50, padding=0)
+    settle()
+    assert all(np.allclose(p.view_box.viewRange()[0], [10, 50]) for p in view.plots)

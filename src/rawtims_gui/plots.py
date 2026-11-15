@@ -2,8 +2,8 @@
 
 Each :class:`CyclePlot` shows one function of the current analysis:
 
-* blocks shaded alternately, excluded blocks tinted red;
-* the mean line and the 2SE, 1σ and 2σ bands of the included cycles; for a
+* grey dash-dot block separators, excluded blocks tinted MistyRose;
+* the mean line and the SE, 1σ and 2σ bands of the included cycles; for a
   ratio in geometric mode the bands are exp(mean ln r ± k·s), as the
   statistics are taken on ln r;
 * used cycles filled, excluded cycles hollow red, invalid cycles grey crosses;
@@ -38,6 +38,7 @@ from rawtims import stats as _stats
 from rawtims.analysis import Analysis
 from rawtims.mapping import ElementMapping, MappedRatio, ratio_stats
 from rawtims_gui.studio.theme import ThemeSpec, active_theme, theme_color
+from rawtims_gui.plot_palette import plot_palette
 from rawtims_gui.studio.widgets import RoundedPlotWidget
 
 PLOT_MIN_HEIGHT = 168
@@ -45,12 +46,10 @@ PLOT_MAX_HEIGHT = 340
 COLUMN_MIN_WIDTH = 290
 CLICK_RADIUS_PX = 10
 SELECT_MODIFIERS = QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.MetaModifier
-PREVIEW_COLORS = {"light": "#d97706", "dark": "#f0b429"}
 
 
 def preview_color(theme: ThemeSpec | None = None) -> str:
-    theme = theme or active_theme()
-    return PREVIEW_COLORS.get(theme.name, PREVIEW_COLORS["light"])
+    return plot_palette(theme).preview
 
 
 def direct_mapping(mapping: ElementMapping | None, key: str) -> MappedRatio | None:
@@ -121,12 +120,6 @@ def _quiet(item: QtWidgets.QGraphicsItem) -> None:
         line.setAcceptHoverEvents(False)
 
 
-def _alpha(color: str, alpha: int) -> QtGui.QColor:
-    value = QtGui.QColor(theme_color(color))
-    value.setAlpha(alpha)
-    return value
-
-
 @dataclass
 class PlotState:
     """What a plot draws; the window builds it and the plot only reads it."""
@@ -146,6 +139,7 @@ class CyclePlot(RoundedPlotWidget):
     selectRequested = QtCore.Signal(str, list, bool)  # key, rows, additive
     blockToggleRequested = QtCore.Signal(str, int)  # key, row in the block
     focused = QtCore.Signal(str)
+    cycleHovered = QtCore.Signal(object)
 
     def __init__(self, key: str, parent: QtWidgets.QWidget | None = None) -> None:
         self.view_box = SculptViewBox()
@@ -166,6 +160,7 @@ class CyclePlot(RoundedPlotWidget):
         self._ratio_scale = False
         self._decorations: list[QtWidgets.QGraphicsItem] = []
         self._block = np.zeros(0, dtype=int)
+        self._cycles = np.zeros(0)
         self.setMinimumHeight(PLOT_MIN_HEIGHT)
         self.setMinimumWidth(160)
         self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
@@ -179,7 +174,7 @@ class CyclePlot(RoundedPlotWidget):
         self.pinned_points = pg.ScatterPlotItem(pxMode=True, size=10, hoverable=True,
                                                tip=lambda x, y, data: data)
         self.pinned_points.setZValue(13)
-        self.ring = pg.ScatterPlotItem(pxMode=True, symbol="o", size=13)
+        self.ring = pg.ScatterPlotItem(pxMode=True, symbol="s", size=13)
         self.ring.setZValue(11)
         self.preview_points = pg.ScatterPlotItem(pxMode=True, symbol="s", size=12)
         self.preview_points.setZValue(12)
@@ -196,12 +191,39 @@ class CyclePlot(RoundedPlotWidget):
         self.view_box.sigBoxDrawn.connect(self._on_box)
         self.view_box.sigContextRequested.connect(self._on_context)
         self.view_box.sigRangeChanged.connect(self._update_pins)
+        self.hover_guide = pg.InfiniteLine(angle=90, movable=False)
+        self.hover_guide.setZValue(5)
+        _quiet(self.hover_guide)
+        item.addItem(self.hover_guide, ignoreBounds=True)
+        self.hover_guide.hide()
+        self.scene().sigMouseMoved.connect(self._hover_cycle)
         self.apply_theme()
+
+    def _hover_cycle(self, scene_pos):
+        cycle = None
+        if self._cycles.size and self.view_box.sceneBoundingRect().contains(scene_pos):
+            x = self.view_box.mapSceneToView(scene_pos).x()
+            cycle = float(self._cycles[np.argmin(abs(self._cycles - x))])
+        self.cycleHovered.emit(cycle)
+
+    def leaveEvent(self, event):
+        self.cycleHovered.emit(None)
+        super().leaveEvent(event)
+
+    def set_hover_cycle(self, cycle):
+        self.hover_guide.setVisible(cycle is not None)
+        if cycle is not None:
+            self.hover_guide.setValue(cycle)
 
     # -------------------------------------------------------------- style
     def apply_theme(self, theme: ThemeSpec | None = None) -> None:
         theme = theme or active_theme()
+        plot = plot_palette(theme)
         self.setBackground(theme.plot_background)
+        self.view_box.setBorder(pg.mkPen(plot.frame, width=1))
+        self.view_box.rbScaleBox.setBrush(pg.mkBrush(theme_color(plot.blockSelecting)))
+        self.view_box.rbScaleBox.setPen(pg.mkPen(plot.selection))
+        self.hover_guide.setPen(pg.mkPen(theme_color(plot.hoverGuide), width=1))
         item = self.getPlotItem()
         font = QtGui.QFont(self.font())
         font.setPointSizeF(8.5)
@@ -211,22 +233,24 @@ class CyclePlot(RoundedPlotWidget):
             axis.setTextPen(pg.mkPen(theme.axis_text))
             axis.setTickFont(font)
         item.showGrid(x=False, y=True, alpha=0.25)
-        self.ring.setPen(pg.mkPen(theme.accent_strong, width=2))
+        self.ring.setPen(pg.mkPen(plot.selection, width=2))
         self.ring.setBrush(pg.mkBrush(None))
         self.preview_points.setPen(pg.mkPen(preview_color(theme), width=2))
         self.preview_points.setBrush(pg.mkBrush(None))
-        self.pinned_points.setPen(pg.mkPen(theme.danger, width=1.6))
+        self.pinned_points.setPen(pg.mkPen(plot.excluded, width=1.6))
         self.pinned_points.setBrush(pg.mkBrush(None))
 
     # --------------------------------------------------------------- data
     def update_state(self, state: PlotState, *, rebuild: bool = False) -> None:
         """Redraw points, bands and title from the analysis (``rebuild`` also resets the axes)."""
         theme = active_theme()
+        plot = plot_palette(theme)
         analysis = state.analysis
         column = analysis.index(self.key)
         run = analysis.run
         values = analysis.values[:, column]
         self._block = run.block
+        self._cycles = run.cycle.astype(float)
         self._ratio_scale = is_ratio_scale(analysis, state.mapping, self.key)
         log = state.log_ratio and self._ratio_scale
         rebuild = rebuild or log != self._log
@@ -253,8 +277,8 @@ class CyclePlot(RoundedPlotWidget):
         self._effective = effective.copy()
         self._invalid = invalid.copy()
         self._fit_all = state.fit_all
-        used_brush = pg.mkBrush(theme.accent)
-        bad_pen = pg.mkPen(theme.danger, width=1.6)
+        used_brush = pg.mkBrush(plot.included)
+        bad_pen = pg.mkPen(plot.excluded, width=1.6)
         grey = pg.mkPen(theme.faint, width=1.4)
         no_pen = pg.mkPen(None)
         brushes, pens, symbols, sizes = [], [], [], []
@@ -267,12 +291,12 @@ class CyclePlot(RoundedPlotWidget):
             elif used:
                 brushes.append(used_brush)
                 pens.append(no_pen)
-                symbols.append("o")
+                symbols.append("s")
                 sizes.append(6)
             else:
                 brushes.append(pg.mkBrush(None))
                 pens.append(bad_pen)
-                symbols.append("o")
+                symbols.append("s")
                 sizes.append(7)
         self.points.setData(x=self.x_shown, y=self.y_shown, brush=brushes, pen=pens, symbol=symbols, size=sizes)
         self._draw_decorations(state, theme, log)
@@ -303,8 +327,8 @@ class CyclePlot(RoundedPlotWidget):
     def reset_view(self) -> None:
         item = self.getPlotItem()
         item.disableAutoRange()
-        if self.x_shown.size:
-            item.setXRange(float(self.x_shown.min()) - 0.5, float(self.x_shown.max()) + 0.5, padding=0.01)
+        if self._cycles.size:
+            item.setXRange(float(self._cycles.min()) - 0.5, float(self._cycles.max()) + 0.5, padding=0)
         values = self.y_shown if self._fit_all else self.y_shown[self._effective]
         if values.size:
             lo, hi = float(values.min()), float(values.max())
@@ -341,20 +365,25 @@ class CyclePlot(RoundedPlotWidget):
         analysis = state.analysis
         run = analysis.run
         transparent = pg.mkPen(None)
+        plot = plot_palette(theme)
         for position, block in enumerate(analysis.blocks):
             rows = run.block == block
             lo, hi = float(run.cycle[rows].min()) - 0.5, float(run.cycle[rows].max()) + 0.5
             if not analysis.block_included[position]:
-                brush = pg.mkBrush(_alpha(theme.danger, 30))
-            elif position % 2:
-                brush = pg.mkBrush(_alpha(theme.accent, 16))
-            else:
-                continue
-            region = pg.LinearRegionItem((lo, hi), orientation="vertical", movable=False, brush=brush, pen=transparent)
-            region.setZValue(-20)
-            _quiet(region)
-            item.addItem(region, ignoreBounds=True)
-            self._decorations.append(region)
+                region = pg.LinearRegionItem((lo, hi), orientation="vertical", movable=False,
+                                             brush=pg.mkBrush(theme_color(plot.blockOff)), pen=transparent)
+                # Overlay the bands as well, so the entire block remains visibly off.
+                region.setZValue(-6)
+                _quiet(region)
+                item.addItem(region, ignoreBounds=True)
+                self._decorations.append(region)
+            if position:
+                separator = pg.InfiniteLine(pos=lo, angle=90, movable=False,
+                    pen=pg.mkPen(plot.blockSeparator, width=1, style=QtCore.Qt.PenStyle.DashDotLine))
+                separator.setZValue(-3)
+                _quiet(separator)
+                item.addItem(separator, ignoreBounds=True)
+                self._decorations.append(separator)
         stats = plot_stats(analysis, state.mapping, self.key)
         if not math.isfinite(stats.center):
             return
@@ -368,18 +397,18 @@ class CyclePlot(RoundedPlotWidget):
             def bound(k: float, s: float) -> tuple[float, float]:
                 return center - k * s, center + k * s
             mean = center
-        bands = [(2.0, stats.sd, 22), (1.0, stats.sd, 30), (2.0, stats.se, 60)]
-        for z, (k, spread, alpha) in enumerate(bands):
+        bands = [(2.0, stats.sd, plot.band2sigma), (1.0, stats.sd, plot.band1sigma), (1.0, stats.se, plot.bandSE)]
+        for z, (k, spread, color) in enumerate(bands):
             if not math.isfinite(spread):
                 continue
             lo, hi = bound(k, spread)
             band = pg.LinearRegionItem((lo, hi), orientation="horizontal", movable=False,
-                                       brush=pg.mkBrush(_alpha(theme.accent, alpha)), pen=transparent)
+                                       brush=pg.mkBrush(theme_color(color)), pen=transparent)
             band.setZValue(-10 + z)
             _quiet(band)
             item.addItem(band, ignoreBounds=True)
             self._decorations.append(band)
-        line = pg.InfiniteLine(pos=mean, angle=0, movable=False, pen=pg.mkPen(theme.accent_strong, width=1.3))
+        line = pg.InfiniteLine(pos=mean, angle=0, movable=False, pen=pg.mkPen(plot.mean, width=1))
         line.setZValue(-5)
         _quiet(line)
         item.addItem(line, ignoreBounds=True)
@@ -508,6 +537,9 @@ class PlotWall(QtWidgets.QScrollArea):
                 plot.selectRequested.connect(self.selectRequested)
                 plot.blockToggleRequested.connect(self.blockToggleRequested)
                 plot.focused.connect(self.focused)
+                plot.cycleHovered.connect(self.set_hover_cycle)
+                if self.plots:
+                    plot.setXLink(self.plots[0])
                 plot.update_state(state, rebuild=True)
                 self.plots.append(plot)
         self._columns = 0
@@ -517,6 +549,10 @@ class PlotWall(QtWidgets.QScrollArea):
         self.state = state
         for plot in self.plots:
             plot.update_state(state, rebuild=rebuild)
+
+    def set_hover_cycle(self, cycle) -> None:
+        for plot in self.plots:
+            plot.set_hover_cycle(cycle)
 
     def set_selection(self, rows: set[int] | frozenset[int]) -> None:
         if self.state is not None:

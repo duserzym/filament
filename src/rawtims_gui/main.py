@@ -91,10 +91,10 @@ RECENT_KEY = "sessions/recent"
 MAX_RECENT = 8
 AUTOSAVE_MS = 1500
 UNTITLED = "Untitled"
-LEGEND = "● used  ○ excluded  × invalid  — mean, bands 2SE · 1σ · 2σ   Click or drag: toggle · ⌘-click, ⇧-drag: select · B: block"
+LEGEND = "■ used  □ excluded  × invalid  — mean, bands SE · 1σ · 2σ   Click or drag: toggle · ⌘-click, ⇧-drag: select · B: block"
 LEGEND_TIP = ("Filled: used. Hollow red: excluded by hand or by block. Grey cross: invalid value (never used).\n"
               "Red edge triangles: excluded points outside the range; hover for the true value, click to toggle.\n"
-              "Line: mean of the used cycles; bands from dark to light: 2SE, 1σ, 2σ.\n"
+              "Line: mean of the used cycles; bands: green ±1 SE, yellow ±1σ, pink ±2σ.\n"
               "Click a point to toggle that cycle; drag a box to toggle the cycles inside.\n"
               "⌘-click (Ctrl-click) adds a point to the selection; ⇧-drag selects a box.\n"
               "Delete or Backspace rejects the selection; B toggles its block; right-click for the block menu.\n"

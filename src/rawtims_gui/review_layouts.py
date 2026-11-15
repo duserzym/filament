@@ -9,6 +9,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims.branding import DISPLAY_NAME
 from rawtims_gui.plots import PlotWall, format_number, plot_stats
+from rawtims_gui.plot_palette import plot_palette
 from rawtims_gui.studio.theme import active_theme
 from rawtims_gui.studio.widgets import ElidedLabel
 
@@ -171,6 +172,7 @@ class SharedBlocks(QtWidgets.QScrollArea):
         columns = [analysis.index(k) for k in analysis.group_keys]
         effective = analysis.effective[:, columns].all(axis=1) if columns else np.ones(analysis.n_cycles, dtype=bool)
         theme = active_theme()
+        plot = plot_palette(theme)
         for block, included in zip(blocks, analysis.block_included):
             rows = analysis.run.block == block
             used, total = int(effective[rows].sum()), int(rows.sum())
@@ -183,9 +185,9 @@ class SharedBlocks(QtWidgets.QScrollArea):
             cell.setToolTip(f'Block {block} · cycles {cycles}\n{used}/{total} used across shared ratios. '
                             'Click or Space/Return: toggle (undoable). ← →: move between blocks.')
             cell.setStyleSheet(f'QToolButton {{ padding: 3px 1px; font-size: {10 if compact else 11}px; '
-                              f'color: {theme.text if included else theme.danger}; '
-                              f'background: {theme.surface if included else "#18" + theme.danger.lstrip("#")}; '
-                              f'border: 1px solid {theme.axis_line if included else theme.danger}; border-radius: 5px; }} '
+                              f'color: {theme.text if included else plot.excluded}; '
+                              f'background: {theme.surface if included else plot.blockOff}; '
+                              f'border: 1px solid {theme.axis_line if included else plot.excluded}; border-radius: 5px; }} '
                               f'QToolButton:pressed, QToolButton:focus {{ background: {theme.accent_soft}; border-color: {theme.accent}; }}')
         self.align_axis(self.axis_aligned)
 
@@ -274,8 +276,9 @@ class ReviewPlotWall(PlotWall):
                 card.refresh(self.state)
 
     def column_count(self):
-        width = self.window().width()
-        return 3 if width >= 1440 else 2 if width >= 1100 else 1
+        width = self.viewport().width()
+        count = len(self.cards) or len(self.plots)
+        return 3 if width >= 960 and count >= 5 else 2 if width >= 700 else 1
 
     def toggle_card(self, card):
         self.maximise_card(card)
@@ -296,8 +299,12 @@ class ReviewPlotWall(PlotWall):
         for card in self.cards:
             card.setVisible(card in visible)
         rows = max(1, (len(visible) + columns - 1) // columns)
+        spacing = self.grid.spacing()
+        available = self.viewport().height()
+        # When scrolling is needed, fill an integral number of complete rows.
+        visible_rows = min(rows, max(1, (available + spacing) // (CARD_SIZE.minimum.height() + spacing)))
         height = max(CARD_SIZE.minimum.height(), min(CARD_SIZE.maximum.height(),
-                     (self.viewport().height() - 8 * (rows - 1)) // rows))
+                     (available - spacing * (visible_rows - 1)) // visible_rows))
         for index, card in enumerate(visible):
             card.setFixedHeight(height)
             self.grid.addWidget(card, index // columns, index % columns)
