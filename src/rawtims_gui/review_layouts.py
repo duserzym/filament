@@ -6,6 +6,7 @@ import os
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from rawtims.branding import DISPLAY_NAME
 from rawtims_gui.plots import PlotWall, format_number, plot_stats
 from rawtims_gui.studio.theme import active_theme
 from rawtims_gui.studio.widgets import ElidedLabel
@@ -328,7 +329,7 @@ class ReviewShell(QtWidgets.QWidget):
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(5)
         top = QtWidgets.QHBoxLayout()
-        top.addWidget(QtWidgets.QLabel('Filament  /  Review'))
+        top.addWidget(QtWidgets.QLabel(f'{DISPLAY_NAME}  /  Review'))
         top.addWidget(tool('Open…', 'Open run files', window.choose_files))
         self.picker = QtWidgets.QComboBox()
         self.picker.setMinimumWidth(120)
