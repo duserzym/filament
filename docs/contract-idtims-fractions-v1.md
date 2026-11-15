@@ -60,7 +60,7 @@ The writer fills what it knows; the reduction app lets the user complete the res
 | `Sample` | no | Sample name, e.g. `SA18-1` |
 | `Beaker` | no | Dissolution beaker or capsule (BSU sheet "Barrel number"), e.g. `K1`, `B1677` |
 | `Source Mount` | no | LA-ICP-MS mount name |
-| `Source Grain` | no | LA-ICP-MS grain the fraction was plucked from (grainatlas / laicpmsdb label) |
+| `Source Grain` | no | LA-ICP-MS grain the fraction was plucked from (grainatlas / UPbDB label) |
 | `Source Spot` | no | LA-ICP-MS spot on that grain |
 | `Aliquot` | no | Free label for grouping fractions |
 

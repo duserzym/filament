@@ -385,11 +385,11 @@ These follow Studio's mechanisms so UPb Lab can treat filament like Studio:
   `<scheme>://session/<id>?server=…&via=upblab`.
 - **Launch:** `--open <file|folder|session|url>`, single instance through `QLocalServer`, macOS
   `QFileOpenEvent`, Windows `--register-url-scheme`.
-- **Database mode:** a later `rawtims.integration.laicpmsdb` module (Qt-free, `requests`/`keyring`
+- **Database mode:** a later `rawtims.integration.upbdb` module (Qt-free, `requests`/`keyring`
   imported lazily from a `[database]` extra) that uploads the run files, session and contract CSV as a
   bundle and links fractions to grains and spots (`Source Grain`/`Source Spot` now, UIDs in a later contract
   column).
-- **Inbox:** UPb Lab notice files on submit, as in Studio's `lab_inbox.py`. No laicpmsdb change is needed now.
+- **Inbox:** UPb Lab notice files on submit, as in Studio's `lab_inbox.py`. No UPbDB change is needed now.
 
 ## 7. Repository, naming, tests, packaging
 
