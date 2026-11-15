@@ -1,21 +1,21 @@
 """Render real-fixture review states in both themes at each supported fit-check size.
 
 Run with PYTHONPATH cleared and QT_QPA_PLATFORM=offscreen; pass the screenshot
-folder as the sole argument. Settings and recovery stay in the app build cache.
+folder as the positional argument. Settings and recovery stay under that folder.
+Use --variants for the five light-theme layout comparison PNGs.
 The 1280x800 images go directly in that folder; other sizes go in fit/.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
 from PySide6 import QtCore, QtTest, QtWidgets
 
-from rawtims import branding
 from rawtims.analysis import Analysis, AnalysisSettings
 from rawtims.readers import open_run
 from rawtims_gui import main as gui
@@ -53,9 +53,13 @@ def fit_evidence(window: gui.MainWindow) -> dict:
 
 
 def main() -> None:
-    output = Path(sys.argv[1]).resolve()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('output', type=Path)
+    parser.add_argument('--variants', action='store_true', help='Capture the layout comparison only')
+    args = parser.parse_args()
+    output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    cache = Path(os.environ.get("RAWTIMS_CACHE_DIR", Path.home() / "Library/Caches" / branding.CACHE_DIR_NAME)) / "review-capture"
+    cache = output / ".capture-cache"
     cache.mkdir(parents=True, exist_ok=True)
     os.environ["RAWTIMS_CACHE_DIR"] = str(cache)
     settings = QtCore.QSettings(str(cache / "settings.ini"), QtCore.QSettings.Format.IniFormat)
@@ -70,6 +74,34 @@ def main() -> None:
     values = run.column("206/204 D")
     outliers = np.argsort(np.abs(values - np.median(values)))[-2:].tolist()
     report["manual_rejected_cycles"] = run.cycle[outliers].tolist()
+    if args.variants:
+        for layout in ('classic', 'strips', 'wall'):
+            for width, height in ((1280, 800), (1024, 640)):
+                if layout == 'classic' and width != 1280:
+                    continue
+                settings.clear()
+                window = gui.MainWindow(restore_geometry=False, layout=layout)
+                window.resize(width, height)
+                window.show()
+                window.open_paths([str(B998)], synchronous=True)
+                settle()
+                for cycle in (23, 24):
+                    row = int(np.flatnonzero(run.cycle == cycle)[0])
+                    plot = window.plot_wall.plot('206/204 D')
+                    plot._on_click(plot.point_of(row), QtCore.Qt.KeyboardModifier.NoModifier)
+                assert window.cycles_used() == (94, 96)
+                window.statusBar().clearMessage()
+                settle()
+                name = f'classic_{width}.png' if layout == 'classic' else f'variant_{layout}_{width}.png'
+                report['captures'][name] = fit_evidence(window)
+                assert window.grab().save(str(output / name), 'PNG')
+                window.unsaved_prompt = lambda _name: 'discard'
+                window.close()
+                window.deleteLater()
+                settle()
+        (output / 'variants-fit-report.json').write_text(json.dumps(report, indent=2) + '\n')
+        print(json.dumps(report, indent=2))
+        return
     for theme in ("light", "dark"):
         for width, height in ((1280, 800), (1440, 900), (1024, 640)):
             settings.clear()

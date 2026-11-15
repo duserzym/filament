@@ -220,8 +220,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     importFinished = QtCore.Signal(object)  # rawtims_gui.workspace.ImportResult
 
-    def __init__(self, *, restore_geometry: bool = True) -> None:
+    def __init__(self, *, restore_geometry: bool = True, layout: str = "classic") -> None:
         super().__init__()
+        if layout not in ("classic", "strips", "wall"):
+            raise ValueError(f"Unknown Review layout: {layout}")
+        self.layout_name = layout
         self.settings = app_settings()
         self.workspace = Workspace(load_remembered(self.settings))
         self.current: tuple[Fraction, str] | None = None
@@ -259,9 +262,17 @@ class MainWindow(QtWidgets.QMainWindow):
         layout = QtWidgets.QHBoxLayout(central)
         layout.setContentsMargins(10, 10, 10, 6)
         layout.setSpacing(4)
-        layout.addWidget(self._build_rail())
-        layout.addWidget(self._build_centre(), 1)
-        layout.addWidget(self._build_inspector())
+        rail = self._build_rail()
+        centre = self._build_centre()
+        inspector = self._build_inspector()
+        if self.layout_name == "classic":
+            layout.addWidget(rail)
+            layout.addWidget(centre, 1)
+            layout.addWidget(inspector)
+        else:
+            from rawtims_gui.review_layouts import ReviewShell
+            self.review_shell = ReviewShell(self, rail, centre, inspector)
+            layout.addWidget(self.review_shell)
         self.setCentralWidget(central)
         self._build_status_bar()
         self._sync_controls()
@@ -520,7 +531,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.run_title = ElidedLabel("")
         self.run_title.setObjectName("WorkflowContextTitle")
         top.addWidget(self.run_title, 1)
-        layout.addLayout(top)
+        if self.layout_name != "classic":
+            from rawtims_gui.review_layouts import PanelHeader, tool
+            header = PanelHeader()
+            header.setLayout(top)
+            header.doubleClicked.connect(lambda: self.review_shell.toggle_outer())
+            top.addWidget(tool("⤢", "Maximise / restore plots", lambda: self.review_shell.toggle_outer()))
+            layout.addWidget(header)
+        else:
+            layout.addLayout(top)
 
         bar = QtWidgets.QFrame()
         bar.setObjectName("PlotControlBar")
@@ -568,7 +587,14 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(bar)
 
         self.view_stack = QtWidgets.QStackedWidget()
-        self.plot_wall = PlotWall()
+        if self.layout_name == "classic":
+            self.plot_wall = PlotWall()
+        else:
+            from rawtims_gui.review_layouts import SharedBlocks, VariantPlotWall
+            self.block_header = SharedBlocks()
+            self.block_header.blockClicked.connect(self.toggle_block)
+            layout.addWidget(self.block_header)
+            self.plot_wall = VariantPlotWall(self.layout_name)
         self.plot_wall.toggleRequested.connect(self.request_toggle)
         self.plot_wall.selectRequested.connect(self.request_select)
         self.plot_wall.blockToggleRequested.connect(self.request_block_toggle)
@@ -899,6 +925,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._sync_controls()
         self._update_titles()
         self._refresh_legacy_notice()
+        if hasattr(self, "review_shell"):
+            self.review_shell.refresh()
 
     def _refresh_legacy_notice(self) -> None:
         analysis = self.analysis
@@ -1012,6 +1040,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.synch_action.setToolTip(SHARED_SELECTION_TOOLTIP if locked else "SYNCH applies to free functions only")
         self.synch_button.setText("SYNCH · locked" if locked else "SYNCH")
         self.why_link.setVisible(bool(locked))
+        if self.layout_name != "classic" and locked:
+            self.synch_button.setText("Shared · locked")
+            self.why_link.hide()
         self.synch_action.blockSignals(False)
         self.log_action.blockSignals(True)
         self.log_action.setChecked(self.log_ratio)
@@ -1152,6 +1183,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._after_edit()
 
     def clear_selection(self) -> None:
+        if hasattr(self, "review_shell") and self.review_shell.restore():
+            return
         self.selection = set()
         self._show_selection()
 
@@ -1896,15 +1929,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.resize(self.default_window_size())
         self.centre_on_screen()
         self.settings.remove(GEOMETRY_KEY)
+        if hasattr(self, "review_shell"):
+            self.review_shell.restore()
+            self.review_shell.restore()
+            self.review_shell.inspector.set_collapsed(False, animate=False)
+            if hasattr(self.review_shell, "rail") and not self.review_shell.rail.collapsed:
+                self.review_shell.toggle_rail()
+            self.review_shell.splitter.reset_sizes()
         if self.analysis is not None:
             self.set_plot_mode("ratios")
 
     def persist_geometry(self) -> None:
+        if hasattr(self, "review_shell") and not self.review_shell.outer_maximised:
+            self.review_shell.splitter.save()
         self.settings.setValue(GEOMETRY_KEY, self.saveGeometry())
         self.settings.sync()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # noqa: N802 - Qt API
         super().resizeEvent(event)
+        if self.layout_name != "classic":
+            if hasattr(self, "plot_wall"):
+                self.plot_wall._relayout()
+            return
         narrow = self.width() < 1180
         self.rail_panel.setFixedWidth(208 if narrow else 224)
         self.inspector_panel.setFixedWidth(300 if narrow else 320)
@@ -1932,6 +1978,8 @@ def export_window(window: QtWidgets.QMainWindow, output_path: str) -> bool:
 
 def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog=branding.EXECUTABLE_NAME, description=f"{branding.DISPLAY_NAME}: raw ID-TIMS data review")
+    parser.add_argument("--layout", choices=("classic", "strips", "wall"), default="classic",
+                        help="Review layout preview (default: classic)")
     parser.add_argument("--theme", choices=THEME_MODES, help="Theme for this launch (default: the saved choice, else light)")
     parser.add_argument("--open", nargs="+", metavar="PATH", help="Open run files, folders or a saved session at start")
     parser.add_argument("--export", nargs=2, metavar=("FORMAT", "PATH"), help="Render the window to PATH and exit; FORMAT must be png")
@@ -1966,7 +2014,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.export is not None:
         # Scripted export: always 1280 x 800 (the offscreen screen is smaller),
         # nothing read from or written to the saved geometry.
-        window = MainWindow(restore_geometry=False)
+        window = MainWindow(restore_geometry=False, layout=args.layout)
         window.resize(DEFAULT_SIZE)
         if args.open:
             window.open_paths(args.open, synchronous=True)
@@ -1976,7 +2024,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
 
-    window = MainWindow()
+    window = MainWindow(layout=args.layout)
     window.show()
     if args.open:
         window.open_paths(args.open)

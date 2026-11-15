@@ -234,6 +234,7 @@ class FractionList(QtWidgets.QScrollArea):
         self.rows_layout.addStretch(1)
         self.setWidget(body)
         self.rows: list[FractionRow] = []
+        self.compact = False
 
     def set_fractions(self, fractions: Sequence[Fraction], current: tuple[Fraction, str] | None) -> None:
         for row in self.rows:
@@ -246,8 +247,19 @@ class FractionList(QtWidgets.QScrollArea):
             row.renameRequested.connect(lambda text, f=fraction: self.renameRequested.emit(f, text))
             self.rows_layout.insertWidget(position, row)
             self.rows.append(row)
+        self.set_compact(self.compact)
         self.empty_label.setVisible(not self.rows)
         self.set_current(current)
+
+    def set_compact(self, compact: bool) -> None:
+        """A 56 px rail of existing run chips; full IDs remain in tooltips."""
+        self.compact = compact
+        for row in self.rows:
+            row.id_editor.setVisible(not compact)
+            row.state_dot.setVisible(not compact)
+            row.layout().setDirection(QtWidgets.QBoxLayout.Direction.TopToBottom if compact
+                                      else QtWidgets.QBoxLayout.Direction.LeftToRight)
+            row.setToolTip(row.fraction.fraction_id)
 
     def set_states(self, states: dict[int, tuple[str, list[str]]]) -> None:
         """``{id(fraction): (state, reasons)}`` from :meth:`rawtims_gui.workspace.Workspace.fraction_status`."""
