@@ -49,6 +49,12 @@ class UnsupportedFile(ValueError):
 def _sniff_bytes(data: bytes) -> Sniff:
     if not data:
         return Sniff(None, "empty file")
+    # Projects have a BinaryFormatter header and an inert class-name label.
+    # Keep them out of run dispatch; read_trip is an explicit project API.
+    if (len(data) >= 17 and data[0] == 0 and int.from_bytes(data[1:5], "little", signed=True) > 0
+            and data[5:17] == b"\xff\xff\xff\xff\x01\x00\x00\x00\x00\x00\x00\x00"
+            and b"Tripoli.TripoliWorkProduct" in data[:4096]):
+        return Sniff(None, "legacy Tripoli project, not a raw run file (use read_trip)")
     if data.startswith(OLE2_MAGIC):
         try:
             book = open_xls(file_contents=data, on_demand=True)

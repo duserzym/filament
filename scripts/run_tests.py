@@ -36,6 +36,11 @@ ROOT = Path(__file__).resolve().parents[1]
 DURATIONS = ROOT / "tests/durations.json"
 LAST_FULL = Path(tempfile.gettempdir()) / (f"{CACHE_DIR_NAME}-last-full-" + hashlib.sha256(str(ROOT).encode()).hexdigest()[:12] + ".json")
 DURATION_LINE = re.compile(r"^\s*([\d.]+)s\s+(?:setup|call|teardown)\s+(tests/[^:]+)::")
+TEST_MAP = {
+    "src/rawtims/readers/": ("tests/test_trip_reader.py", "tests/test_tripoli_parity_drive.py"),
+    "src/rawtims/parity.py": ("tests/test_tripoli_parity_drive.py",),
+    "scripts/tripoli_parity.py": ("tests/test_tripoli_parity_drive.py",),
+}
 
 
 @dataclass(frozen=True)
@@ -118,7 +123,7 @@ def static_select_tests(changed: list[str], root: Path = ROOT) -> dict[str, str]
     if broad:
         return dict.fromkeys(files, broad)
     graph = import_graph(root, changed)
-    selected = {}
+    selected = registered_tests(changed, files)
     for test in files:
         closure, pending = set(), [test]
         while pending:
@@ -135,6 +140,12 @@ def static_select_tests(changed: list[str], root: Path = ROOT) -> dict[str, str]
                 break
     return selected
 
+
+def registered_tests(paths: list[str], files: list[str]) -> dict[str, str]:
+    """Explicit format/parity coverage even before a runtime map is refreshed."""
+    return {test: path for path in paths for source, tests in TEST_MAP.items()
+            if path == source or (source.endswith("/") and path.startswith(source))
+            for test in tests if test in files}
 
 
 SOURCE_DIRS = {"src", "scripts"}
@@ -245,7 +256,7 @@ def select_tests(changed: list[str], root: Path = ROOT, ref: str = "HEAD", *, sy
     if mapping is None:
         print("Runtime test map unavailable or expired; using static imports. A FULL run will refresh the map.")
         return static_select_tests(paths, root)
-    selected = {}
+    selected = registered_tests(paths, files)
     for change in changes:
         path, target = split_change(change)
         if path in files:

@@ -1,35 +1,105 @@
-# Status note (2026-11-14, end of Phase 1)
+# Status note (2026-11-18, real BSU legacy parity)
 
-Local repository only. No remote, no tags. Working name `filament`, set in `src/rawtims/branding.py` until
-Yiming chooses a name.
+Private repository `duserzym/filament`, branch `main`.
+Working name `filament` remains centralized in `src/rawtims/branding.py`.
 
-## Done (all committed; full suite 389 passed; frozen build and smoke test passed at 8aa1094)
-- **Contract:** `idtims-fractions/1` with clarifications 1-7, byte-identical with IDTIMS_UPbRPy `app` 9511c9a
-  (sha256 470308b8…).
-- **Readers:** IonVantage `.xls` and IsoLinx `.TIMSDP`. Per-cycle values equal Tripoli's own cycle reports.
-- **Engine:**
-  - statistics: arithmetic as the default (legacy C# Tripoli), geometric as an option (Java Tripoli, whose
-    reports filament reproduces to ≤ 2e-12);
-  - Chauvenet and k-σ, as previews followed by an explicit apply, with history, undo, redo and replay;
-  - UO2 oxide correction, `isobar_233_18O` by default. It is identical to legacy Tripoli and ET_Redux
-    (`tests/test_oxide_legacy.py`). The Java Tripoli form is a labelled comparison option. Files that already
-    carry oxide-corrected columns are passed through, never corrected twice.
-- **Exports:** the contract CSV with provenance, `U Oxide Formula` and `Pb/U Mean Statistic`; the legacy
-  Tripoli clipboard (two spaces, CRLF, C# E7); cycles CSV; headless `--verify`.
-- **GUI:**
-  - import and fraction pairing;
-  - plot wall with the y-range fitted to accepted cycles and pinned outlier markers;
-  - cycle table, hand rejection with SYNCH;
-  - Rules, Corrections (project statistics switch, r18, formula, mapping) and Export tabs;
-  - session save and restore with recovery copies.
-  It fits 1024×640 to 1440×900.
+## Validated against Yiming's actual BSU data
 
-## Waiting for Yiming
-- BSU raw files (see `docs/SPEC.md` §9 and `docs/oxide-correction.md`, "What settles it").
-- Answers: rejection practice, app name and icon, licence.
+See [tripoli-parity.md](tripoli-parity.md) for the reproducible method, source
+matching, tolerances, all comparisons and exceptions. Run:
 
-## Not validated against real BSU data
-- BSU U runs: where the `238/235 oxide R18 0.00206` columns come from, and their formula.
-- ET2535 Pb with 202/205.
-- filament against the numbers in the Grenville spreadsheets.
-- Yiming's rejection habits.
+```sh
+env -u PYTHONPATH .venv/bin/python scripts/tripoli_parity.py
+```
+
+Inputs are read-only and remain outside the repository. Override their locations
+with `FILAMENT_BOISE_EXAMPLES` and `FILAMENT_BSU_SHEETS` (the latter defaults to
+`Grenville_TIMS/Egypt`). Tests skip unavailable private inputs. No private cycle
+values or acquisition fixtures have been added.
+
+- Safe pure-Python MS-NRBF reader: `read_trip(path) -> TripProject`, with inert
+  class dictionaries, shared/cyclic references, bounded input/allocations and
+  typed project settings. Content sniffing identifies a legacy project without
+  dispatching it as a raw run.
+- **31 distinct projects** (content deduplicated), all legacy Tripoli **4.10.0.3**;
+  **30 have workbook-backed parity**. Ordinary source cycle magnitudes agree
+  exactly. Legacy Decimal oxide computations agree within float64 round-off.
+  Arithmetic statistics reproduce original stored All* fields within the
+  quantified legacy cancellation bound. Accepted statistics are reconstructed
+  independently from signed values, with exact per-function masks restored
+  through public strict session history replay.
+- **126 pasted ratio pairs** (mean and 1σ %SE) match the appropriate acquisition:
+  KD33 and KG5 z1–z7, six Pb and three U ratios each. Clipboard comparison allows
+  half a unit at eight significant digits (legacy C# E7) plus legacy round-off.
+- The two distinct nested `.trip` copies are the Pb reruns actually used in the
+  KG5 z4/z7 sheet. The earlier top-level partial projects use different runs;
+  their sheet differences are documented rather than treated as numerical passes.
+- **Unresolved source:** `KG5_z7_Pb.trip` has KG5/z7 labels but SourceFileInfo names
+  `B1609_F12_GA9683326 z3 Pb-56377.xls` (228 cycles, 32 functions), which is absent.
+  Its internal statistics can be checked; its raw-reader parity cannot. There
+  is no serialized evidence of combining the two available KG5 acquisitions.
+- No production arithmetic/oxide correction fix was needed. The report separates
+  stored original statistics, reconstructed accepted statistics and independent
+  pasted spreadsheet references. Accepted statistics and block means are **not
+  serialized** in these legacy files, and must not be claimed as stored oracles.
+
+## Facts resolving SPEC §11 questions
+
+- The 2025 BSU U `.xls` files **already contain** `238/235 oxide R18 0.00206`,
+  `233/235 oxide R18 0.00206` and `238/233 oxide` in CYCLE/USER. They match the
+  legacy/ET_Redux formula at 0.00206 and must pass through without another
+  correction. Earlier uncertainty in SPEC/oxide research notes is now resolved
+  for these files; those older notes describe the evidence available then.
+- **Upstream input anomaly:** every U workbook's column named `270/267` exactly
+  repeats the `270` intensity. Reconstructing the physical ratio as
+  `270/265 × 265/267` reproduces the workbook's named corrected columns to
+  round-off. Do not use that mislabeled column to infer a different oxide law.
+- All 14 U projects also applied Tripoli's correction at **r18=0.0020** to the
+  mislabeled raw input, producing inactive `OxideCor` functions. The active
+  columns actually pasted into the sheet are the workbook's **0.00206** functions.
+  Project-level `AmOxideCorrected` therefore does not identify the clipboard's
+  oxide provenance. Per-function activity/settings matter.
+- Rejection is encoded in the **sign** of Ratios (negative rejected, zero
+  missing), not AcceptedFlags. Block selection changes those signs; independent
+  block flags are not saved. U projects pad unfinished blocks with zeros.
+- Of 145 active functions, 144 record **2σ** selection; KG5 z7 U `238/233 oxide`
+  records manual selection. Masks differ per ratio. This establishes saved
+  per-ratio practice, not the chronological hand edits or number of rule passes.
+  New analyses still start without automatic rejection and use shared selection.
+- Legacy 2σ is a single pass over currently accepted positive points. Its
+  Chauvenet action repeatedly rejects the worst point and recalculates while
+  n·erfc(z/√2) < threshold; the saved threshold is **0.5** throughout. This is
+  distinct from Java's one-pass/minimum-20 implementation. The parity harness
+  replays stored masks; it does not claim rule-regeneration parity.
+- Across all 33 workbooks, TUNING records **Multiplier/Daly dead time 36.3 ns**,
+  Multiplier gain **1.0**; CTRL has Apply Baselines, Correct for STDBL and Correct
+  for BLKBL enabled. These are instrument settings/provenance, not evidence to
+  apply another correction to the processed CYCLE values. Physical detector
+  calibration and baseline quality are not validated by matching those values.
+- No project records applied fractionation or BaPO2/Tl correction. Tracer and
+  interference-use flags are false; alphaPb is zero. Capability flags can be
+  true even when a correction was not applied.
+- These acquisitions establish BSU's use of IonVantage `.xls` in April 2025;
+  they do not establish which acquisition software BSU uses today.
+
+## Existing Phase 1 implementation
+
+- Contract `idtims-fractions/1`, fraction pairing, mapping and provenance exports.
+- IonVantage `.xls` / IsoLinx `.TIMSDP`; arithmetic default, optional geometric
+  mode; explicit preview/apply rules, undo/redo/session replay.
+- UO2 legacy/ET_Redux default; labeled Java comparison formula; pass-through
+  of instrument-corrected functions. Legacy clipboard formatting, cycles CSV.
+- GUI import/review/corrections/export, shared masks, saved sessions and recovery.
+  Existing compatibility and tests are retained by this work.
+
+## Still open
+
+- Obtain the workbook named inside `KG5_z7_Pb.trip`, or clarify its mislabeled
+  sample identity. Do not substitute the similarly named KG5 runs for it.
+- ET2535 provenance/reduction validation remains separate: one unavailable-source
+  project's 202/205 function alone does not validate a real 2535 reduction.
+- Raw `.raw` integrations, calibration and baseline fitting remain Phase 2;
+  matching processed workbooks does not validate those operations.
+- Historical hand-edit order cannot be recovered from final masks alone.
+- App name/icon, license, and any change to default automatic rejection still
+  need Yiming's decisions.
