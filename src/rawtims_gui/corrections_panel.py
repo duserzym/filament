@@ -69,6 +69,10 @@ def oxide_status_text(analysis: Analysis | None) -> tuple[str, str]:
         inputs = ", ".join(f"{name} = {how}" for name, how in oxide.inputs.items())
         return "computed", (f"Computed here: {oxide.formula} formula, 18O/16O = {oxide.r18:g}, from {inputs}. "
                             "Derived functions 233/235oc, 238/235oc, 238/233oc.")
+    if oxide.status == "pass_through" and analysis.run.provenance.get("oxide_recomputed"):
+        return "pass_through", (f"Reprocessed from intensities: 18O/16O = {oxide.r18:g}, "
+                                "isobar_233_18O formula. Original function keys are retained for masks; "
+                                "the parameter record gives the current value.")
     if oxide.status == "pass_through":
         r18 = f"{oxide.r18:g}" if oxide.r18 is not None else "not in the names"
         keys = ", ".join(oxide.pass_through_keys)

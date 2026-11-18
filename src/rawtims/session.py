@@ -216,6 +216,10 @@ def _run_record(analysis: Analysis, session_dir: Path | None) -> dict[str, Any]:
         "run_id": analysis.run.run_id,
         "element": analysis.run.element,
         "raw": _raw_record(analysis, session_dir),
+        "initial_reduction_parameters": analysis.initial_reduction_parameters.to_dict(),
+        "initial_reduction_provenance": analysis.initial_reduction_provenance,
+        "reduction_parameters": analysis.run.reduction_parameters.to_dict(),
+        "reduction_provenance": analysis.run.provenance,
         "initial_settings": initial_settings(analysis).to_dict(),
         "settings": analysis.settings.to_dict(),
         "history_version": HISTORY_VERSION,
@@ -440,12 +444,27 @@ def _restore_run(record: Mapping[str, Any], session_dir: Path, where: str) -> tu
     try:
         if record.get("history_version", HISTORY_VERSION) != HISTORY_VERSION:
             raise ReplayMismatch(f"history version {record.get('history_version')!r} is not {HISTORY_VERSION}")
+        from rawtims.reduction_params import ReductionParameters, as_acquired
+        from rawtims.readers.ionvantage_raw import input_hashes, raw_folder
+        records = [record.get("initial_reduction_provenance", {}), record.get("reduction_provenance", {}), *record.get("history", []), *record.get("redo_history", [])]
+        hashes = [r[k] for r in records for k in ("raw_inputs", "old_raw_inputs") if r.get(k)]
+        if hashes:
+            folder = raw_folder(chosen)
+            actual = input_hashes(folder) if folder is not None else {}
+            if any(actual != h for h in hashes):
+                raise ReplayMismatch("raw acquisition source files are missing or changed (SHA-256)")
+        initial_params = ReductionParameters.from_dict(record["initial_reduction_parameters"]) if "initial_reduction_parameters" in record else as_acquired(run)
+        if initial_params != as_acquired(run):
+            from rawtims.reprocess import reprocess
+            run = reprocess(run, initial_params)
         start = AnalysisSettings(**{k: v for k, v in dict(record.get("initial_settings") or {}).items() if k in SETTING_NAMES})
         history = list(record.get("history") or [])
         redo_history = list(record.get("redo_history") or [])
         analysis = replay(run, history + redo_history, start, strict=True)
         for _ in redo_history:
             analysis.undo()
+        if "reduction_parameters" in record and analysis.run.reduction_parameters.to_dict() != record["reduction_parameters"]:
+            raise ReplayMismatch("reduction parameters after history differ from saved ones")
         saved_settings = record.get("settings")
         if saved_settings is not None and analysis.settings.to_dict() != {k: saved_settings.get(k) for k in SETTING_NAMES}:
             raise ReplayMismatch("the settings after the history differ from the saved ones")

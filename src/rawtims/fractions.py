@@ -253,8 +253,12 @@ def require_shared_selection(analysis: Analysis) -> None:
              f"{analysis.run.raw.name}: per-ratio selection (legacy); use the union of rejections before exporting")
 
 
-def fraction_row(fraction: Fraction, exported_at: datetime, session_info: SessionInfo | None = None) -> FractionRow:
+def fraction_row(fraction: Fraction, exported_at: datetime, session_info: SessionInfo | None = None, *, allow_legacy_per_ratio: bool = False) -> FractionRow:
     """The contract row of one fraction. Raises :class:`FractionError` when a block cannot be exported.
+
+    ``allow_legacy_per_ratio`` is an explicit audit/replay export preserving
+    legacy masks and labelling them per_ratio; ordinary exports enforce shared
+    selection. It must never be used implicitly by the GUI.
 
     ``exported_at`` must be timezone-aware (the contract asks for ISO 8601 with
     an offset).
@@ -287,7 +291,8 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         run = analysis.run
         mapping = fraction.mapping(element)
         assert mapping is not None
-        require_shared_selection(analysis)
+        if not allow_legacy_per_ratio:
+            require_shared_selection(analysis)
         _require(
             mapping.complete,
             f"fraction {fraction.fraction_id!r}: the {element} run {run.raw.name} lacks contract ratios: {mapping.describe_missing()}",
@@ -319,13 +324,19 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
             used = np.logical_and.reduce([ratio_usable(analysis, entry) for entry in mapped])
         except MappingError as error:
             raise FractionError(f"fraction {fraction.fraction_id!r}: {error}") from None
+        from rawtims.reduction_params import as_acquired
+        params = run.reduction_parameters or as_acquired(run)
+        values[f"{element} Reduction Parameters"] = params.canonical_json()
+        values[f"{element} Reduction Parameters SHA256"] = params.sha256
+        values[f"{element} Reduction Route"] = params.route
+        notes.extend(f"{element}: {warning}" for warning in run.warnings)
         values[f"{element} Raw File"] = run.raw.name
         values[f"{element} Raw SHA256"] = run.raw.sha256
         values[f"{element} Method"] = run.metadata.method
         values[f"{element} Cycles Used"] = int(used.sum())
         values[f"{element} Cycles Total"] = run.n_cycles
         values[f"{element} Mean Statistic"] = analysis.settings.stat_mode
-        values[f"{element} Cycle Selection"] = "shared"  # contract clarification 8: enforced shared mask
+        values[f"{element} Cycle Selection"] = "shared" if analysis.group_consistent() and not analysis.legacy_pending else "per_ratio"
         start, note = _iso_start(analysis, fraction.timezone)
         values[f"{element} Run Start"] = start
         if note:
@@ -342,8 +353,9 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
                 formula = analysis.oxide.formula
                 notes.append(f"U: oxide correction by {APP_NAME} ({formula} formula)")
             else:
-                formula = "instrument"
-                notes.append("U: the file already carries oxide-corrected columns; passed through, not recomputed (formula not known)")
+                formula = "isobar_233_18O" if run.provenance.get("oxide_recomputed") else "instrument"
+                notes.append("U: oxide functions recomputed from intensities" if run.provenance.get("oxide_recomputed") else
+                             "U: the file already carries oxide-corrected columns; passed through, not recomputed (formula not known)")
             if r18_values:
                 values["U Oxide 18O/16O"] = r18_values.pop()
                 values["U Oxide Formula"] = formula

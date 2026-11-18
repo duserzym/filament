@@ -8,6 +8,9 @@ column or meaning, so the version stays /1. The same text is kept in both reposi
 `docs/contract-idtims-fractions-v1.md`. This CSV text is the contract. Any class either side ships
 to read or write it is an implementation.
 
+Clarification 9 (2026-11-18): optional reduction-parameter provenance columns
+below preserve `/1`. Existing columns, units and sigma levels are unchanged.
+
 ## Purpose
 
 Each row is one measured fraction, or one block of it (see "Rows and merging"). It holds the
@@ -162,6 +165,9 @@ Optional, and strongly encouraged from the raw-data app.
 | `U Oxide Formula` | `isobar_233_18O`, `tripoli_java_00dc941` or `instrument` (see above) |
 | `Pb Mean Statistic`, `U Mean Statistic` | `arithmetic` or `geometric` (see Measured ratios); missing means `arithmetic` |
 | `Pb Cycle Selection`, `U Cycle Selection` | `shared`: one accepted-cycle mask for every exported ratio of that run, enforced by the writer. `per_ratio`: each ratio has its own mask (legacy Tripoli behaviour). Missing means unknown (legacy files). Ratios sharing 205Pb or the 267 beam are correlated, so per-ratio masks can make the exported errors and correlations inconsistent; the reader shows a note on `per_ratio` and unmarked blocks. |
+| `Pb Reduction Parameters`, `U Reduction Parameters` | Canonical JSON of the immutable numerical inputs. Schema `rawtims reduction parameters`, version 1; UTF-8, sorted keys, no insignificant whitespace, finite shortest-roundtrip floats. Includes dead time (ns), collector gains/resistors, baseline mode/offsets (Pb cps, U V), beam interpolation/history, acquisition rejection, oxide r18, conversion constants and route. Missing settings remain null, never guessed. |
+| `Pb Reduction Parameters SHA256`, `U Reduction Parameters SHA256` | Lowercase hexadecimal SHA-256 of the exact UTF-8 canonical JSON in the corresponding parameter column. The route participates in the hash. |
+| `Pb Reduction Route`, `U Reduction Route` | `raw`: correct individual acquisitions, reject/average, interpolate beams, subtract baselines, rebuild functions. `workbook`: cached cycle values; unchanged acquired inputs pass through bit-identically, while a dead-time change is a cycle-level approximation (identified in Notes). Unknown raw methods may explicitly fall back to workbook, recording the reason and actual route. |
 | `Raw App` | Writer name and version, e.g. `filament 0.1.0` |
 | `Raw App Session`, `Raw App Session SHA256` | The writer's own session file (rejected block/cycle lists, dead time, Daly gain, baseline and interference settings); readers keep it as provenance |
 | `Exported At` | ISO 8601 with offset |

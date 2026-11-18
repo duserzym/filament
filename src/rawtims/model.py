@@ -160,6 +160,9 @@ class Run:
     time: np.ndarray
     values: np.ndarray
     invalid: np.ndarray
+    reduction_parameters: Any = None
+    warnings: tuple[str, ...] = ()
+    provenance: dict[str, Any] = field(default_factory=dict)
 
     @property
     def n_cycles(self) -> int:

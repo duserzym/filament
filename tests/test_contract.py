@@ -115,7 +115,7 @@ def _doc_table_names() -> tuple[set[str], set[str]]:
 def test_every_contract_table_column_is_known_and_every_known_column_is_in_the_contract():
     named, ratios = _doc_table_names()
     assert ratios == set(PB_RATIOS) | set(U_RATIOS)
-    assert len(named) == 39  # 8 identity, 8 setup, 23 provenance
+    assert len(named) == 45  # 8 identity, 8 setup, 29 provenance
     assert named <= set(COLUMN_NAMES)
     for name in COLUMN_NAMES:  # every non-ratio column comes from a contract table
         if name.endswith((" Mean", " % Standard Error")) or name.startswith("rho "):
@@ -330,3 +330,12 @@ def test_missing_mean_statistic_reads_as_arithmetic(prefix):
     assert row.get("Pb Mean Statistic") == row.get("U Mean Statistic") == "arithmetic"
     # Absence remains lossless on re-export.
     assert "Mean Statistic" not in csv_text([row])
+
+
+def test_clarification_9_contract_hash_and_sibling_copy():
+    import hashlib
+    expected = "8fb322ed6cd654f214f46988bd9b679a9cad71556283704d16036f947b6ad7cc"
+    assert hashlib.sha256(CONTRACT_DOC.read_bytes()).hexdigest() == expected
+    sibling = ROOT.parent / "IDTIMS_UPbRPy" / "docs" / CONTRACT_DOC.name
+    if sibling.is_file():
+        assert CONTRACT_DOC.read_bytes() == sibling.read_bytes()

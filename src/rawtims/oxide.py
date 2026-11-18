@@ -95,6 +95,7 @@ class OxideResult:
     values: dict[str, np.ndarray] = field(default_factory=dict, compare=False)
     pass_through_keys: tuple[str, ...] = ()
     reason: str = ""
+    applied_by: str | None = None
 
     def provenance(self) -> dict[str, Any]:
         """Plain-data description for history, session and export."""
@@ -104,7 +105,7 @@ class OxideResult:
             data["applied_by"] = APP_NAME
         if self.status == "pass_through":
             data["pass_through_keys"] = list(self.pass_through_keys)
-            data["applied_by"] = "instrument file"
+            data["applied_by"] = self.applied_by or "instrument file"
         if self.reason:
             data["reason"] = self.reason
         return data
@@ -145,7 +146,7 @@ def find_inputs(run: Run) -> tuple[dict[str, str], tuple[str, ...], np.ndarray, 
             keys.append(f267_265.key)
         else:
             return None
-        if f270_267 is not None:
+        if f270_267 is not None and not run.metadata.extra.get("270/267_intensity_alias"):
             r270 = run.column(f270_267.key)
             how["R270/267"] = f270_267.key
             keys.append(f270_267.key)
@@ -167,6 +168,10 @@ def oxide_correction(run: Run, r18: float = DEFAULT_R18, formula: OxideFormula =
         r18_values = sorted({function.metadata["oxide_r18"] for function in corrected if "oxide_r18" in function.metadata})
         file_r18 = r18_values[0] if len(r18_values) == 1 else None
         reason = "" if len(r18_values) <= 1 else f"columns name different 18O/16O values {r18_values}"
+        if run.provenance.get("oxide_recomputed"):
+            return OxideResult(status="pass_through", formula="isobar_233_18O", r18=file_r18,
+                               pass_through_keys=tuple(f.key for f in corrected), applied_by=APP_NAME,
+                               reason="recomputed from intensities; original function keys retained for masks")
         return OxideResult(status="pass_through", r18=file_r18, pass_through_keys=tuple(f.key for f in corrected), reason=reason)
     found = find_inputs(run)
     if found is None:

@@ -103,3 +103,24 @@ values or acquisition fixtures have been added.
 - Historical hand-edit order cannot be recovered from final masks alone.
 - App name/icon, license, and any change to default automatic rejection still
   need Yiming's decisions.
+
+# Phase 2 local implementation (2026-11-18)
+
+Versioned immutable numerical parameters, raw four-sequence Pb/static-U decoding,
+workbook approximation, undo/redo/replay and session-1 parameter extensions are
+implemented. Contract clarification 9 carries canonical parameter JSON, SHA-256
+and actual route; the copy in IDTIMS_UPbRPy is byte-identical. No notebook functions
+changed. See [raw-reduction.md](raw-reduction.md) for API, supported structures,
+anomalies and limits, and [recalculation-demo.md](recalculation-demo.md) for the
+headless KD33 z1 demonstration, dates computed only in the separate age-engine venv,
+rounding/solver controls, reproducibility and timings. CSV/settings JSON stay in
+system scratch. [database-recalculation.md](database-recalculation.md) distinguishes
+these local features from proposed UPbDB/UPb Lab storage, review and mirror sync.
+
+Ordinary GUI export continues to enforce shared selection. The demo explicitly
+preserves and labels legacy per-ratio masks through an audit-only opt-in. The GUI
+can display reprocessed oxide provenance; no general reduction-parameter editor
+was added in this engine phase. Parameter changes use the public engine API and
+are serialized as history operations. Two-sequence Pb, incomplete Pb cycles and
+unmatched cached rows remain explicit raw-route limits; see the supported-run
+counts in the reduction note. No server or window was used.

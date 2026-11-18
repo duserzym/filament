@@ -160,6 +160,9 @@ def read_ionvantage(path: str | os.PathLike[str], data: bytes | None = None) -> 
             raise IonVantageError(reason)
         names, columns, cycle, time, values = read_cycle_table(book.sheet_by_name(CYCLE_SHEET))
         ctrl = read_ctrl(book.sheet_by_name(CTRL_SHEET)) if CTRL_SHEET in book.sheet_names() else {}
+        from rawtims.reduction_params import capture_acquired
+        functions_for_params = build_functions(names)
+        acquired = capture_acquired(book, ctrl, functions_for_params, path)
     finally:
         book.release_resources()
 
@@ -181,6 +184,7 @@ def read_ionvantage(path: str | os.PathLike[str], data: bytes | None = None) -> 
     if ctrl.get("Sigma Level") is not None:
         rejection["sigma"] = ctrl["Sigma Level"]
     extra = dict(ctrl)
+    extra["acquired_reduction_parameters"] = acquired.to_dict()
     extra["cycles_per_block_method"] = method_cycles
     extra["beam_interpolation"] = beam_interpolation
     metadata = RunMetadata(
@@ -203,7 +207,16 @@ def read_ionvantage(path: str | os.PathLike[str], data: bytes | None = None) -> 
     unit = _text(ctrl.get("Units - Standard"))
     functions = build_functions(names, extra=[{"source_column": col} for col in columns], default_unit=unit)
     raw = RawFile.describe(path, data, FORMAT_IONVANTAGE_XLS, _text(ctrl.get("Workbook Version")))
-    return assemble_run(raw, metadata, functions, cycle, time, values)
+    run = assemble_run(raw, metadata, functions, cycle, time, values)
+    run.reduction_parameters = acquired
+    warnings = []
+    if run.element == "U" and "270/267" in run.keys and "270" in run.keys and np.array_equal(run.column("270/267"), run.column("270")):
+        warnings.append("U 270/267 is mislabeled: it contains 270 intensity; oxide reduction uses intensities or 270/265 × 265/267")
+        run.metadata.extra["270/267_intensity_alias"] = True
+    if len(time) > 1 and time[-1] == time[-2]:
+        warnings.append("duplicated terminal timestamp in workbook; raw route uses the distinct final acquisition and preserves row count")
+    run.warnings = tuple(warnings)
+    return run
 
 
 __all__ = ["IonVantageError", "is_ionvantage_book", "read_ctrl", "read_cycle_table", "read_ionvantage"]

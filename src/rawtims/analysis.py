@@ -99,6 +99,11 @@ class Analysis:
 
     def __init__(self, run: Run, settings: AnalysisSettings | None = None) -> None:
         self.run = run
+        from rawtims.reduction_params import as_acquired
+        self.initial_reduction_parameters = run.reduction_parameters or as_acquired(run)
+        self.initial_reduction_provenance = copy.deepcopy(run.provenance)
+        if run.reduction_parameters is None:
+            run.reduction_parameters = self.initial_reduction_parameters
         self._settings = settings or AnalysisSettings()
         self._row_block = np.searchsorted(np.unique(run.block), run.block)
         self.blocks = np.unique(run.block).astype(np.int64)
@@ -472,6 +477,35 @@ class Analysis:
         if name in ("r18", "oxide_formula"):
             self._derive()
 
+    def set_reduction_parameters(self, params):
+        """Re-reduce with explicit inputs, preserving masks; one undoable operation."""
+        old = self.run.reduction_parameters.to_dict()
+        old_inputs = self.run.provenance.get("raw_inputs", {})
+        self._apply_reduction_parameters(params)
+        return self._push({"op": "set_reduction_parameters", "old": old, "new": params.to_dict(),
+                           "old_raw_inputs": old_inputs, "raw_inputs": self.run.provenance.get("raw_inputs", {})})
+
+    def _apply_reduction_parameters(self, params):
+        from rawtims.reprocess import reprocess
+        self._verify_reduction_sources(self.run.provenance)
+        run = reprocess(self.run, params)
+        if run.keys != self.run.keys or not np.array_equal(run.cycle, self.run.cycle):
+            raise ValueError("reprocessing changed row/function identities; masks cannot safely apply")
+        mapping = self._mapping_data()
+        self.run = run
+        self._derive()
+        self.restore_mapping(mapping)
+
+    def _verify_reduction_sources(self, record):
+        from pathlib import Path
+        from rawtims.readers.ionvantage_raw import input_hashes, raw_folder
+        expected = [record[k] for k in ("raw_inputs", "old_raw_inputs") if record.get(k)]
+        if expected:
+            folder = raw_folder(Path(self.run.raw.path))
+            actual = input_hashes(folder) if folder is not None else {}
+            if any(actual != value for value in expected):
+                raise ValueError("raw acquisition sources changed (SHA-256); reopen as a new run")
+
     def reset(self) -> dict[str, Any]:
         """Include every cycle and block again (settings are kept). Undoable."""
         rows, cols = np.nonzero(~self.included)
@@ -497,8 +531,12 @@ class Analysis:
         """Revert the last applied operation; returns it, or None when there is nothing to undo."""
         if not self.can_undo:
             return None
+        op = self._ops[self._applied - 1]
+        if op["op"] == "set_reduction_parameters":
+            self._verify_reduction_sources(op)
+            from rawtims.reduction_params import ReductionParameters
+            self._apply_reduction_parameters(ReductionParameters.from_dict(op["old"]))
         self._applied -= 1
-        op = self._ops[self._applied]
         kind = op["op"]
         if kind == "toggle_cycles":
             for row, col in self._cells(op["changed"]):
@@ -515,6 +553,8 @@ class Analysis:
                 self.included[row, self.index(key)] = before
         elif kind == "set_setting":
             self._apply_setting(op["name"], op["old"])
+        elif kind == "set_reduction_parameters":
+            pass  # Applied before advancing history, so source failures are atomic.
         elif kind == "reset":
             for row, col in self._cells(op["changed"]):
                 self.included[row, col] = False
@@ -529,6 +569,10 @@ class Analysis:
         if not self.can_redo:
             return None
         op = self._ops[self._applied]
+        if op["op"] == "set_reduction_parameters":
+            self._verify_reduction_sources(op)
+            from rawtims.reduction_params import ReductionParameters
+            self._apply_reduction_parameters(ReductionParameters.from_dict(op["new"]))
         kind = op["op"]
         if kind in ("toggle_cycles", "apply_rule"):
             value = op["include"] if kind == "toggle_cycles" else False
@@ -542,6 +586,8 @@ class Analysis:
                 self.included[row, self.index(key)] = after
         elif kind == "set_setting":
             self._apply_setting(op["name"], op["new"])
+        elif kind == "set_reduction_parameters":
+            pass  # Applied before advancing history, so source failures are atomic.
         elif kind == "reset":
             self.included[:] = True
             self.block_included[:] = True
@@ -594,6 +640,13 @@ def replay(run: Run, history: Sequence[dict[str, Any]], settings: AnalysisSettin
             result = analysis.set_mapping(MethodMapping.from_dict(op["new"]).apply(analysis))
         elif kind == "set_setting":
             result = analysis.set_setting(op["name"], op["new"])
+        elif kind == "set_reduction_parameters":
+            from rawtims.reduction_params import ReductionParameters
+            result = analysis.set_reduction_parameters(ReductionParameters.from_dict(op["new"]))
+            if strict and result["old"] != op["old"]:
+                raise ReplayMismatch(f"history entry {position}: reduction parameters differ before replay")
+            if strict and result["raw_inputs"] != op.get("raw_inputs", {}):
+                raise ReplayMismatch(f"history entry {position}: raw acquisition hashes changed")
         elif kind == "reset":
             result = analysis.reset()
         else:
