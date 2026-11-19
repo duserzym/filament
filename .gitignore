@@ -10,3 +10,4 @@ __pycache__/
 # Runtime test map and run logs live outside the repository; ignore any local copy.
 test-map/
 *.test-map.json
+.venv-docs/

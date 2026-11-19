@@ -1,0 +1,67 @@
+site_name: filament
+site_description: From ion pulses to isotope ratios and zircon dates
+copyright: Numerical walkthrough · example zircon fraction (z1)
+docs_dir: docs/site
+site_dir: build/site
+use_directory_urls: false
+theme:
+  name: material
+  font: false
+  palette:
+    - scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.footer
+    - content.code.copy
+plugins:
+  - search
+  - macros:
+      module_name: docs/macros
+      on_error_fail: true
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+extra_css:
+  - stylesheets/site.css
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+  - https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js
+  - javascripts/z1-data.js
+  - javascripts/deadtime.js
+nav:
+  - Walkthrough:
+      - Overview: index.md
+      - Inside a raw file: inside-raw.md
+      - Daly dead time: daly-scans.md
+      - Scans to cycles: scans-to-cycles.md
+      - Baselines: baselines.md
+      - Faraday–Daly gain: gain.md
+      - Cycle ratios: cycle-ratios.md
+      - Outlier rejection: outliers.md
+      - Means and errors: means-errors.md
+      - U oxide correction: u-oxide.md
+      - Mass fractionation: fractionation.md
+      - Spike and blank: spike-blank.md
+      - Age-engine hand-off: hand-off.md
+  - Explore:
+      - Dead time in depth: dead-time.md
