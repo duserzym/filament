@@ -14,9 +14,9 @@ runs plus ``(path, reason)`` for everything it did not read.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass
-import os
 from pathlib import Path
 
 from rawtims.branding import SESSION_FORMAT
@@ -109,6 +109,9 @@ def sniff(path: str | os.PathLike[str]) -> Sniff:
 def open_run(path: str | os.PathLike[str]) -> Run:
     """Read one run file. Raises :class:`UnsupportedFile` with the reason when no reader applies."""
     path_obj = Path(path)
+    if path_obj.is_dir() and path_obj.suffix.lower() == ".raw":
+        from rawtims.readers.ionvantage_raw import workbook_path
+        return open_run(workbook_path(path_obj))
     if not path_obj.is_file():
         raise UnsupportedFile(f"{path}: not a file")
     data = _read_limited(path_obj)
@@ -130,7 +133,13 @@ def _walk(root: Path) -> Iterable[Path]:
     for entry in sorted(root.iterdir(), key=lambda p: p.name):
         if is_ignored(entry):
             continue
-        if entry.is_dir():
+        if entry.is_dir() and entry.suffix.lower() == ".raw":
+            from rawtims.readers.ionvantage_raw import workbook_path
+            try:
+                yield workbook_path(entry)
+            except UnsupportedFile:
+                yield entry
+        elif entry.is_dir():
             yield from _walk(entry)
         elif entry.is_file():
             yield entry
@@ -148,7 +157,9 @@ def open_paths(paths: Iterable[str | os.PathLike[str]]) -> tuple[list[Run], list
     seen: set[Path] = set()
     for given in paths:
         root = Path(given)
-        if root.is_dir():
+        if root.is_dir() and root.suffix.lower() == ".raw":
+            candidates = [root]
+        elif root.is_dir():
             candidates = list(_walk(root))
         elif root.is_file():
             candidates = [root]

@@ -40,16 +40,23 @@ attention and is left out of the export, and saving writes the record back.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-import os
 from pathlib import Path
 from typing import Any
 
 from rawtims.analysis import Analysis
 from rawtims.contract import FractionRow
-from rawtims.fractions import Fraction, FractionError, SessionInfo, fraction_row, pair_analyses, suggested_fraction_id
+from rawtims.fractions import (
+    Fraction,
+    FractionError,
+    SessionInfo,
+    fraction_row,
+    pair_analyses,
+    suggested_fraction_id,
+)
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping, propose_mapping
 from rawtims.readers import open_paths
 from rawtims.session import MissingRun, SessionProblem, SessionState, same_ratios
@@ -70,8 +77,17 @@ class ImportResult:
 
 def read_paths(paths: Sequence[str | os.PathLike[str]]) -> tuple[list[Analysis], list[tuple[str, str]]]:
     """Read files and folders into analyses (no rejection applied). Safe to run on a worker thread."""
-    runs, skipped = open_paths(paths)
-    return [Analysis(run) for run in runs], [(str(path), reason) for path, reason in skipped]
+    from rawtims.projects import open_project
+    projects = [Path(p) for p in paths if Path(p).suffix.lower() == ".trip" and Path(p).is_file()]
+    runs, skipped = open_paths([p for p in paths if Path(p) not in projects])
+    analyses = []
+    for path in projects:
+        try:
+            analyses.append(open_project(path))
+        except (ValueError, OSError) as error:
+            skipped.append((path, str(error)))
+    analyses.extend(Analysis(run) for run in runs)
+    return analyses, [(str(path), reason) for path, reason in skipped]
 
 
 class Workspace:

@@ -45,7 +45,15 @@ from rawtims.contract import (
     rho_column,
     se_column,
 )
-from rawtims.mapping import ElementMapping, MappingError, element_ratios, propose_mapping, ratio_correlation, ratio_stats, ratio_usable
+from rawtims.mapping import (
+    ElementMapping,
+    MappingError,
+    element_ratios,
+    propose_mapping,
+    ratio_correlation,
+    ratio_stats,
+    ratio_usable,
+)
 from rawtims.readers.functions import suggest_fraction_id
 
 SPIKE_TYPES = ("535", "2535")
@@ -198,7 +206,7 @@ def filter_rule_text(analysis: Analysis) -> str:
     """
     parts: list[str] = []
     manual: set[int] = set()
-    for op in analysis.history:
+    for op in analysis._history_view():
         kind = op["op"]
         if kind == "reset":
             parts, manual = [], set()
@@ -208,6 +216,10 @@ def filter_rule_text(analysis: Analysis) -> str:
                 head = f"Chauvenet P={params['probability']:g} n>={params['min_n']}"
                 if params.get("log_ratios"):
                     head += " ln"
+            elif op["rule"] == "legacy_two_sigma":
+                head = "Legacy 2σ (one pass)"
+            elif op["rule"] == "legacy_chauvenet":
+                head = f"Legacy Chauvenet P={params['probability']:g} (single worst, repeated)"
             else:
                 head = f"k-sigma k={params['k']:g} max {params['max_iterations']} passes"
                 if not params.get("log_ratios", True):

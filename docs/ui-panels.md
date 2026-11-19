@@ -52,3 +52,40 @@ This applies wherever an app has an issues list:
 
 When nothing needs fixing, the list collapses to a count badge and gives its space to the work
 panels. It opens when a fraction gets a problem (the "attention" state).
+
+## Desktop raw-review additions (G1)
+
+The four primary inspector tabs remain Stats / Rules / Corrections / Export.
+Corrections contains scrollable Mapping / Reduction / Run info pages. Reduction
+uses staged fields, Apply, Discard/Cancel and Reset; its diff is shown after Apply
+with the editor collapsed (the editor can be reopened). Run info holds method
+availability, acquisition metadata and full warnings; a persistent warning chip
+opens it from every workflow step. Missing Tripoli sources have a separate Locate
+banner containing the exact expected workbook name.
+
+Rules retains Java Chauvenet and iterative k-sigma alongside the legacy C#
+single-pass 2σ and repeated single-worst Chauvenet options. The legacy options
+offer explicit per-ratio masks; differing masks block ordinary exports until
+the union is adopted. Shared application remains the default. Faraday/Daly
+cross-calibration retains the verified measured-per-cycle mode; alternative
+Tau Time/Gain and HT Scaling response models remain unavailable.
+
+The review wall has draggable Review / Pan / Zoom / Reset tools. A ghost follows
+the pointer during dragging and the real tools move on release; their position is
+remembered. Ten-pixel splitter handles hold the resize cursor during dragging and
+scale a raster plot preview until release. Review boxes coalesce motion at 16 ms
+and change the analysis only on release. Run/fraction pickers use natural ordering.
+
+Help offers the five-step KD33 z1 dead-time walkthrough. The examples folder is a
+setting (Help → Choose walkthrough examples folder); missing data disables the
+walkthrough with an explanation. Screenshots can use `--walkthrough-step 1..5
+--export png PATH` with `QT_QPA_PLATFORM=offscreen`. Headless step 5 adopts shared
+cycles as the preceding export step requires, and never launches the age app.
+
+Export adds XLSX (Fractions, Cycles with include flags, Provenance), three CSV
+tables, and Send to IDTIMS_UPbRPy. The send command is an argv list, accepts `~`,
+and has `--open PATH` appended without a shell. Its folder/command are remembered;
+macOS bundle discovery uses the age app's name or bundle identifier. Absence or
+launch failure retains the CSV and reveals it. Ordinary exports keep the shared
+selection requirement. XLSX requires `openpyxl`, now in the GUI extra and frozen
+build imports; the engine does not import it.

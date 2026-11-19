@@ -24,21 +24,19 @@ edit is in the history.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-import math
 
 import numpy as np
-
-from PySide6 import QtCore, QtGui, QtWidgets
-
 import pyqtgraph as pg
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims import stats as _stats
 from rawtims.analysis import Analysis
 from rawtims.mapping import ElementMapping, MappedRatio, ratio_stats
-from rawtims_gui.studio.theme import ThemeSpec, active_theme, theme_color
 from rawtims_gui.plot_palette import plot_palette
+from rawtims_gui.studio.theme import ThemeSpec, active_theme, theme_color
 from rawtims_gui.studio.widgets import RoundedPlotWidget
 
 PLOT_MIN_HEIGHT = 168
@@ -83,11 +81,29 @@ def format_number(value: float, digits: int = 7) -> str:
 class SculptViewBox(pg.ViewBox):
     """A view box whose left button sculpts (click, box) instead of panning."""
 
+    navigation_mode = "review"
+
     sigPointClicked = QtCore.Signal(object, object)  # view QPointF, modifiers
     sigBoxDrawn = QtCore.Signal(object, object)  # view QRectF, modifiers
     sigContextRequested = QtCore.Signal(object, object)  # view QPointF, screen QPoint
 
-    def mouseClickEvent(self, ev):  # noqa: N802 - pyqtgraph API
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._drag_box = None
+        self._drag_timer = QtCore.QTimer(self)
+        self._drag_timer.setSingleShot(True)
+        self._drag_timer.setInterval(16)
+        self._drag_timer.timeout.connect(self._flush_drag_box)
+
+    def _flush_drag_box(self):
+        if self._drag_box is not None:
+            self.updateScaleBox(*self._drag_box)
+            self._drag_box = None
+
+    def mouseClickEvent(self, ev):
+        if self.navigation_mode != "review":
+            super().mouseClickEvent(ev)
+            return
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             ev.accept()
             self.sigPointClicked.emit(self.mapSceneToView(ev.scenePos()), ev.modifiers())
@@ -97,18 +113,22 @@ class SculptViewBox(pg.ViewBox):
         else:
             super().mouseClickEvent(ev)
 
-    def mouseDragEvent(self, ev, axis=None):  # noqa: N802 - pyqtgraph API
-        if ev.button() != QtCore.Qt.MouseButton.LeftButton or axis is not None:
+    def mouseDragEvent(self, ev, axis=None):
+        if self.navigation_mode != "review" or ev.button() != QtCore.Qt.MouseButton.LeftButton or axis is not None:
             super().mouseDragEvent(ev, axis)
             return
         ev.accept()
         start = ev.buttonDownPos(ev.button())
         if ev.isFinish():
+            self._drag_timer.stop()
+            self._drag_box = None
             self.rbScaleBox.hide()
             rect = self.childGroup.mapRectFromParent(QtCore.QRectF(pg.Point(start), pg.Point(ev.pos())))
             self.sigBoxDrawn.emit(rect.normalized(), ev.modifiers())
         else:
-            self.updateScaleBox(start, ev.pos())
+            self._drag_box = (pg.Point(start), pg.Point(ev.pos()))
+            if not self._drag_timer.isActive():
+                self._drag_timer.start()
 
 
 def _quiet(item: QtWidgets.QGraphicsItem) -> None:
@@ -198,6 +218,8 @@ class CyclePlot(RoundedPlotWidget):
         self.hover_guide.hide()
         self.scene().sigMouseMoved.connect(self._hover_cycle)
         self.apply_theme()
+        from rawtims_gui.studio.splitters import RasterResizePreview
+        self.resize_preview = RasterResizePreview(self)
 
     def _hover_cycle(self, scene_pos):
         cycle = None
@@ -261,8 +283,12 @@ class CyclePlot(RoundedPlotWidget):
         else:
             y = values.astype(float)
         shown = np.isfinite(y)
-        effective = analysis.effective[:, column][shown]
+        effective = analysis.included_for(self.key)[shown]
         invalid = analysis.invalid[:, column][shown]
+        same_points = (not rebuild and getattr(self, '_point_theme', None) == theme.name
+                       and np.array_equal(y[shown], self.y_shown)
+                       and np.array_equal(run.cycle[shown], self.x_shown))
+        changed = np.flatnonzero((effective != self._effective) | (invalid != self._invalid)) if same_points else None
         # Preview, selection and theme redraws must preserve a user's wheel zoom.
         refit = (rebuild or state.fit_all != self._fit_all
                  or not np.array_equal(y[shown], self.y_shown)
@@ -277,14 +303,17 @@ class CyclePlot(RoundedPlotWidget):
         self._effective = effective.copy()
         self._invalid = invalid.copy()
         self._fit_all = state.fit_all
-        used_brush = pg.mkBrush(plot.included)
-        bad_pen = pg.mkPen(plot.excluded, width=1.6)
-        grey = pg.mkPen(theme.faint, width=1.4)
-        no_pen = pg.mkPen(None)
+        if getattr(self, '_point_theme', None) != theme.name:
+            self._point_styles = (pg.mkBrush(plot.included), pg.mkBrush(None),
+                                  pg.mkPen(plot.excluded, width=1.6), pg.mkPen(theme.faint, width=1.4), pg.mkPen(None))
+            self._point_theme = theme.name
+        used_brush, empty_brush, bad_pen, grey, no_pen = self._point_styles
         brushes, pens, symbols, sizes = [], [], [], []
-        for used, bad in zip(effective, invalid):
+        indices = changed if same_points else range(len(effective))
+        for index in indices:
+            used, bad = effective[index], invalid[index]
             if bad:
-                brushes.append(pg.mkBrush(None))
+                brushes.append(empty_brush)
                 pens.append(grey)
                 symbols.append("x")
                 sizes.append(7)
@@ -294,11 +323,24 @@ class CyclePlot(RoundedPlotWidget):
                 symbols.append("s")
                 sizes.append(6)
             else:
-                brushes.append(pg.mkBrush(None))
+                brushes.append(empty_brush)
                 pens.append(bad_pen)
                 symbols.append("s")
                 sizes.append(7)
-        self.points.setData(x=self.x_shown, y=self.y_shown, brush=brushes, pen=pens, symbol=symbols, size=sizes)
+        if same_points:
+            if len(indices):
+                spots = self.points.points()
+                for index, brush, pen, symbol, size in zip(indices, brushes, pens, symbols, sizes):
+                    spot = spots[index]
+                    spot.setBrush(brush)
+                    spot.setPen(pen)
+                    if spot.symbol() != symbol:
+                        spot.setSymbol(symbol)
+                    if spot.size() != size:
+                        spot.setSize(size)
+        else:
+            self.points.setData(x=self.x_shown, y=self.y_shown, brush=brushes, pen=pens, symbol=symbols, size=sizes)
+            self._point_theme = theme.name
         self._draw_decorations(state, theme, log)
         self.set_selection(state.selection)
         self.set_preview(state.preview.get(self.key, frozenset()))
@@ -311,11 +353,12 @@ class CyclePlot(RoundedPlotWidget):
             detail = "no usable cycles"
         self.title_text = f"{label}   {detail}"
         self.setToolTip(f"{label}: mean {detail} (1σ SE of the mean), {stats.n_used} of {stats.n_total} cycles used")
-        self.getPlotItem().setTitle(
-            f"<span style='color:{theme.text}; font-weight:600'>{_html(label)}</span>"
-            f"<span style='color:{theme.muted}'>&nbsp;&nbsp;&nbsp;{_html(detail)}</span>",
-            size="9pt",
-        )
+        if not getattr(self, 'external_title', False):
+            self.getPlotItem().setTitle(
+                f"<span style='color:{theme.text}; font-weight:600'>{_html(label)}</span>"
+                f"<span style='color:{theme.muted}'>&nbsp;&nbsp;&nbsp;{_html(detail)}</span>",
+                size="9pt",
+            )
         # A long title must not widen the plot past its widget: let it clip at the right.
         title = self.getPlotItem().titleLabel
         title.setMinimumWidth(0)
@@ -348,43 +391,65 @@ class CyclePlot(RoundedPlotWidget):
         # Leave room for the entire triangle and its click target inside the view.
         inset = min((hi - lo) / 4, abs(self.view_box.viewPixelSize()[1]) * 7)
         self.y_display[outside] = np.clip(self.y_shown[outside], lo + inset, hi - inset)
-        self.pinned_points.setData(
-            x=self.x_shown[outside], y=self.y_display[outside],
-            symbol=["t1" if value > hi else "t" for value in self.y_shown[outside]],
-            data=[f"Cycle {cycle:g}: {value:.12g} (excluded)"
-                  for cycle, value in zip(self.x_shown[outside], self._values[outside])],
-        )
+        pin_signature = (self.x_shown[outside].tobytes(), self.y_display[outside].tobytes(),
+                         (self.y_shown[outside] > hi).tobytes(), self._values[outside].tobytes())
+        if getattr(self, '_pin_signature', None) != pin_signature:
+            self.pinned_points.setData(
+                x=self.x_shown[outside], y=self.y_display[outside],
+                symbol=["t1" if value > hi else "t" for value in self.y_shown[outside]],
+                data=[f"Cycle {cycle:g}: {value:.12g} (excluded)"
+                      for cycle, value in zip(self.x_shown[outside], self._values[outside])],
+            )
+            self._pin_signature = pin_signature
         self.set_selection(self.selected_rows)
         self.set_preview(self.preview_rows)
 
     def _draw_decorations(self, state: PlotState, theme: ThemeSpec, log: bool) -> None:
         item = self.getPlotItem()
-        for old in self._decorations:
-            item.removeItem(old)
-        self._decorations = []
         analysis = state.analysis
         run = analysis.run
         transparent = pg.mkPen(None)
         plot = plot_palette(theme)
-        for position, block in enumerate(analysis.blocks):
-            rows = run.block == block
-            lo, hi = float(run.cycle[rows].min()) - 0.5, float(run.cycle[rows].max()) + 0.5
-            if not analysis.block_included[position]:
-                region = pg.LinearRegionItem((lo, hi), orientation="vertical", movable=False,
-                                             brush=pg.mkBrush(theme_color(plot.blockOff)), pen=transparent)
-                # Overlay the bands as well, so the entire block remains visibly off.
-                region.setZValue(-6)
-                _quiet(region)
-                item.addItem(region, ignoreBounds=True)
-                self._decorations.append(region)
-            if position:
-                separator = pg.InfiniteLine(pos=lo, angle=90, movable=False,
-                    pen=pg.mkPen(plot.blockSeparator, width=1, style=QtCore.Qt.PenStyle.DashDotLine))
-                separator.setZValue(-3)
-                _quiet(separator)
-                item.addItem(separator, ignoreBounds=True)
-                self._decorations.append(separator)
+        block_signature = (id(run), analysis.block_included.tobytes(), theme.name)
+        if getattr(self, "_block_signature", None) != block_signature:
+            for old in getattr(self, "_block_decorations", []):
+                item.removeItem(old)
+            self._block_decorations = []
+            for position, block in enumerate(analysis.blocks):
+                rows = run.block == block
+                lo, hi = float(run.cycle[rows].min()) - 0.5, float(run.cycle[rows].max()) + 0.5
+                if not analysis.block_included[position]:
+                    region = pg.LinearRegionItem((lo, hi), orientation="vertical", movable=False,
+                                                 brush=pg.mkBrush(theme_color(plot.blockOff)), pen=transparent)
+                    region.setZValue(-6)
+                    _quiet(region)
+                    item.addItem(region, ignoreBounds=True)
+                    self._block_decorations.append(region)
+                if position:
+                    separator = pg.InfiniteLine(pos=lo, angle=90, movable=False,
+                        pen=pg.mkPen(plot.blockSeparator, width=1, style=QtCore.Qt.PenStyle.DashDotLine))
+                    separator.setZValue(-3)
+                    _quiet(separator)
+                    item.addItem(separator, ignoreBounds=True)
+                    self._block_decorations.append(separator)
+            self._block_signature = block_signature
+        if not hasattr(self, "_bands"):
+            self._bands = []
+            for z in range(3):
+                band = pg.LinearRegionItem((0, 0), orientation="horizontal", movable=False, pen=transparent)
+                band.setZValue(-10 + z)
+                _quiet(band)
+                item.addItem(band, ignoreBounds=True)
+                self._bands.append(band)
+            self._mean_line = pg.InfiniteLine(pos=0, angle=0, movable=False)
+            self._mean_line.setZValue(-5)
+            _quiet(self._mean_line)
+            item.addItem(self._mean_line, ignoreBounds=True)
+        self._decorations = [*self._block_decorations, *self._bands, self._mean_line]
         stats = plot_stats(analysis, state.mapping, self.key)
+        for band in self._bands:
+            band.setVisible(math.isfinite(stats.center))
+        self._mean_line.setVisible(math.isfinite(stats.center))
         if not math.isfinite(stats.center):
             return
         center = stats.center
@@ -398,23 +463,17 @@ class CyclePlot(RoundedPlotWidget):
                 return center - k * s, center + k * s
             mean = center
         bands = [(2.0, stats.sd, plot.band2sigma), (1.0, stats.sd, plot.band1sigma), (1.0, stats.se, plot.bandSE)]
-        for z, (k, spread, color) in enumerate(bands):
-            if not math.isfinite(spread):
-                continue
-            lo, hi = bound(k, spread)
-            band = pg.LinearRegionItem((lo, hi), orientation="horizontal", movable=False,
-                                       brush=pg.mkBrush(theme_color(color)), pen=transparent)
-            band.setZValue(-10 + z)
-            _quiet(band)
-            item.addItem(band, ignoreBounds=True)
-            self._decorations.append(band)
-        line = pg.InfiniteLine(pos=mean, angle=0, movable=False, pen=pg.mkPen(plot.mean, width=1))
-        line.setZValue(-5)
-        _quiet(line)
-        item.addItem(line, ignoreBounds=True)
-        self._decorations.append(line)
+        for band, (k, spread, color) in zip(self._bands, bands):
+            band.setVisible(math.isfinite(spread))
+            if math.isfinite(spread):
+                band.setRegion(bound(k, spread))
+                band.setBrush(pg.mkBrush(theme_color(color)))
+        self._mean_line.setValue(mean)
+        self._mean_line.setPen(pg.mkPen(plot.mean, width=1))
 
     def set_selection(self, rows: frozenset[int] | set[int]) -> None:
+        if not rows and not self.selected_rows:
+            return
         self.selected_rows = frozenset(rows)
         if not self.selected_rows or not self.rows_shown.size:
             self.ring.setData(x=[], y=[])
@@ -423,6 +482,8 @@ class CyclePlot(RoundedPlotWidget):
         self.ring.setData(x=self.x_shown[mask], y=self.y_display[mask])
 
     def set_preview(self, rows: frozenset[int] | set[int]) -> None:
+        if not rows and not self.preview_rows:
+            return
         self.preview_rows = frozenset(rows)
         if not self.preview_rows or not self.rows_shown.size:
             self.preview_points.setData(x=[], y=[])
@@ -455,6 +516,8 @@ class CyclePlot(RoundedPlotWidget):
         return QtCore.QPointF(float(self.x_shown[index]), float(self.y_display[index]))
 
     def _on_click(self, view_point, modifiers) -> None:
+        if self.view_box.navigation_mode != "review":
+            return
         self.focused.emit(self.key)
         row = self.row_near(view_point)
         if modifiers & SELECT_MODIFIERS:
@@ -486,7 +549,7 @@ class CyclePlot(RoundedPlotWidget):
         menu.addAction("Reset zoom").triggered.connect(self.reset_view)
         menu.popup(screen_point)
 
-    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:  # noqa: N802 - Qt API
+    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         if event.modifiers() & SELECT_MODIFIERS:
             super().wheelEvent(event)
         else:
@@ -523,10 +586,53 @@ class PlotWall(QtWidgets.QScrollArea):
         self.plots: list[CyclePlot] = []
         self.state: PlotState | None = None
         self._columns = 0
+        self.navigation_mode = "review"
+        from rawtims_gui.studio.plot_tools import PlotTools
+        self.tools = PlotTools(self.viewport())
+        self.tools.modeChanged.connect(self.set_navigation_mode)
+        self.tools.resetRequested.connect(self.reset_views)
+        self.tools.hide()
+        self.tools.moved.connect(self.remember_tools)
+        self.restore_tools()
+
+    def restore_tools(self):
+        settings = getattr(self.window(), "settings", None)
+        point = settings.value("plots/tools_position") if settings else None
+        if isinstance(point, QtCore.QPoint):
+            self.tools._has_place = True
+            self.tools.move(point)
+            self.tools.place()
+
+    def remember_tools(self, point):
+        settings = getattr(self.window(), "settings", None)
+        if settings:
+            settings.setValue("plots/tools_position", point)
+
+    def set_navigation_mode(self, mode):
+        self.navigation_mode = mode
+        for plot in self.plots:
+            plot.view_box.navigation_mode = mode
+            plot.view_box.setMouseMode(pg.ViewBox.RectMode if mode == "zoom" else pg.ViewBox.PanMode)
+        self.tools.buttons[mode].setChecked(True)
+
+    def reset_views(self):
+        for plot in self.plots:
+            plot.reset_view()
+
+    def begin_resize_preview(self):
+        self.tools.finish()
+        for plot in self.plots:
+            plot.resize_preview.begin()
+
+    def finish_resize_preview(self):
+        for plot in self.plots:
+            plot.resize_preview.finish()
+            plot._update_pins()
 
     def set_plots(self, keys: Sequence[str], state: PlotState | None) -> None:
         for plot in self.plots:
             self.grid.removeWidget(plot)
+            plot.hide()
             plot.deleteLater()
         self.plots = []
         self.state = state
@@ -544,6 +650,9 @@ class PlotWall(QtWidgets.QScrollArea):
                 self.plots.append(plot)
         self._columns = 0
         self._relayout()
+        self.tools.setVisible(bool(self.plots))
+        self.set_navigation_mode(self.navigation_mode)
+        self.tools.place()
 
     def refresh(self, state: PlotState, *, rebuild: bool = False) -> None:
         self.state = state
@@ -599,7 +708,7 @@ class PlotWall(QtWidgets.QScrollArea):
                 self.grid.setRowStretch(row, 0)
             self.grid.setRowStretch(rows, 1)
 
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # noqa: N802 - Qt API
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         self._relayout()
 

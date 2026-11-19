@@ -23,10 +23,10 @@ instrument's cycle number. Functions are named by their unique key.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
 import copy
-from dataclasses import asdict, dataclass, fields, replace
 import math
+from collections.abc import Iterable, Sequence
+from dataclasses import asdict, dataclass, fields, replace
 from typing import Any
 
 import numpy as np
@@ -35,7 +35,14 @@ from rawtims import rules as _rules
 from rawtims import stats as _stats
 from rawtims.branding import APP_NAME
 from rawtims.model import Function, Run
-from rawtims.oxide import DEFAULT_R18, DERIVED_NAMES, FORMULA_TEXT, FORMULAS, OxideResult, oxide_correction
+from rawtims.oxide import (
+    DEFAULT_R18,
+    DERIVED_NAMES,
+    FORMULA_TEXT,
+    FORMULAS,
+    OxideResult,
+    oxide_correction,
+)
 
 HISTORY_VERSION = 1
 
@@ -110,6 +117,8 @@ class Analysis:
         self.block_included = np.ones(self.blocks.size, dtype=bool)
         self._ops: list[dict[str, Any]] = []
         self._applied = 0
+        self._stat_cache = {}
+        self._reduction_cache = {}
         self._derive()
         self.included = np.ones(self.values.shape, dtype=bool)
         # Analysis owns the resolved mapping. The workspace supplies remembered/edited
@@ -208,7 +217,12 @@ class Analysis:
         return effective
 
     def included_for(self, key: str) -> np.ndarray:
-        return self.effective[:, self.index(key)]
+        column = self.index(key)
+        effective = self.included[:, column] & self.block_included[self._row_block] & ~self.invalid[:, column]
+        group = self.group_keys
+        if key in group and self.group_consistent():
+            effective &= ~self.invalid[:, [self.index(k) for k in group]].any(axis=1)
+        return effective
 
     @property
     def group_keys(self) -> list[str]:
@@ -300,23 +314,34 @@ class Analysis:
         return copy.deepcopy(self._ops[-1])
 
     # ----------------------------------------------------------- statistics
+    def _cached_stat(self, key, kind, calculate):
+        # Per-function signatures also respect direct NumPy mask edits in notebooks.
+        # Retain one entry per statistic/key, rather than every edit's arrays.
+        signature = (self.settings.stat_mode, self.column(key).tobytes(),
+                     self.included_for(key).tobytes(), self.run.block.tobytes())
+        cache_key = (key, kind)
+        cached = self._stat_cache.get(cache_key)
+        if cached is None or cached[0] != signature:
+            self._stat_cache[cache_key] = (signature, calculate())
+        return self._stat_cache[cache_key][1]
+
     def stats(self, key: str) -> _stats.Stats:
         """Statistics of one function over its effectively included cycles."""
         function = self.function(key)
-        return _stats.function_stats(self.column(key), self.included_for(key), is_ratio=function.is_ratio, ratio_mode=self._settings.stat_mode)  # type: ignore[arg-type]
+        return self._cached_stat(key, "cycle", lambda: _stats.function_stats(self.column(key), self.included_for(key), is_ratio=function.is_ratio, ratio_mode=self._settings.stat_mode))  # type: ignore[arg-type]
 
     def block_stats(self, key: str) -> dict[int, _stats.Stats]:
         """Per-block statistics (an excluded block has ``n_used == 0``)."""
         function = self.function(key)
-        return _stats.block_stats(self.column(key), self.included_for(key), self.run.block, is_ratio=function.is_ratio, ratio_mode=self._settings.stat_mode)  # type: ignore[arg-type]
+        return self._cached_stat(key, "blocks", lambda: _stats.block_stats(self.column(key), self.included_for(key), self.run.block, is_ratio=function.is_ratio, ratio_mode=self._settings.stat_mode))  # type: ignore[arg-type]
 
     def block_weighted_mean(self, key: str, convention: str = "tripoli") -> _stats.WeightedMean:
         """Block-mode weighted mean (not the default statistic)."""
         function = self.function(key)
-        return _stats.block_weighted_mean(
+        return self._cached_stat(key, ("weighted", convention), lambda: _stats.block_weighted_mean(
             self.column(key), self.included_for(key), self.run.block,
             is_ratio=function.is_ratio, ratio_mode=self._settings.stat_mode, convention=convention,  # type: ignore[arg-type]
-        )
+        ))
 
     def correlation(self, key_a: str, key_b: str) -> _stats.Correlation:
         """Pearson r over the cycles included for both functions, on the scale the statistics use."""
@@ -328,7 +353,7 @@ class Analysis:
         )
 
     # ---------------------------------------------------------------- rules
-    def _proposal(self, rule: str, keys: Sequence[str] | None, mapping: Any, scope: str, synced: bool | None, params: dict[str, Any]) -> _rules.RuleProposal:
+    def _proposal(self, rule: str, keys: Sequence[str] | None, mapping: Any, scope: str, synced: bool | None, params: dict[str, Any], *, per_ratio=False) -> _rules.RuleProposal:
         mapped = set(self.mapping.function_keys) if self.mapping is not None else set()
         if mapping is not None:
             mapped.update(mapping.function_keys)
@@ -353,6 +378,8 @@ class Analysis:
                            group_keys=tuple(group), evaluation="one" if group and len(selected) == 1 else "union" if group else "per_function",
                            flagged=dict(proposal.rejected),
                            free_synced=self._settings.synced if synced is None else synced)
+        if per_ratio:
+            proposal = replace(proposal, synced=False, evaluation="legacy_per_ratio")
         targets = self.rule_targets(proposal)
         # Dry run: manipulate a private mask only, never an Analysis or its history.
         effective = self.effective
@@ -384,6 +411,13 @@ class Analysis:
         """Preview iterative k-σ rejection with the current settings. ``keys`` default as in :meth:`propose_chauvenet`."""
         params = {"k": self._settings.k_sigma, "max_iterations": self._settings.k_sigma_max_iterations, "log_ratios": log_ratios}
         return self._proposal("k_sigma", keys, mapping, scope, synced, params)
+
+    def propose_legacy_two_sigma(self, keys=None, *, mapping=None, scope="run", synced=None, per_ratio=False):
+        return self._proposal("legacy_two_sigma", keys, mapping, scope, synced, {}, per_ratio=per_ratio)
+
+    def propose_legacy_chauvenet(self, keys=None, *, mapping=None, scope="run", synced=None, per_ratio=False):
+        return self._proposal("legacy_chauvenet", keys, mapping, scope, synced,
+                              {"probability": self.settings.chauvenet_probability}, per_ratio=per_ratio)
 
     # ------------------------------------------------------------ operations
     def _rows(self, cycles: Iterable[int]) -> list[int]:
@@ -447,6 +481,8 @@ class Analysis:
                 return proposal.targets
             # Pre-shared-mask sessions retain the historical SYNCH semantics.
             return ({k: proposal.cycles for k in self.keys} if proposal.synced else dict(proposal.rejected))
+        if proposal.evaluation == "legacy_per_ratio" and proposal.rule in ("legacy_two_sigma", "legacy_chauvenet"):
+            return dict(proposal.rejected)
         group = set(self.group_keys)
         targets = {}
         if group.intersection(proposal.keys):
@@ -477,18 +513,25 @@ class Analysis:
         if name in ("r18", "oxide_formula"):
             self._derive()
 
-    def set_reduction_parameters(self, params):
+    def set_reduction_parameters(self, params, *, prepared_run=None, diff=None):
         """Re-reduce with explicit inputs, preserving masks; one undoable operation."""
         old = self.run.reduction_parameters.to_dict()
         old_inputs = self.run.provenance.get("raw_inputs", {})
-        self._apply_reduction_parameters(params)
-        return self._push({"op": "set_reduction_parameters", "old": old, "new": params.to_dict(),
-                           "old_raw_inputs": old_inputs, "raw_inputs": self.run.provenance.get("raw_inputs", {})})
+        before = self.run
+        self._apply_reduction_parameters(params, prepared_run=prepared_run)
+        self._reduction_cache[self._applied] = (before, self.run)
+        op = {"op": "set_reduction_parameters", "old": old, "new": params.to_dict(),
+              "old_raw_inputs": old_inputs, "raw_inputs": self.run.provenance.get("raw_inputs", {})}
+        if diff is not None:
+            op["diff"] = diff
+        return self._push(op)
 
-    def _apply_reduction_parameters(self, params):
+    def _apply_reduction_parameters(self, params, *, prepared_run=None):
         from rawtims.reprocess import reprocess
         self._verify_reduction_sources(self.run.provenance)
-        run = reprocess(self.run, params)
+        run = reprocess(self.run, params) if prepared_run is None else prepared_run
+        if run.raw.sha256 != self.run.raw.sha256 or run.reduction_parameters != params:
+            raise ValueError("prepared reduction does not match this source and parameter set")
         if run.keys != self.run.keys or not np.array_equal(run.cycle, self.run.cycle):
             raise ValueError("reprocessing changed row/function identities; masks cannot safely apply")
         mapping = self._mapping_data()
@@ -497,8 +540,13 @@ class Analysis:
         self.restore_mapping(mapping)
 
     def _verify_reduction_sources(self, record):
+        import hashlib
         from pathlib import Path
+
         from rawtims.readers.ionvantage_raw import input_hashes, raw_folder
+        source = Path(self.run.raw.path)
+        if source.is_file() and hashlib.sha256(source.read_bytes()).hexdigest() != self.run.raw.sha256:
+            raise ValueError("workbook source changed (SHA-256); reopen as a new run")
         expected = [record[k] for k in ("raw_inputs", "old_raw_inputs") if record.get(k)]
         if expected:
             folder = raw_folder(Path(self.run.raw.path))
@@ -535,7 +583,9 @@ class Analysis:
         if op["op"] == "set_reduction_parameters":
             self._verify_reduction_sources(op)
             from rawtims.reduction_params import ReductionParameters
-            self._apply_reduction_parameters(ReductionParameters.from_dict(op["old"]))
+            cached = self._reduction_cache.get(self._applied - 1)
+            self._apply_reduction_parameters(ReductionParameters.from_dict(op["old"]),
+                                             prepared_run=cached[0] if cached else None)
         self._applied -= 1
         kind = op["op"]
         if kind == "toggle_cycles":
@@ -572,7 +622,9 @@ class Analysis:
         if op["op"] == "set_reduction_parameters":
             self._verify_reduction_sources(op)
             from rawtims.reduction_params import ReductionParameters
-            self._apply_reduction_parameters(ReductionParameters.from_dict(op["new"]))
+            cached = self._reduction_cache.get(self._applied)
+            self._apply_reduction_parameters(ReductionParameters.from_dict(op["new"]),
+                                             prepared_run=cached[1] if cached else None)
         kind = op["op"]
         if kind in ("toggle_cycles", "apply_rule"):
             value = op["include"] if kind == "toggle_cycles" else False
@@ -600,6 +652,18 @@ class Analysis:
     def history(self) -> list[dict[str, Any]]:
         """The applied operations, oldest first, as JSON-serialisable dicts (undone operations are not included)."""
         return copy.deepcopy(self._ops[: self._applied])
+
+    def _history_view(self):
+        """Internal read-only iteration; consumers must never mutate operations.
+
+        Rendering provenance must not deep-copy every imported cycle mask on
+        each mouse edit. The public history property remains a defensive copy.
+        """
+        return iter(self._ops[:self._applied])
+
+    @property
+    def history_count(self) -> int:
+        return self._applied
 
     @property
     def redo_history(self) -> list[dict[str, Any]]:

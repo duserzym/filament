@@ -83,3 +83,45 @@ For 36.3→40 ns, workbook intrinsic approximation error was ≤0.174 ppm/cycle 
 two runs. These are evidence-specific tolerances, not guarantees for all methods or
 beam strengths. See `recalculation-demo.md` for measured aggregate comparisons and
 scratch-only hand-off reproduction.
+
+## Two-sequence Pb investigation (desktop G1)
+
+The method `Pb Fara-Daly_2 sequence_200 ratios` is still unavailable for raw
+reduction. A read-only probe of `B1607_F18_KG5 z1 Pb-56242.xls` (250 cycles,
+10 × 25; 5600 scans) and `B1608_F12_KG5 z7 Pb_2-56314.xls` (150 cycles,
+6 × 25; 3360 scans) recovered the two 30-scan half-mass baselines at 203.5
+and 204.5, followed by ten 1-second integrations at each of masses 204 and
+205. STS uses the same 618-byte records. Unlike the four-sequence method,
+the output row counts match without discarding two interpolation histories.
+Both workbooks have beam interpolation disabled.
+
+The observed collector assignment is S1: 204 Multiplier, 205 High1,
+206 High2, 207 High3, 208 High4; S2: 205 Multiplier, 206 High1,
+207 High2, 208 High3. The workbook intensities are in V (including the Daly),
+with 10^12-ohm resistors. Applying the validated four-sequence acquisition
+rejection/dead-time/baseline recipe and converting its cps to V recovered
+row counts but left maximum per-cycle intensity residuals of approximately
+0.637% and 2.347% respectively. This fails the 3 ppm acceptance criterion;
+the two-sequence averaging/correction history has not been recovered. The
+exploratory recipe is deliberately not enabled in the production decoder.
+Direct Faraday ratio reconstruction also fails: for example, maximum per-cycle
+206/207 S2 errors are 2833 ppm (z1) and 451 ppm (z7); 206/208 S2 errors are
+1116 ppm and 114 ppm. Thus the discrepancy is not merely a common intensity
+scale that cancels in the exported ratios.
+The desktop displays the method, this validation limit and the workbook route.
+
+## Desktop reduction controls
+
+Corrections contains Mapping, Reduction and Run info pages. Reduction stages
+edits until Apply; a thread-pool worker computes a new Run, then validates the
+source, row/function identities and unchanged analysis before installing it.
+Cancel or an intervening edit discards the result. Undo/redo caches both Runs,
+checks source hashes, and restores the parameter/ratio diff. Sessions preserve
+the diff with the operation. Reset stages the acquisition record.
+
+The panel exposes Daly dead time and acquisition multiplier, per-collector
+Faraday gains (apply/unity), baseline mode/offsets, interpolation, acquisition
+rejection, U r18 and route. Raw availability is checked off-thread. The verified
+Faraday/Daly cross-calibration is measured per cycle from the 206 beams; alternate
+Tau Time/Gain/HT response modes remain unavailable, rather than unverified
+numerical controls. Fractionation and spike calibration remain in the age app.

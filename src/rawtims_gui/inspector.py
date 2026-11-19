@@ -17,9 +17,10 @@ from rawtims.analysis import Analysis
 from rawtims.mapping import ElementMapping, MappedRatio, mapped_values, ratio_stats
 from rawtims_gui.plots import format_number, plot_stats
 from rawtims_gui.studio.theme import active_theme
+from rawtims_gui.studio.widgets import set_table_item
 
 STATS_COLUMNS = ("Function", "Mean", "% SE", "n")
-BLOCK_COLUMNS = ("Block", "Mean", "% SE", "n")
+BLOCK_COLUMNS = ("Block", "Mean", "SE", "% SE", "n")
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,10 @@ class StatsPanel(QtWidgets.QWidget):
         self.block_table.setToolTip("Double-click a block to include or exclude it")
         self.block_table.cellDoubleClicked.connect(self._block_double_clicked)
         layout.addWidget(self.block_table, 2)
+        self.weighted = QtWidgets.QLabel()
+        self.weighted.setWordWrap(True)
+        self.weighted.setObjectName("BlockWeightedMean")
+        layout.addWidget(self.weighted)
         self.analysis: Analysis | None = None
         self.mapping: ElementMapping | None = None
         self.rows: list[StatsRow] = []
@@ -140,10 +145,10 @@ class StatsPanel(QtWidgets.QWidget):
         for index, row in enumerate(self.rows):
             stats = row.stats
             tip = f"{row.label} → {row.ratio} (contract)" if row.ratio else row.label
-            self.table.setItem(index, 0, _item(row.label, bold=row.ratio is not None, tooltip=tip))
-            self.table.setItem(index, 1, _item(format_number(stats.mean), align_right=True, tooltip=repr(stats.mean)))
-            self.table.setItem(index, 2, _item(format_number(stats.se_pct, 3), align_right=True))
-            self.table.setItem(index, 3, _item(f"{stats.n_used}/{stats.n_total}", align_right=True))
+            set_table_item(self.table, index, 0, _item(row.label, bold=row.ratio is not None, tooltip=tip))
+            set_table_item(self.table, index, 1, _item(format_number(stats.mean), align_right=True, tooltip=repr(stats.mean)))
+            set_table_item(self.table, index, 2, _item(format_number(stats.se_pct, 3), align_right=True))
+            set_table_item(self.table, index, 3, _item(f"{stats.n_used}/{stats.n_total}", align_right=True))
         current = self.block_function.currentData()
         self.block_function.blockSignals(True)
         self.block_function.clear()
@@ -159,17 +164,28 @@ class StatsPanel(QtWidgets.QWidget):
         key = self.block_function.currentData()
         if analysis is None or key is None:
             self.block_table.setRowCount(0)
+            self.weighted.clear()
             return
         mapped = self._mapped(key)
-        if mapped is not None:
+        if mapped is not None and (mapped.inverted or not analysis.function(key).is_ratio):
             values, include = mapped_values(analysis, mapped)
             per_block = _stats.block_stats(values, include, analysis.run.block, is_ratio=True, ratio_mode=analysis.settings.stat_mode)  # type: ignore[arg-type]
+            weighted = _stats.block_weighted_mean(values, include, analysis.run.block, is_ratio=True,
+                                                 ratio_mode=analysis.settings.stat_mode, convention="standard")
         else:
             per_block = analysis.block_stats(key)
+            weighted = analysis.block_weighted_mean(key, convention="standard")
+        scale = " on ln scale" if weighted.mode == "geometric" else ""
+        self.weighted.setText(f"Weighted mean of block means (1/SE²{scale}): {format_number(weighted.mean)} ± "
+                              f"{format_number(weighted.sigma_pct)} % SE (1σ)\nMSWD of block means: "
+                              f"{format_number(weighted.mswd)} · {weighted.n_blocks} blocks. "
+                              "Fraction export uses the cycle mean.")
         stats = next((row.stats for row in self.rows if row.key == key), None)
         if stats is not None:
             self.detail.setText(f"Function detail · {stats.mode}{' (ln scale)' if stats.mode == 'geometric' else ''}\n"
-                                f"1σ SD {format_number(stats.sd)} · 1σ SE {format_number(stats.se)}")
+                                f"Mean {format_number(stats.mean)} · n {stats.n_used}/{stats.n_total}\n"
+                                f"1σ SD {format_number(stats.sd)} · 1σ SE {format_number(stats.se)}\n"
+                                f"% SE (1σ) {format_number(stats.se_pct)}")
         theme = active_theme()
         self.block_table.setRowCount(len(analysis.blocks))
         for index, (block, included) in enumerate(zip(analysis.blocks, analysis.block_included)):
@@ -178,13 +194,14 @@ class StatsPanel(QtWidgets.QWidget):
             cells = [
                 _item(label),
                 _item(format_number(stats.mean) if stats else "–", align_right=True),
+                _item(format_number(stats.se, 3) if stats else "–", align_right=True),
                 _item(format_number(stats.se_pct, 3) if stats else "–", align_right=True),
                 _item(f"{stats.n_used}/{stats.n_total}" if stats else "–", align_right=True),
             ]
             for column, cell in enumerate(cells):
                 if not included:
                     cell.setForeground(QtGui.QBrush(QtGui.QColor(theme.danger)))
-                self.block_table.setItem(index, column, cell)
+                set_table_item(self.block_table, index, column, cell)
 
     def _mapped(self, key: str) -> MappedRatio | None:
         for row in self.rows:

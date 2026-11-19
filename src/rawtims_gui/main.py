@@ -35,10 +35,10 @@ console script is set in pyproject.toml)::
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime
 import json
 import sys
 from collections.abc import Sequence
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,10 +49,10 @@ if __package__ in {None, ""}:
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims import branding
+from rawtims import session as session_io
 from rawtims.analysis import Analysis
 from rawtims.contract import ContractError, write_csv
 from rawtims.exports import CLIPBOARD_SEPARATOR, clipboard_text, write_cycles_csv
-from rawtims import session as session_io
 from rawtims.fractions import Fraction, FractionError, SessionInfo
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping
 from rawtims.rules import RuleProposal
@@ -63,9 +63,25 @@ from rawtims_gui.export_panel import ExportPanel
 from rawtims_gui.fraction_list import FractionList
 from rawtims_gui.inspector import StatsPanel
 from rawtims_gui.plots import PlotState, PlotWall
-from rawtims_gui.rules_panel import RulesPanel, SHARED_SELECTION_TOOLTIP
-from rawtims_gui.studio.theme import NeumorphicFrame, WallpaperWidget, apply_theme, build_application, paint_wallpaper
-from rawtims_gui.studio.widgets import ElidedLabel, SegmentButton, SegmentedBar, _WorkflowRailDelegate, elide_tab_titles, scrolling_page
+from rawtims_gui.reduction_panel import ReductionController, ReductionPanel
+from rawtims_gui.rules_panel import SHARED_SELECTION_TOOLTIP, RulesPanel
+from rawtims_gui.run_info import RunInfoPanel
+from rawtims_gui.studio.theme import (
+    NeumorphicFrame,
+    WallpaperWidget,
+    apply_theme,
+    build_application,
+    paint_wallpaper,
+)
+from rawtims_gui.studio.wheel_guard import install_wheel_guard
+from rawtims_gui.studio.widgets import (
+    ElidedLabel,
+    SegmentButton,
+    SegmentedBar,
+    _WorkflowRailDelegate,
+    elide_tab_titles,
+    scrolling_page,
+)
 from rawtims_gui.studio.workers import FunctionWorker
 from rawtims_gui.verify import run_verify
 from rawtims_gui.workspace import Workspace, describe_path, read_paths
@@ -84,7 +100,7 @@ THEME_KEY = "theme_mode"
 FIT_ALL_KEY = "plots/fit_all_points"
 THEME_MODES = ("light", "dark", "system")
 DEFAULT_INTENSITIES = 6
-RUN_FILTER = (f"Run files and sessions (*.xls *.XLS *.TIMSDP *.timsdp *{branding.SESSION_EXTENSION});;"
+RUN_FILTER = (f"Run files and sessions (*.xls *.XLS *.TIMSDP *.timsdp *.trip *{branding.SESSION_EXTENSION});;"
               f"Sessions (*{branding.SESSION_EXTENSION});;All files (*)")
 SESSION_FILTER = f"Sessions (*{branding.SESSION_EXTENSION})"
 RECENT_KEY = "sessions/recent"
@@ -225,6 +241,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if layout not in ("classic", "wall"):
             raise ValueError(f"Unknown Review layout: {layout}")
         self.layout_name = layout
+        install_wheel_guard(QtWidgets.QApplication.instance())
         self.settings = app_settings()
         self.workspace = Workspace(load_remembered(self.settings))
         self.current: tuple[Fraction, str] | None = None
@@ -275,6 +292,9 @@ class MainWindow(QtWidgets.QMainWindow):
             layout.addWidget(self.review_shell)
         self.setCentralWidget(central)
         self._build_status_bar()
+        self.reduction_controller = ReductionController(self)
+        from rawtims_gui.walkthrough import Walkthrough
+        self.walkthrough = Walkthrough(self, self.walkthrough_bar)
         self._sync_controls()
         self._update_titles()
 
@@ -373,6 +393,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.theme_actions.get(mode, self.theme_actions["light"]).setChecked(True)
         view.addAction(self.reset_layout_action)
         self.view_menu = view
+        help_menu = bar.addMenu("Help")
+        self.walkthrough_action = self._action("Walkthrough: change the dead time", lambda: self.walkthrough.start())
+        help_menu.addAction(self.walkthrough_action)
+        help_menu.addAction(self._action("Choose walkthrough examples folder…", self.choose_examples_folder))
+        help_menu.aboutToShow.connect(self.refresh_walkthrough_availability)
+        self.refresh_walkthrough_availability()
 
     # ------------------------------------------------------------ layout
     def _build_rail(self) -> QtWidgets.QWidget:
@@ -409,7 +435,7 @@ class MainWindow(QtWidgets.QMainWindow):
         buttons = QtWidgets.QHBoxLayout()
         buttons.setSpacing(4)
         self.open_files_button = QtWidgets.QPushButton("Open…")
-        self.open_files_button.setToolTip("Open run files (.xls, .TIMSDP)")
+        self.open_files_button.setToolTip("Open run files (.xls, .TIMSDP), Tripoli projects (.trip), or sessions")
         self.open_files_button.clicked.connect(self.choose_files)
         self.open_folder_button = QtWidgets.QPushButton("Folder…")
         self.open_folder_button.setToolTip("Open every run file in a folder")
@@ -431,11 +457,30 @@ class MainWindow(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout(frame)
         layout.setContentsMargins(14, 12, 14, 12)
         layout.addWidget(self._build_recovery_bar())
+        self.walkthrough_bar = QtWidgets.QWidget()
+        self.walkthrough_bar.hide()
+        layout.addWidget(self.walkthrough_bar)
+        self.source_bar = QtWidgets.QWidget()
+        source_layout = QtWidgets.QHBoxLayout(self.source_bar)
+        source_layout.setContentsMargins(0, 0, 0, 0)
+        self.source_notice = QtWidgets.QLabel()
+        self.source_notice.setWordWrap(True)
+        source_layout.addWidget(self.source_notice, 1)
+        self.locate_button = QtWidgets.QPushButton("Locate…")
+        self.locate_button.clicked.connect(self.locate_project_source)
+        source_layout.addWidget(self.locate_button)
+        self.source_bar.hide()
+        self._missing_projects = []
+        layout.addWidget(self.source_bar)
+        self.warning_chip = QtWidgets.QPushButton()
+        self.warning_chip.setStyleSheet("text-align: left; padding: 4px;")
+        self.warning_chip.clicked.connect(lambda: self.show_correction_page("Run info"))
+        self.warning_chip.hide()
+        layout.addWidget(self.warning_chip)
         self.legacy_bar = QtWidgets.QFrame()
         legacy_layout = QtWidgets.QVBoxLayout(self.legacy_bar)
         legacy_layout.setContentsMargins(6, 4, 6, 4)
-        self.legacy_notice = QtWidgets.QLabel()
-        self.legacy_notice.setWordWrap(True)
+        self.legacy_notice = ElidedLabel()
         self.legacy_notice.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         legacy_layout.addWidget(self.legacy_notice)
         self.legacy_union_button = QtWidgets.QPushButton("Use the union of rejections")
@@ -480,7 +525,7 @@ class MainWindow(QtWidgets.QMainWindow):
         title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         layout.addWidget(_placeholder(
-            "Drop IsotopX IonVantage workbooks (.xls), IsoLinx files (.TIMSDP) or folders anywhere on this window, "
+            "Drop IonVantage workbooks (.xls), IsoLinx files (.TIMSDP), Tripoli projects (.trip), .raw or data folders anywhere on this window, "
             "or use the buttons below. The Pb and U runs of a fraction are paired by sample ID."
         ))
         row = QtWidgets.QHBoxLayout()
@@ -597,7 +642,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.layout_name == "classic":
             self.plot_wall = PlotWall()
         else:
-            from rawtims_gui.review_layouts import SharedBlocks, ReviewPlotWall
+            from rawtims_gui.review_layouts import ReviewPlotWall, SharedBlocks
             self.block_header = SharedBlocks()
             self.block_header.blockClicked.connect(self.toggle_block)
             layout.addWidget(self.block_header)
@@ -673,8 +718,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.corrections_panel.forgetRequested.connect(self.forget_mapping)
         self.corrections_panel.revertRequested.connect(self.revert_mapping)
         self.corrections_panel.setObjectName("CorrectionsPage")
-        self.inspector_tabs.addTab(fitted_page(self.corrections_panel), "Corrections")
+        self.correction_pages = QtWidgets.QTabWidget()
+        self.correction_pages.addTab(fitted_page(self.corrections_panel), "Mapping")
+        self.inspector_tabs.addTab(self.correction_pages, "Corrections")
         self.export_panel = ExportPanel()
+        self.export_panel.saveXlsxRequested.connect(lambda: self.save_review_xlsx())
+        self.export_panel.saveTablesRequested.connect(lambda: self.save_review_tables())
+        self.export_panel.sendRequested.connect(lambda: self.send_to_age_app())
+        self.export_panel.age_command.setText(self.settings.value("export/age_command", "", type=str))
+        self.export_panel.ageCommandEdited.connect(lambda command: self.settings.setValue("export/age_command", command))
         self.export_panel.fieldEdited.connect(self.set_fraction_field)
         self.export_panel.compareLegacyRequested.connect(self.compare_legacy)
         self.export_panel.saveContractRequested.connect(lambda: self.save_contract_csv())
@@ -682,10 +734,38 @@ class MainWindow(QtWidgets.QMainWindow):
         self.export_panel.saveCyclesRequested.connect(lambda: self.save_cycles_csv())
         self.export_panel.saveSessionFirstRequested.connect(lambda: self.save_session_then_export())
         self.inspector_tabs.addTab(self.export_panel, "Export")
+        self.run_info_panel = RunInfoPanel()
+        self.correction_pages.addTab(fitted_page(self.run_info_panel), "Run info")
+        self.reduction_panel = ReductionPanel()
+        self.reduction_panel.applyRequested.connect(lambda: self.reduction_controller.apply())
+        self.reduction_panel.cancelRequested.connect(lambda: self.reduction_controller.cancel())
+        self.reduction_panel.resetRequested.connect(lambda: self.reduction_controller.reset())
+        self.correction_pages.insertTab(1, fitted_page(self.reduction_panel), "Reduction")
         elide_tab_titles(self.inspector_tabs)
         self.inspector_tabs.currentChanged.connect(self._inspector_tab_changed)
         layout.addWidget(self.inspector_tabs, 1)
         return frame
+
+    def refresh_walkthrough_availability(self):
+        from rawtims_gui.walkthrough import availability, examples_folder
+        problem = availability(examples_folder(self.settings))
+        self.walkthrough_action.setEnabled(not problem)
+        self.walkthrough_action.setToolTip(problem or "KD33 z1: dead time 36.3 → 40 ns, review, export and send")
+        self.walkthrough_action.setStatusTip(self.walkthrough_action.toolTip())
+
+    def choose_examples_folder(self):
+        from rawtims_gui.walkthrough import examples_folder
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Choose read-only Boise examples folder", str(examples_folder(self.settings)))
+        if folder:
+            self.settings.setValue("walkthrough/examples", folder)
+            self.refresh_walkthrough_availability()
+
+    def show_correction_page(self, name):
+        self.inspector_tabs.setCurrentIndex(INSPECTOR_TABS.index("Corrections"))
+        for index in range(self.correction_pages.count()):
+            if self.correction_pages.tabText(index) == name:
+                self.correction_pages.setCurrentIndex(index)
+                break
 
     def _build_status_bar(self) -> None:
         self.setStatusBar(FittedStatusBar(self))
@@ -761,6 +841,9 @@ class MainWindow(QtWidgets.QMainWindow):
         analyses, skipped = payload
         result = self.workspace.add(analyses, skipped)
         self.skipped = result.skipped
+        self._missing_projects = [(p, reason) for p, reason in result.skipped
+                                  if Path(p).suffix.lower() == ".trip" and ("Source workbook missing:" in reason or "Ambiguous source workbook:" in reason)]
+        self._refresh_source_notice()
         self._show_skipped(result.skipped)
         if self.current is None and result.added:
             first = result.added[0]
@@ -782,6 +865,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.import_summary.setVisible(True)
         self.importFinished.emit(result)
 
+    def _refresh_source_notice(self):
+        self.source_bar.setVisible(bool(self._missing_projects))
+        self.source_notice.setText(self._missing_projects[0][1] if self._missing_projects else "")
+
+    def locate_project_source(self, source=None):
+        if not self._missing_projects:
+            return
+        path, _reason = self._missing_projects[0]
+        if source is None:
+            source, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Locate exact source workbook", str(Path(path).parent), "Workbook (*.xls)")
+        if not source:
+            return
+        from rawtims.projects import open_project
+        try:
+            analysis = open_project(path, source)
+        except (ValueError, OSError) as error:
+            self.source_notice.setText(str(error))
+            return
+        remaining = self._missing_projects[1:]
+        self._import_finished(([analysis], []))
+        self._missing_projects = remaining
+        self._refresh_source_notice()
+
     def _show_skipped(self, skipped: list[tuple[str, str]], *, noun: str = "skipped") -> None:
         """The non-modal list in the status bar: files skipped by an import, or problems of a session."""
         self.skipped_list.clear()
@@ -799,13 +905,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.skipped_button.setToolTip("What the session could not restore as saved, and why")
         self.skipped_button.setVisible(bool(count))
 
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:  # noqa: N802 - Qt API
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasUrls() and any(url.isLocalFile() for url in event.mimeData().urls()):
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    def dropEvent(self, event: QtGui.QDropEvent) -> None:  # noqa: N802 - Qt API
+    def dropEvent(self, event: QtGui.QDropEvent) -> None:
         paths = [url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()]
         if paths:
             event.acceptProposedAction()
@@ -828,6 +934,8 @@ class MainWindow(QtWidgets.QMainWindow):
         analysis = fraction.pb if element == "Pb" else fraction.u
         if analysis is None:
             return
+        if hasattr(self, "reduction_controller") and self.reduction_controller.token is not None:
+            self.reduction_controller.cancel()
         self.current = (fraction, element)
         self.selection = set()
         self.last_row = None
@@ -932,6 +1040,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._sync_controls()
         self._update_titles()
         self._refresh_legacy_notice()
+        self.reduction_controller.refresh()
+        warnings = self.analysis.run.warnings if self.analysis is not None else ()
+        self.warning_chip.setVisible(bool(warnings))
+        self.warning_chip.setText(f"⚠ {len(warnings)} run warnings · details in Run info")
+        self.warning_chip.setToolTip("\n".join(warnings))
         if hasattr(self, "review_shell"):
             self.review_shell.refresh()
 
@@ -943,7 +1056,8 @@ class MainWindow(QtWidgets.QMainWindow):
             lines = ["per-ratio selection (legacy) — contract export blocked. Differing rejections by ratio:"]
             for key, cycles in analysis.group_differences().items():
                 lines.append(f"{key}: {', '.join(map(str, cycles)) or 'none'}")
-            self.legacy_notice.setText("\n".join(lines))
+            self.legacy_notice.setText(" · ".join(lines))
+            self.legacy_notice.setToolTip("\n".join(lines))
 
     def use_union_of_rejections(self) -> dict | None:
         if self.analysis is None:
@@ -1016,7 +1130,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.run_label.setToolTip(analysis.run.raw.path)
         used, total = self.cycles_used()
         self.cycles_label.setText(f"Cycles {used}/{total}")
-        self.history_label.setText(f"History {len(analysis.history)}" + (" · redo available" if analysis.can_redo else ""))
+        self.history_label.setText(f"History {analysis.history_count}" + (" · redo available" if analysis.can_redo else ""))
 
     def cycles_used(self) -> tuple[int, int]:
         """(cycles used in every mapped function, cycles in the run) for the current run."""
@@ -1308,7 +1422,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return None
         params = self.rules_panel.parameters()
         rule = params["rule"]
-        names = ("chauvenet_probability", "chauvenet_min_n") if rule == "chauvenet" else ("k_sigma", "k_sigma_max_iterations")
+        names = {"chauvenet": ("chauvenet_probability", "chauvenet_min_n"),
+                 "legacy_chauvenet": ("chauvenet_probability",), "legacy_two_sigma": (),
+                 "k_sigma": ("k_sigma", "k_sigma_max_iterations")}[rule]
         for name in names:
             if getattr(analysis.settings, name) != params[name]:
                 analysis.set_setting(name, params[name])
@@ -1318,9 +1434,12 @@ class MainWindow(QtWidgets.QMainWindow):
             keys = [params["ratio_key"]] if params["ratio_key"] else None
         elif params["function_set"] == "plotted" or mapping is None or not mapping.function_keys:
             keys = list(self.plotted_keys()) or None
-        propose = analysis.propose_chauvenet if rule == "chauvenet" else analysis.propose_k_sigma
+        propose = {"chauvenet": analysis.propose_chauvenet, "k_sigma": analysis.propose_k_sigma,
+                   "legacy_two_sigma": analysis.propose_legacy_two_sigma,
+                   "legacy_chauvenet": analysis.propose_legacy_chauvenet}[rule]
         try:
-            proposal = propose(keys, mapping=mapping if mapping is not None and mapping.function_keys else None, scope=params["scope"])
+            legacy = {"per_ratio": params["per_ratio"]} if rule.startswith("legacy_") else {}
+            proposal = propose(keys, mapping=mapping if mapping is not None and mapping.function_keys else None, scope=params["scope"], **legacy)
         except ValueError as error:
             self.statusBar().showMessage(f"Cannot preview the rule: {error}", 8000)
             return None
@@ -1543,11 +1662,71 @@ class MainWindow(QtWidgets.QMainWindow):
                 return None
         try:
             written = write_cycles_csv(analysis, path)
-        except OSError as error:
+        except (OSError, FractionError) as error:
             self.statusBar().showMessage(f"Could not save: {error}", 10000)
             return None
         self.settings.setValue(EXPORT_DIR_KEY, str(written.parent))
         self.statusBar().showMessage(f"Saved the cycles of {analysis.run.raw.name} to {written.name}", 8000)
+        return written
+
+    def _review_export_data(self):
+        rows, skipped = self.workspace.export_rows(datetime.now().astimezone(), session_info=self.session_info(verify=True))
+        ids = {row.fraction_id for row in rows}
+        fractions = [f for f in self.workspace.fractions if f.fraction_id in ids]
+        if not rows:
+            raise FractionError("No fractions are ready for export. Resolve the issues in Export first.")
+        return rows, fractions, skipped
+
+    def save_review_xlsx(self, path=None):
+        from rawtims_gui.table_exports import write_xlsx
+        if path is None:
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save review XLSX", str(Path(self._export_folder()) / "review.xlsx"), "Excel (*.xlsx)")
+        if not path:
+            return None
+        try:
+            rows, fractions, skipped = self._review_export_data()
+            written = write_xlsx(path, rows, fractions)
+        except (ValueError, OSError, ImportError) as error:
+            self.statusBar().showMessage(f"Could not save XLSX: {error}", 10000)
+            return None
+        self.settings.setValue(EXPORT_DIR_KEY, str(written.parent))
+        self.statusBar().showMessage(f"Saved {len(rows)} fractions, cycles and provenance to {written.name}; {len(skipped)} fractions left out.", 10000)
+        return written
+
+    def save_review_tables(self, folder=None):
+        from rawtims_gui.table_exports import write_tables_csv
+        if folder is None:
+            folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Save review CSV tables in folder", self._export_folder())
+        if not folder:
+            return None
+        try:
+            rows, fractions, skipped = self._review_export_data()
+            written = write_tables_csv(folder, rows, fractions)
+        except (ValueError, OSError) as error:
+            self.statusBar().showMessage(f"Could not save tables: {error}", 10000)
+            return None
+        self.settings.setValue(EXPORT_DIR_KEY, str(folder))
+        self.statusBar().showMessage(f"Saved fractions.csv, cycles.csv and provenance.csv; {len(skipped)} fractions left out.", 10000)
+        return written
+
+    def send_to_age_app(self, folder=None):
+        from rawtims_gui import age_app
+        if folder is None:
+            remembered = self.settings.value("export/send_folder", "", type=str)
+            folder = remembered or QtWidgets.QFileDialog.getExistingDirectory(self, "Choose folder for IDTIMS hand-off", self._export_folder())
+        if not folder:
+            return None
+        path = Path(folder) / "fractions.csv"
+        written = self.save_contract_csv(str(path))
+        if written is None:
+            return None
+        self.settings.setValue("export/send_folder", str(folder))
+        command = self.export_panel.age_command.text().strip()
+        self.settings.setValue("export/age_command", command)
+        message = age_app.send(written, command, reveal=lambda p: age_app.reveal_file(
+            p, open_folder=lambda folder: QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(folder)))))
+        self.export_panel.send_note.setText(f"{message} {written}")
+        self.statusBar().showMessage(message, 10000)
         return written
 
     # ----------------------------------------------------------- session
@@ -1948,7 +2127,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings.setValue(GEOMETRY_KEY, self.saveGeometry())
         self.settings.sync()
 
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # noqa: N802 - Qt API
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         if self.layout_name != "classic":
             if hasattr(self, "review_shell"):
@@ -1960,10 +2139,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rail_panel.setFixedWidth(208 if narrow else 224)
         self.inspector_panel.setFixedWidth(300 if narrow else 320)
 
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 - Qt API
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         paint_wallpaper(self)
 
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # noqa: N802 - Qt API
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         if not self.maybe_save("closing"):
             event.ignore()
             return
@@ -1978,6 +2157,7 @@ def export_window(window: QtWidgets.QMainWindow, output_path: str) -> bool:
     window.show()
     for _ in range(4):
         QtWidgets.QApplication.processEvents()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     return window.grab().save(output_path, "PNG")
 
 
@@ -1985,6 +2165,8 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog=branding.EXECUTABLE_NAME, description=f"{branding.DISPLAY_NAME}: raw ID-TIMS data review")
     parser.add_argument("--layout", choices=("classic", "wall"), default="wall",
                         help="Review layout (default: wall; classic is a one-release fallback)")
+    parser.add_argument("--walkthrough-step", type=int, choices=range(1, 6), help="Open KD33 walkthrough at step 1–5 (no external launch)")
+    parser.add_argument("--examples-folder", help="Read-only walkthrough examples folder for this launch")
     parser.add_argument("--theme", choices=THEME_MODES, help="Theme for this launch (default: the saved choice, else light)")
     parser.add_argument("--open", nargs="+", metavar="PATH", help="Open run files, folders or a saved session at start")
     parser.add_argument("--export", nargs=2, metavar=("FORMAT", "PATH"), help="Render the window to PATH and exit; FORMAT must be png")
@@ -2023,6 +2205,9 @@ def main(argv: list[str] | None = None) -> int:
         window.resize(DEFAULT_SIZE)
         if args.open:
             window.open_paths(args.open, synchronous=True)
+        if args.walkthrough_step and not window.walkthrough.start(folder=args.examples_folder, step=args.walkthrough_step, synchronous=True):
+            print(window.statusBar().currentMessage(), file=sys.stderr)
+            return 1
         output = Path(args.export[1]).expanduser()
         if not export_window(window, str(output)):
             print(f"Could not write {output}", file=sys.stderr)
@@ -2033,6 +2218,8 @@ def main(argv: list[str] | None = None) -> int:
     window.show()
     if args.open:
         window.open_paths(args.open)
+    if args.walkthrough_step:
+        window.walkthrough.start(folder=args.examples_folder, step=args.walkthrough_step)
     QtCore.QTimer.singleShot(0, window.check_recovery)
     return app.exec()
 

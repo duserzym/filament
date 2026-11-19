@@ -16,9 +16,8 @@ import os
 
 os.environ.setdefault("PYQTGRAPH_QT_LIB", "PySide6")
 
-from PySide6 import QtCore, QtGui, QtWidgets
-
 import pyqtgraph as pg
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims_gui.studio.theme import active_theme, theme_color
 
@@ -287,18 +286,18 @@ class ElidedLabel(QtWidgets.QLabel):
         )
         self.setText(text)
 
-    def setText(self, text: str) -> None:  # noqa: N802 - Qt API
+    def setText(self, text: str) -> None:
         self._full_text = str(text)
         self._elide()
 
-    def text(self) -> str:  # noqa: D401 - Qt API
+    def text(self) -> str:
         return self._full_text
 
-    def setToolTip(self, tooltip: str) -> None:  # noqa: N802 - Qt API
+    def setToolTip(self, tooltip: str) -> None:
         self._own_tooltip = tooltip
         super().setToolTip(tooltip)
 
-    def sizeHint(self) -> QtCore.QSize:  # noqa: N802 - Qt API
+    def sizeHint(self) -> QtCore.QSize:
         metrics = self.fontMetrics()
         margins = self.contentsMargins()
         return QtCore.QSize(
@@ -306,18 +305,18 @@ class ElidedLabel(QtWidgets.QLabel):
             super().sizeHint().height(),
         )
 
-    def minimumSizeHint(self) -> QtCore.QSize:  # noqa: N802 - Qt API
+    def minimumSizeHint(self) -> QtCore.QSize:
         metrics = self.fontMetrics()
         return QtCore.QSize(
             metrics.horizontalAdvance("…") + 4,
             super().minimumSizeHint().height(),
         )
 
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # noqa: N802 - Qt API
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         self._elide()
 
-    def changeEvent(self, event: QtCore.QEvent) -> None:  # noqa: N802 - Qt API
+    def changeEvent(self, event: QtCore.QEvent) -> None:
         super().changeEvent(event)
         if event.type() in (QtCore.QEvent.Type.FontChange, QtCore.QEvent.Type.StyleChange):
             self._elide()
@@ -401,7 +400,7 @@ class FrozenColumnsView(QtWidgets.QTableView):
         bar.setRange(self._table.verticalScrollBar().minimum(), self._table.verticalScrollBar().maximum())
         bar.setValue(self._table.verticalScrollBar().value())
 
-    def wheelEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def wheelEvent(self, event) -> None:
         QtWidgets.QApplication.sendEvent(self._table.viewport(), event)
 
     def frozen_columns(self) -> list[int]:
@@ -436,3 +435,26 @@ class FrozenColumnsView(QtWidgets.QTableView):
                          table.viewport().height() + table.horizontalHeader().height())
         self._follow_table_scroll()
 
+
+
+
+def set_table_item(table, row, column, item):
+    """Reuse cells; unchanged text must not trigger another column-size/layout pass."""
+    existing = table.item(row, column)
+    if existing is None:
+        table.setItem(row, column, item)
+        return
+    if existing.text() != item.text():
+        existing.setText(item.text())
+    if existing.toolTip() != item.toolTip():
+        existing.setToolTip(item.toolTip())
+    if existing.font() != item.font():
+        existing.setFont(item.font())
+    if existing.foreground() != item.foreground():
+        existing.setForeground(item.foreground())
+
+
+def set_style(widget, style):
+    """Avoid repolishing the whole widget tree when its style did not change."""
+    if widget.styleSheet() != style:
+        widget.setStyleSheet(style)

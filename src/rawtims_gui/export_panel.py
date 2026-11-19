@@ -27,7 +27,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims.contract import FractionRow
 from rawtims.fractions import COLLECTORS, SPIKE_TYPES, Fraction
-from rawtims_gui.studio.widgets import ElidedLabel
+from rawtims_gui.studio.widgets import ElidedLabel, set_style, set_table_item
 
 TEXT_FIELDS = (
     ("sample", "Sample"),
@@ -64,7 +64,7 @@ class ElidingLineEdit(QtWidgets.QLineEdit):
         return self.fontMetrics().elidedText(self.text(), QtCore.Qt.TextElideMode.ElideMiddle,
                                             max(0, self.text_rect().width()))
 
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 - Qt API
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         if self.hasFocus() and not self.isReadOnly():
             super().paintEvent(event)
             return
@@ -85,7 +85,7 @@ class ElidingComboBox(QtWidgets.QComboBox):
         super().__init__()
         self.currentTextChanged.connect(self.setToolTip)
 
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 - Qt API
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         option = QtWidgets.QStyleOptionComboBox()
         self.initStyleOption(option)
         rect = self.style().subControlRect(QtWidgets.QStyle.ComplexControl.CC_ComboBox, option,
@@ -127,6 +127,10 @@ class ExportPanel(QtWidgets.QWidget):
     saveCyclesRequested = QtCore.Signal()
     saveSessionFirstRequested = QtCore.Signal()
     compareLegacyRequested = QtCore.Signal()
+    saveXlsxRequested = QtCore.Signal()
+    saveTablesRequested = QtCore.Signal()
+    sendRequested = QtCore.Signal()
+    ageCommandEdited = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -305,6 +309,23 @@ class ExportPanel(QtWidgets.QWidget):
         self.save_button.clicked.connect(self.saveContractRequested)
         self.copy_button.clicked.connect(self.copyClipboardRequested)
         self.cycles_button.clicked.connect(self.saveCyclesRequested)
+        self.xlsx_button = QtWidgets.QPushButton("Save review XLSX…")
+        self.tables_button = QtWidgets.QPushButton("Save review CSV tables…")
+        self.send_button = QtWidgets.QPushButton("Send to IDTIMS_UPbRPy…")
+        self.xlsx_button.clicked.connect(self.saveXlsxRequested)
+        self.tables_button.clicked.connect(self.saveTablesRequested)
+        self.send_button.clicked.connect(self.sendRequested)
+        for widget in (self.xlsx_button, self.tables_button, self.send_button):
+            outer.addWidget(widget)
+        self.age_command = QtWidgets.QLineEdit()
+        self.age_command.setPlaceholderText("Optional age app command")
+        self.age_command.setToolTip("Executable and arguments, e.g. ~/Github/IDTIMS_UPbRPy/.venv/bin/python -m idtims_app. --open PATH is appended; no shell is used.")
+        self.age_command.editingFinished.connect(lambda: self.ageCommandEdited.emit(self.age_command.text()))
+        layout.addWidget(QtWidgets.QLabel("IDTIMS_UPbRPy command (optional)"))
+        layout.addWidget(self.age_command)
+        self.send_note = QtWidgets.QLabel("Send saves a contract CSV to a chosen, remembered folder. If no age app is found, it reveals the file.")
+        self.send_note.setWordWrap(True)
+        layout.addWidget(self.send_note)
         self.update_panel(None, [], None, None, None)
 
     @staticmethod
@@ -323,7 +344,7 @@ class ExportPanel(QtWidgets.QWidget):
         from rawtims_gui.studio.theme import active_theme
 
         self.form_message.setText(text)
-        self.form_message.setStyleSheet(f"#FormMessage {{ color: {active_theme().danger}; }}")
+        set_style(self.form_message, f"#FormMessage {{ color: {active_theme().danger}; }}")
         self.form_message.setVisible(bool(text))
 
     def _text_committed(self, attribute: str, edit: QtWidgets.QLineEdit) -> None:
@@ -371,10 +392,10 @@ class ExportPanel(QtWidgets.QWidget):
             try:
                 ZoneInfo(text)
             except (ZoneInfoNotFoundError, ValueError):
-                self.timezone.setStyleSheet("QComboBox { border: 1px solid #c2413b; }")
+                set_style(self.timezone, "QComboBox { border: 1px solid #c2413b; }")
                 self._message(f"Time zone “{text}” is not an IANA name such as America/Boise.")
                 return
-        self.timezone.setStyleSheet("")
+        set_style(self.timezone, "")
         self._message("")
         value = text or None
         if value != self.fraction.timezone:
@@ -421,6 +442,8 @@ class ExportPanel(QtWidgets.QWidget):
         ready = [f for f, state, _reasons in statuses if state != "attention"]
         self.save_button.setEnabled(bool(ready))
         self.save_button.setText(f"Save contract CSV… ({len(ready)} fraction{'s' if len(ready) != 1 else ''})" if statuses else "Save contract CSV…")
+        for button in (self.xlsx_button, self.tables_button, self.send_button):
+            button.setEnabled(bool(ready))
         self.copy_button.setEnabled(row is not None)
         self.cycles_button.setEnabled(element is not None)
         self.compare_legacy_button.setEnabled(element is not None)
@@ -444,7 +467,7 @@ class ExportPanel(QtWidgets.QWidget):
                 font.setBold(True)
                 cells[0].setFont(font)
             for column, cell in enumerate(cells):
-                self.fraction_table.setItem(index, column, cell)
+                set_table_item(self.fraction_table, index, column, cell)
             if state == "attention":
                 lines += [f"• {fraction.fraction_id}: {reason}" for reason in reasons]
             elif state == "incomplete":
@@ -454,10 +477,10 @@ class ExportPanel(QtWidgets.QWidget):
         self.problems.setToolTip(f"{len(lines)} export issues" if lines else "0 export issues")
         if lines:
             self.problems.setText("\n".join(lines))
-            self.problems.setStyleSheet(f"#ExportProblems {{ color: {theme.text}; font-size: 12px; }}")
+            set_style(self.problems, f"#ExportProblems {{ color: {theme.text}; font-size: 12px; }}")
         else:
             self.problems.setText("0 issues · all fractions ready" if statuses else "0 issues")
-            self.problems.setStyleSheet(f"#ExportProblems {{ color: {theme.muted}; font-size: 12px; }}")
+            set_style(self.problems, f"#ExportProblems {{ color: {theme.muted}; font-size: 12px; }}")
 
     def _fill_row(self, fraction: Fraction | None, row: FractionRow | None, error: str | None) -> None:
         self.row_title.setText(f"Row of {fraction.fraction_id}" if fraction is not None else "Row")
@@ -467,8 +490,8 @@ class ExportPanel(QtWidgets.QWidget):
                 item = QtWidgets.QTableWidgetItem("cannot export")
                 value = QtWidgets.QTableWidgetItem(error)
                 value.setToolTip(error)
-                self.row_table.setItem(0, 0, item)
-                self.row_table.setItem(0, 1, value)
+                set_table_item(self.row_table, 0, 0, item)
+                set_table_item(self.row_table, 0, 1, value)
             return
         cells = row.to_csv()
         self.row_table.setRowCount(len(cells))
@@ -477,8 +500,8 @@ class ExportPanel(QtWidgets.QWidget):
             key.setToolTip(name)
             value = QtWidgets.QTableWidgetItem(text)
             value.setToolTip(text)
-            self.row_table.setItem(index, 0, key)
-            self.row_table.setItem(index, 1, value)
+            set_table_item(self.row_table, index, 0, key)
+            set_table_item(self.row_table, index, 1, value)
 
     def set_session_state(self, state: str, name: str | None) -> None:
         """``saved`` (unchanged since saved), ``modified``, ``untitled`` (never saved) or ``empty`` (nothing open)."""
@@ -496,7 +519,7 @@ class ExportPanel(QtWidgets.QWidget):
         self.session_note.setText(texts[state])
         self.session_note.setVisible(state != "empty")
         color = theme.muted if state == "saved" else theme.text
-        self.session_note.setStyleSheet(f"#SessionNote {{ color: {color}; font-size: 12px; }}")
+        set_style(self.session_note, f"#SessionNote {{ color: {color}; font-size: 12px; }}")
         self.session_first_button.setVisible(state in ("modified", "untitled", "unlinked"))
 
     def set_project_statistics(self, mode: str, problem: str | None) -> None:
@@ -505,9 +528,10 @@ class ExportPanel(QtWidgets.QWidget):
         label = {"arithmetic": "arithmetic (legacy Tripoli)", "geometric": "geometric (Java Tripoli)"}[mode]
         self.statistics_note.setText(problem or f"Means and % SE: {label}")
         color = active_theme().danger if problem else active_theme().muted
-        self.statistics_note.setStyleSheet(f"#StatisticsNote {{ color: {color}; font-size: 12px; }}")
+        set_style(self.statistics_note, f"#StatisticsNote {{ color: {color}; font-size: 12px; }}")
         if problem:
-            for button in (self.save_button, self.copy_button, self.cycles_button, self.session_first_button):
+            for button in (self.save_button, self.copy_button, self.cycles_button, self.session_first_button,
+                           self.xlsx_button, self.tables_button, self.send_button):
                 button.setEnabled(False)
         else:
             self.session_first_button.setEnabled(True)
@@ -516,4 +540,4 @@ class ExportPanel(QtWidgets.QWidget):
         return {self.row_table.item(i, 0).text(): self.row_table.item(i, 1).text() for i in range(self.row_table.rowCount())}
 
 
-__all__ = ["ExportPanel", "SEPARATORS"]
+__all__ = ["SEPARATORS", "ExportPanel"]

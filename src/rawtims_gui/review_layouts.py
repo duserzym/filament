@@ -8,10 +8,12 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims.branding import DISPLAY_NAME
-from rawtims_gui.plots import PlotWall, format_number, plot_stats
 from rawtims_gui.plot_palette import plot_palette
+from rawtims_gui.plots import PlotWall, format_number, plot_stats
+from rawtims_gui.studio.naming import natural_sort_key
+from rawtims_gui.studio.splitters import StudioSplitter, _SplitterHandle
 from rawtims_gui.studio.theme import active_theme
-from rawtims_gui.studio.widgets import ElidedLabel
+from rawtims_gui.studio.widgets import ElidedLabel, set_style
 
 
 @dataclass(frozen=True)
@@ -65,20 +67,20 @@ def tool(text, tip, slot):
     return button
 
 
-class ResetHandle(QtWidgets.QSplitterHandle):
+class ResetHandle(_SplitterHandle):
     def mouseDoubleClickEvent(self, event):
         self.splitter().reset_sizes()
         event.accept()
 
 
-class ReviewSplitter(QtWidgets.QSplitter):
+class ReviewSplitter(StudioSplitter):
     def __init__(self, settings):
         super().__init__(QtCore.Qt.Orientation.Horizontal)
         self.settings = settings
         self.key = 'review/wall/splitter_v2'
         self.defaults = [940, 300]
         self.transient = False
-        self.setHandleWidth(8)
+        self.setHandleWidth(10)
         self.setChildrenCollapsible(False)
         self.splitterMoved.connect(self.save)
 
@@ -184,7 +186,7 @@ class SharedBlocks(QtWidgets.QScrollArea):
             cycles = ', '.join(str(int(c)) for c in analysis.run.cycle[rows])
             cell.setToolTip(f'Block {block} · cycles {cycles}\n{used}/{total} used across shared ratios. '
                             'Click or Space/Return: toggle (undoable). ← →: move between blocks.')
-            cell.setStyleSheet(f'QToolButton {{ padding: 3px 1px; font-size: {10 if compact else 11}px; '
+            set_style(cell, f'QToolButton {{ padding: 3px 1px; font-size: {10 if compact else 11}px; '
                               f'color: {theme.text if included else plot.excluded}; '
                               f'background: {theme.surface if included else plot.blockOff}; '
                               f'border: 1px solid {theme.axis_line if included else plot.excluded}; border-radius: 5px; }} '
@@ -233,9 +235,11 @@ class RatioCard(QtWidgets.QFrame):
         self.name.setText(name)
         self.summary.setText(f'{mean} ± {se}% SE · n {stats.n_used}/{stats.n_total}')
         self.summary.setToolTip(f'{name}: mean {mean}, {se}% SE (1σ), n {stats.n_used}/{stats.n_total}')
-        self.plot.getPlotItem().setTitle(None)
+        if not getattr(self.plot, 'external_title', False):
+            self.plot.external_title = True
+            self.plot.getPlotItem().setTitle(None)
         theme = active_theme()
-        self.setStyleSheet(f'#RatioCard {{ background: {theme.plot_background}; border: 1px solid {theme.axis_line}; border-radius: 8px; }}')
+        set_style(self, f'#RatioCard {{ background: {theme.plot_background}; border: 1px solid {theme.axis_line}; border-radius: 8px; }}')
 
 
 class ReviewPlotWall(PlotWall):
@@ -253,6 +257,7 @@ class ReviewPlotWall(PlotWall):
         self.maximised = None
         for card in self.cards:
             self.grid.removeWidget(card)
+            card.hide()
             card.deleteLater()
         self.cards = []
         super().set_plots(keys, state)
@@ -436,6 +441,8 @@ class ReviewShell(QtWidgets.QWidget):
         top.addWidget(self.state, 1)
         box.addLayout(top)
         self.splitter = ReviewSplitter(window.settings)
+        self.splitter.dragStarted.connect(window.plot_wall.begin_resize_preview)
+        self.splitter.dragFinished.connect(window.plot_wall.finish_resize_preview)
         old_rail.setParent(self)
         old_rail.hide()
         inspector.layout().itemAt(0).widget().hide()
@@ -501,7 +508,7 @@ class ReviewShell(QtWidgets.QWidget):
         window = self.owner
         self.picker.blockSignals(True)
         self.picker.clear()
-        for fraction in window.workspace.fractions:
+        for fraction in sorted(window.workspace.fractions, key=lambda f: natural_sort_key(f.fraction_id)):
             for element, analysis in (('Pb', fraction.pb), ('U', fraction.u)):
                 if analysis is not None:
                     self.picker.addItem(f'{fraction.fraction_id} · {element}', (fraction, element))
@@ -514,11 +521,11 @@ class ReviewShell(QtWidgets.QWidget):
             used, total = window.cycles_used()
             self.state.setText(f'● {state.capitalize()}   ·   {used}/{total} cycles used')
             self.state.setToolTip('\n'.join(reasons) or 'Fraction ready for export')
-            self.state.setStyleSheet(f'font-weight: 600; color: {active_theme().success if state == "ready" else active_theme().text};')
+            set_style(self.state, f'font-weight: 600; color: {active_theme().success if state == "ready" else active_theme().text};')
         else:
             self.state.setText('No fraction selected')
         locked = window.analysis is not None and not window.synch_action.isEnabled()
-        window.synch_button.setStyleSheet(
+        set_style(window.synch_button,
             f'QToolButton {{ background: transparent; border: none; color: {active_theme().muted}; font-weight: normal; }}'
             if locked else '')
         window.block_header.refresh(window.analysis)

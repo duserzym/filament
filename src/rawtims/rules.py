@@ -36,17 +36,16 @@ These semantics are the defaults of :func:`chauvenet_rejections`
 function) is this engine's own option, on by default to match the app's SYNCH default;
 the proposal records which was used.
 
-The iterative k-σ rule is the legacy C# Tripoli ``TwoSigma`` outlier handling,
-restated: on the included values (ln r for ratios by default), reject every
+The iterative k-σ comparison option is separate from legacy single-pass 2σ: on the included values (ln r for ratios by default), reject every
 value with |x − mean| > k · SD (n − 1), recompute on what is left and repeat
 until nothing new is rejected or ``max_iterations`` passes have run.
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-import math
 from typing import Any, Literal
 
 import numpy as np
@@ -54,7 +53,7 @@ import numpy as np
 from rawtims.stats import transform
 
 Scope = Literal["run", "block"]
-RULES = ("chauvenet", "k_sigma")
+RULES = ("chauvenet", "k_sigma", "legacy_two_sigma", "legacy_chauvenet")
 
 CHAUVENET_PROBABILITY = 0.5
 CHAUVENET_MIN_N = 20
@@ -122,6 +121,40 @@ def k_sigma_rejections(values, include=None, *, k: float = K_SIGMA, max_iteratio
     return np.flatnonzero(ok & ~keep)
 
 
+def legacy_two_sigma_rejections(values, include=None):
+    """C# single strict 2 SD pass; SetOutliers live-count guard applies to the batch."""
+    values, ok = _prepare(values, include)
+    ok &= values > 0
+    n = int(ok.sum())
+    if n < 3:
+        return np.array([], dtype=np.int64)
+    data = values[ok]
+    sd = data.std(ddof=1)
+    rows = np.flatnonzero(ok & (np.abs(values - data.mean()) > 2 * sd))
+    return rows if n > 2 + len(rows) else np.array([], dtype=np.int64)
+
+
+def legacy_chauvenet_rejections(values, include=None, *, probability=0.5):
+    """C# repeatedly removes one extreme positive point, recomputing after each removal."""
+    if not 0 <= probability <= 1:
+        raise ValueError("Chauvenet probability must be within [0, 1]")
+    values, ok = _prepare(values, include)
+    ok &= values > 0
+    keep = ok.copy()
+    while int(keep.sum()) > 3:  # SetOutliers: live count > 2 + requested removals (one)
+        rows = np.flatnonzero(keep)
+        data = values[rows]
+        sd = data.std(ddof=1)
+        if not math.isfinite(sd) or sd == 0:
+            break
+        deviations = np.abs(data - data.mean())
+        worst = int(np.argmax(deviations))
+        if len(data) * math.erfc(float(deviations[worst] / sd) / math.sqrt(2)) >= probability:
+            break
+        keep[rows[worst]] = False
+    return np.flatnonzero(ok & ~keep)
+
+
 @dataclass(frozen=True)
 class RuleProposal:
     """What a rule would reject, before it is applied.
@@ -162,6 +195,10 @@ class RuleProposal:
         """Short provenance text, e.g. ``Chauvenet P=0.5 n>=20 (run, synced): 3 cycles``."""
         if self.rule == "chauvenet":
             head = f"Chauvenet P={self.params['probability']:g} n>={self.params['min_n']}"
+        elif self.rule == "legacy_two_sigma":
+            head = "Legacy 2σ (one strict pass)"
+        elif self.rule == "legacy_chauvenet":
+            head = f"Legacy Chauvenet P={self.params['probability']:g} (single worst, repeated)"
         else:
             head = f"k-sigma k={self.params['k']:g} max {self.params['max_iterations']} passes"
         mode = "synced" if self.synced else "per function"
@@ -233,7 +270,15 @@ def propose(
     block = np.asarray(block)
     if values.shape != include.shape or values.ndim != 2 or values.shape[1] != len(keys) or len(is_ratio) != len(keys):
         raise ValueError("values, include, keys and is_ratio do not agree")
-    if rule == "chauvenet":
+    if rule in ("legacy_two_sigma", "legacy_chauvenet"):
+        settings = {"log_ratios": False}
+        if rule == "legacy_chauvenet":
+            settings["probability"] = float(params.pop("probability", 0.5))
+        def apply(v, m):
+            if rule == "legacy_two_sigma":
+                return legacy_two_sigma_rejections(v, m)
+            return legacy_chauvenet_rejections(v, m, probability=settings["probability"])
+    elif rule == "chauvenet":
         settings = {
             "probability": float(params.pop("probability", CHAUVENET_PROBABILITY)),
             "min_n": int(params.pop("min_n", CHAUVENET_MIN_N)),
@@ -273,5 +318,7 @@ __all__ = [
     "RuleProposal",
     "chauvenet_rejections",
     "k_sigma_rejections",
+    "legacy_chauvenet_rejections",
+    "legacy_two_sigma_rejections",
     "propose",
 ]

@@ -51,15 +51,21 @@ and in the exported ``Notes``.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-import re
 from typing import Any, Literal
 
 import numpy as np
 
 from rawtims import stats as _stats
-from rawtims.contract import PB_RATIOS, PB_REQUIRED_RATIOS, U_RATIOS, U_REQUIRED_RATIOS, ratio_masses
+from rawtims.contract import (
+    PB_RATIOS,
+    PB_REQUIRED_RATIOS,
+    U_RATIOS,
+    U_REQUIRED_RATIOS,
+    ratio_masses,
+)
 from rawtims.model import Function
 from rawtims.readers.functions import ratio_descriptor
 
@@ -502,6 +508,8 @@ def ratio_stats(analysis: Any, mapped: MappedRatio) -> _stats.Stats:
     ``analysis.stats(key)``; IsoLinx shorthand functions (classified
     ``other``) get ratio statistics too, because they are ratios.
     """
+    if not mapped.inverted and analysis.function(mapped.key).is_ratio:
+        return analysis.stats(mapped.key)
     values, include = mapped_values(analysis, mapped)
     return _stats.describe(values, include, mode=analysis.settings.stat_mode)
 

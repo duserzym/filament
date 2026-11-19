@@ -316,3 +316,15 @@ def render_demo_report(report):
               ("Timing includes workbook load and raw input hashes. Wall times vary; deterministic comparisons exclude them. "
               "Raw acquisition decoding is method-specific; two-sequence Pb and non-1 s acquisitions remain unsupported."), ""]
     return "\n".join(lines)
+
+
+def load_dead_time_walkthrough(folder=None):
+    """Load the two KD33 z1 acquisitions with exact legacy masks, without running ages.
+
+    Shared GUI export still needs an explicit union. The legacy comparison numbers
+    in the demonstration are references to the separate age-engine calculation.
+    """
+    from rawtims.projects import open_project
+
+    folder = Path(folder) if folder is not None else drive_path()
+    return [open_project(folder / name) for name in ('KD33_z1_Pb.trip', 'KD33_z1_U_partial.trip')]

@@ -133,6 +133,8 @@ def decode_raw(folder, params: ReductionParameters) -> DecodedAcquisition:
         element, baseline_masses, sequences, counts = "Pb", (203.5, 204.5), (204, 205, 206, 207), (10, 5, 5, 5)
     elif masses[:3] == [269.5, 270.5, 270] and set(masses) == {269.5, 270.5, 270}:
         element, baseline_masses, sequences, counts = "U", (269.5, 270.5), (270,), (10,)
+    elif masses[:4] == [203.5, 204.5, 204, 205]:
+        raise _unsupported(method, "two-sequence Pb averaging/corrections are not validated to 3 ppm; use the workbook route")
     else:
         raise _unsupported(method, "only four-sequence Pb Daly and static U Faraday are decoded")
     # The validated acquisition duration is 1 second. Refuse an unverified normalization.

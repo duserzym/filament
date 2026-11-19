@@ -26,7 +26,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from rawtims.analysis import Analysis
 from rawtims.rules import RuleProposal
 
-RULES = {"chauvenet": "Chauvenet", "k_sigma": "k-σ, iterative"}
+RULES = {"chauvenet": "Java Chauvenet (one pass)", "k_sigma": "k-σ, iterative",
+         "legacy_two_sigma": "Legacy 2σ (one pass)", "legacy_chauvenet": "Legacy Chauvenet (repeated)"}
 SCOPES = {"run": "Whole run", "block": "Per block"}
 FUNCTION_SETS = {"mapped": "Group union", "one": "One chosen ratio", "plotted": "Plotted functions"}
 SHARED_SELECTION_TOOLTIP = ("Correlated ratios share one cycle selection: their errors are correlated through "
@@ -64,6 +65,8 @@ def _value_text(value: Any) -> str:
 def describe_op(analysis: Analysis, op: dict[str, Any]) -> str:
     """One line for a history entry, with instrument cycle numbers."""
     kind = op.get("op")
+    if op.get("label"):
+        return op["label"] + (f" · {op['keys'][0]}" if op.get("keys") else "")
     if kind == "toggle_cycles":
         cycles = op.get("cycles", [])
         word = "Included" if op.get("include") else "Excluded"
@@ -76,6 +79,8 @@ def describe_op(analysis: Analysis, op: dict[str, Any]) -> str:
     if kind == "apply_rule":
         changed = {int(row) for row, _ in op.get("changed", [])}
         return f"Rule: {op.get('description', op.get('rule'))}, {len(changed)} cycle{'s' if len(changed) != 1 else ''} newly excluded"
+    if kind == "set_reduction_parameters":
+        return "Reduction parameters changed (undoable)"
     if kind == "set_mapping":
         return "Mapping changed; joining functions adopted the shared selection"
     if kind == "set_setting":
@@ -165,6 +170,9 @@ class RulesPanel(QtWidgets.QWidget):
         row.addWidget(self.max_iterations, 1)
         self.param_stack.addWidget(chauvenet)
         self.param_stack.addWidget(k_sigma)
+        legacy_note = QtWidgets.QLabel("Strict |x − mean| > 2 SD; positive accepted cycles.")
+        legacy_note.setWordWrap(True)
+        self.param_stack.addWidget(legacy_note)
         self.param_stack.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
         form.addRow("Limits", self.param_stack)
         self.scope_combo = QtWidgets.QComboBox()
@@ -183,6 +191,10 @@ class RulesPanel(QtWidgets.QWidget):
         self.ratio_combo = QtWidgets.QComboBox()
         _narrow(self.ratio_combo)
         form.addRow("Chosen ratio", self.ratio_combo)
+        self.per_ratio_box = QtWidgets.QCheckBox("Per-ratio masks (legacy)")
+        self.per_ratio_box.setToolTip("Legacy rules only. Reject separately in each evaluated ratio; ordinary export is blocked while group masks differ. Use the union of rejections before hand-off.")
+        self.per_ratio_box.toggled.connect(self._edited)
+        form.addRow(self.per_ratio_box)
         self.ratio_combo.currentIndexChanged.connect(self._edited)
         self.synch_box = QtWidgets.QCheckBox("SYNCH (union in all)")
         self.synch_box.setObjectName("RuleSynch")
@@ -289,13 +301,20 @@ class RulesPanel(QtWidgets.QWidget):
             "scope": self.scope_combo.currentData(),
             "function_set": self.function_combo.currentData(),
             "ratio_key": self.ratio_combo.currentData(),
+            "per_ratio": self.per_ratio_box.isChecked() and self.rule_combo.currentData().startswith("legacy_"),
         }
 
     def set_rule(self, rule: str) -> None:
         self.rule_combo.setCurrentIndex(self.rule_combo.findData(rule))
 
+    def _show_limits(self):
+        rule = self.rule_combo.currentData()
+        self.param_stack.setCurrentIndex(2 if rule == "legacy_two_sigma" else 1 if rule == "k_sigma" else 0)
+        self.min_n.setVisible(rule == "chauvenet")
+        self.per_ratio_box.setVisible(rule.startswith("legacy_"))
+
     def _rule_changed(self, *_args) -> None:
-        self.param_stack.setCurrentIndex(0 if self.rule_combo.currentData() == "chauvenet" else 1)
+        self._show_limits()
         self.note.setVisible(self.rule_combo.currentData() == "chauvenet")
         self._edited()
 
@@ -320,11 +339,14 @@ class RulesPanel(QtWidgets.QWidget):
                 self.min_n.setValue(settings.chauvenet_min_n)
                 self.k.setValue(settings.k_sigma)
                 self.max_iterations.setValue(settings.k_sigma_max_iterations)
-                group = bool(analysis.group_keys) and self.function_combo.currentData() != "plotted"
+                per_ratio = self.parameters()["per_ratio"]
+                group = bool(analysis.group_keys) and self.function_combo.currentData() != "plotted" and not per_ratio
                 self.synch_box.blockSignals(True)
-                self.synch_box.setChecked(True if group else settings.synced)
+                self.synch_box.setChecked(False if per_ratio else True if group else settings.synced)
                 self.synch_box.blockSignals(False)
                 self.synch_box.setEnabled(not group)
+                if per_ratio:
+                    self.synch_box.setEnabled(False)
                 self.synch_box.setText("SYNCH · locked" if group else "SYNCH (free functions)")
                 self.synch_box.setToolTip(SHARED_SELECTION_TOOLTIP if group else "Apply the union to free functions only")
                 chosen = self.ratio_combo.currentData()
@@ -338,7 +360,10 @@ class RulesPanel(QtWidgets.QWidget):
                 self.ratio_combo.setEnabled(self.function_combo.currentData() == "one")
                 self.note.setText("Flagged cycles will be rejected in every group ratio. Preview first, then Apply."
                                   if group else TRIPOLI_NOTE)
-            self.param_stack.setCurrentIndex(0 if self.rule_combo.currentData() == "chauvenet" else 1)
+                if per_ratio:
+                    self.note.setText("Per-ratio legacy masks. Preview first; Apply is undoable. Ordinary export is blocked while masks differ; use the union before hand-off.")
+                    self.note.show()
+            self._show_limits()
         finally:
             self._loading = False
         self.apply_button.setEnabled(proposal is not None and not proposal.is_empty)
@@ -393,7 +418,7 @@ class RulesPanel(QtWidgets.QWidget):
         if analysis is None:
             self.history_note.setText("")
             return
-        history = analysis.history
+        history = list(analysis._history_view())
         start = QtWidgets.QListWidgetItem("0  Opened: every valid cycle included")
         self.history_list.addItem(start)
         for number, op in enumerate(history, start=1):

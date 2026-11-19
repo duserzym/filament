@@ -19,6 +19,7 @@ from collections.abc import Sequence
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims.fractions import Fraction
+from rawtims_gui.studio.naming import natural_sort_key
 from rawtims_gui.studio.theme import active_theme, theme_color
 from rawtims_gui.studio.widgets import ChipButton, ElidedLabel
 
@@ -32,7 +33,7 @@ class RunChip(ChipButton):
     """The vendored isotope tile without a mass line: the element is centred and the
     state marker sits in the top-right corner, clear of the letters (28-pixel chips)."""
 
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 - Qt API
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         del event
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
@@ -89,7 +90,7 @@ class StateDot(QtWidgets.QWidget):
         self.setAccessibleName(STATE_LABELS[state])
         self.update()
 
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:  # noqa: N802 - Qt API
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         del event
         theme = active_theme()
         painter = QtGui.QPainter(self)
@@ -148,7 +149,7 @@ class _IdEditor(QtWidgets.QStackedWidget):
         if text and text != self.label.text():
             self.committed.emit(text)
 
-    def eventFilter(self, watched, event) -> bool:  # noqa: N802 - Qt API
+    def eventFilter(self, watched, event) -> bool:
         if watched is self.edit and event.type() == QtCore.QEvent.Type.ShortcutOverride and event.key() == QtCore.Qt.Key.Key_Escape:
             event.accept()  # Escape cancels the edit here instead of triggering the window's Clear Selection
             return True
@@ -158,7 +159,7 @@ class _IdEditor(QtWidgets.QStackedWidget):
             return True
         return False
 
-    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:  # noqa: N802 - Qt API
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
         self.start_editing()
         event.accept()
 
@@ -239,6 +240,7 @@ class FractionList(QtWidgets.QScrollArea):
     def set_fractions(self, fractions: Sequence[Fraction], current: tuple[Fraction, str] | None) -> None:
         for row in self.rows:
             self.rows_layout.removeWidget(row)
+            row.hide()
             row.deleteLater()
         self.rows = []
         for position, fraction in enumerate(fractions):
@@ -247,6 +249,11 @@ class FractionList(QtWidgets.QScrollArea):
             row.renameRequested.connect(lambda text, f=fraction: self.renameRequested.emit(f, text))
             self.rows_layout.insertWidget(position, row)
             self.rows.append(row)
+        # Keep the backing list/import API stable; sort the visual rows, as a
+        # sorted model view would, without changing session/export order.
+        for position, row in enumerate(sorted(self.rows, key=lambda r: natural_sort_key(r.fraction.fraction_id))):
+            self.rows_layout.removeWidget(row)
+            self.rows_layout.insertWidget(position, row)
         self.set_compact(self.compact)
         self.empty_label.setVisible(not self.rows)
         self.set_current(current)

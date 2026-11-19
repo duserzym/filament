@@ -233,7 +233,7 @@ def _view(run: Run, project: TripProject) -> Run:
                    time=np.pad(run.time, (0, n - run.n_cycles), constant_values=np.nan))
 
 
-def replay_project(run: Run, project: TripProject) -> Analysis:
+def replay_project(run: Run, project: TripProject, *, workbook: bool = False) -> Analysis:
     """Restore exact legacy per-ratio masks via public, strict history replay.
 
     Like old sessions, these masks deliberately remain per ratio. Do not call
@@ -244,14 +244,33 @@ def replay_project(run: Run, project: TripProject) -> Analysis:
     for name, value in [('r18', float(project.settings['r18O_16O'])),
                         ('chauvenet_probability', float(project.settings['ChauvenetsThreshold']))]:
         history.append({'op': 'set_setting', 'name': name, 'old': getattr(base, name), 'new': value})
-    for r, key in zip(project.ratios, run.keys, strict=True):
-        rows = np.flatnonzero(r.values < 0).tolist()
+    pairs = ([(r, r.name) for r in project.ratios if r.name in run.keys] if workbook else
+             list(zip(project.ratios, run.keys, strict=True)))
+    if workbook:
+        for r in project.ratios:
+            if r.name not in run.keys:
+                if r.settings.get("active", False) or "OxideCor:" not in r.name:
+                    raise ValueError(f"project function absent from workbook: {r.name}")
+                continue  # inactive legacy oxide comparison columns are not acquisition functions
+            values = np.abs(r.values)
+            if len(values) < run.n_cycles or np.any(values[run.n_cycles:] != 0):
+                raise ValueError("project/workbook row correspondence differs")
+            if not np.allclose(values[:run.n_cycles], run.column(r.name), rtol=CYCLE_RTOL, atol=0):
+                raise ValueError(f"project/source values differ: {r.name}; locate the exact source acquisition")
+    label = f"Imported from Tripoli project {project.path.name}"
+    for op in history:
+        op["label"] = label
+    for r, key in pairs:
+        rows = np.flatnonzero(r.values[:run.n_cycles] < 0).tolist()
         if rows:
             history.append({'op': 'toggle_cycles', 'cycles': rows, 'keys': [key], 'include': False,
-                            'changed': [[row, key] for row in rows]})
+                            'changed': [[row, key] for row in rows], 'label': label})
         if r.block_flags is not None:
             raise ValueError('independent block flags need format-specific interpretation')
-    return replay(run, history, strict=True)
+    analysis = replay(run, history, strict=True)
+    if workbook:
+        analysis.remember_legacy_masks()
+    return analysis
 
 
 def read_sheet_references(folder: Path) -> dict[tuple[str, str, str], tuple[str, float, float]]:
