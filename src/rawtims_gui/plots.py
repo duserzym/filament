@@ -83,6 +83,7 @@ class SculptViewBox(pg.ViewBox):
 
     navigation_mode = "review"
 
+    resetRequested = QtCore.Signal()
     sigPointClicked = QtCore.Signal(object, object)  # view QPointF, modifiers
     sigBoxDrawn = QtCore.Signal(object, object)  # view QRectF, modifiers
     sigContextRequested = QtCore.Signal(object, object)  # view QPointF, screen QPoint
@@ -101,6 +102,10 @@ class SculptViewBox(pg.ViewBox):
             self._drag_box = None
 
     def mouseClickEvent(self, ev):
+        if ev.double() and ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.resetRequested.emit()
+            ev.accept()
+            return
         if self.navigation_mode != "review":
             super().mouseClickEvent(ev)
             return
@@ -177,6 +182,7 @@ class CyclePlot(RoundedPlotWidget):
         self.preview_rows: frozenset[int] = frozenset()
         self.title_text = ""
         self._log = False
+        self.log_override = None
         self._ratio_scale = False
         self._decorations: list[QtWidgets.QGraphicsItem] = []
         self._block = np.zeros(0, dtype=int)
@@ -207,6 +213,7 @@ class CyclePlot(RoundedPlotWidget):
                 self.view_box.mapSceneToView(ev.scenePos()), ev.modifiers()))
         _quiet(self.ring)
         _quiet(self.preview_points)
+        self.view_box.resetRequested.connect(self.reset_view)
         self.view_box.sigPointClicked.connect(self._on_click)
         self.view_box.sigBoxDrawn.connect(self._on_box)
         self.view_box.sigContextRequested.connect(self._on_context)
@@ -274,7 +281,7 @@ class CyclePlot(RoundedPlotWidget):
         self._block = run.block
         self._cycles = run.cycle.astype(float)
         self._ratio_scale = is_ratio_scale(analysis, state.mapping, self.key)
-        log = state.log_ratio and self._ratio_scale
+        log = (state.log_ratio if self.log_override is None else self.log_override) and self._ratio_scale
         rebuild = rebuild or log != self._log
         self._log = log
         if log:
@@ -372,6 +379,11 @@ class CyclePlot(RoundedPlotWidget):
         item.disableAutoRange()
         if self._cycles.size:
             item.setXRange(float(self._cycles.min()) - 0.5, float(self._cycles.max()) + 0.5, padding=0)
+        self.fit_y()
+
+    def fit_y(self) -> None:
+        """Fit the vertical scale, preserving the linked cycle zoom."""
+        item = self.getPlotItem()
         values = self.y_shown if self._fit_all else self.y_shown[self._effective]
         if values.size:
             lo, hi = float(values.min()), float(values.max())

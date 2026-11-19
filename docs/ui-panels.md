@@ -89,3 +89,50 @@ macOS bundle discovery uses the age app's name or bundle identifier. Absence or
 launch failure retains the CSV and reveals it. Ordinary exports keep the shared
 selection requirement. XLSX requires `openpyxl`, now in the GUI extra and frozen
 build imports; the engine does not import it.
+
+## Review layout G1b
+
+The wall uses one 34 px toolbar: workflow/fractions handle, naturally sorted
+run picker, Ratios / Intensities / Table, Functions, Options, Undo/Redo,
+Focus, run information/warnings and ⋯. Secondary groups move into content-sized
+submenus under ⋯ when they do not fit; they retain their original widgets and
+actions. Options contains global scale/fit/shared-mask and mouse-mode controls.
+Warnings stay in reach as a compact count, with full details in Run info.
+Cycles used, history and the selection legend share the 24 px status bar.
+
+Each plot has a two-line live header (name, mean ± 1σ % SE, n and standard
+MSWD of block means), local log and y-fit controls, and maximise/restore.
+The draggable Review / Pan / Zoom / Reset tools appear over the hovered plot;
+positions are remembered per function. Double-click in the plot resets its view.
+Y-fit preserves the linked x zoom; global Log resets each plot's local override.
+The Tripoli colours and meanings are unchanged.
+
+The 18 px block strip under each cycle axis uses the ViewBox transform, so
+segment edges align with cycles and remain aligned when zoomed. Strips share
+Analysis masks, rather than separate selections. Click/Space/Return toggles a
+block; Shift-click extends the last anchor and drag spans a range. A range sets
+all its blocks to the inverse of the first block's state. Hover and accessibility
+labels give cycles and n used. Mouse motion changes only a pressed border; the
+range commits on release, refreshes once and keeps one history entry per block.
+Arrow/Home/End keys navigate the strip. Existing point/box/⌘/Shift gestures,
+Delete, B, Esc and Undo/Redo remain available.
+
+View › Focus on the plot (Cmd/Ctrl+Shift+F) folds both side panels inside the
+window, retaining thin handles. Each handle unfolds its panel alone. Turning
+Focus off restores the previous visibility and splitter widths, including an
+already collapsed inspector. Focus geometry is transient and cannot overwrite
+the normal panel preferences. Focus itself is a viewer setting. Maximise also
+folds an open rail, and restores rail/Focus handles on return.
+
+The inspector retains Stats / Rules / Corrections / Export, including staged
+Reduction and Run info under Corrections. It defaults to 300 px, resizes with
+the remembered splitter, and collapses to 30 px. Run info and workflow links
+unfold it when needed. Rules preview/Apply and Reduction Apply/diff are unchanged.
+Table remains a full-area view: a permanently open drawer would reduce every
+plot's height, while the toolbar and Cmd/Ctrl+3 already provide immediate access.
+At 1280 px, six ratios fit three columns by two rows with the inspector open.
+At 1024 px the open inspector uses two plot columns with complete rows and
+vertical scrolling; Focus fits six ratios without scrolling. Long identities
+and summaries elide with full tooltips. Classic retains its original layout.
+
+See [G1b validation](ui-layout-g1b.md) for captures, area measurements and checks.

@@ -12,7 +12,7 @@ from rawtims_gui.studio.theme import build_application
 
 @pytest.fixture
 def wall(qt_settings_folder, monkeypatch, tmp_path):
-    app = build_application(['layout-test'], theme_mode='light')
+    build_application(['layout-test'], theme_mode='light')
     settings = QtCore.QSettings(str(tmp_path / 'layout.ini'), QtCore.QSettings.Format.IniFormat)
     monkeypatch.setattr(gui, 'app_settings', lambda: settings)
     window = gui.MainWindow(restore_geometry=False)
@@ -52,7 +52,7 @@ def test_block_cells_toggle_group_with_undo_and_keyboard(wall):
     rows = analysis.run.block == 2
     assert not analysis.effective[rows].any()
     assert analysis.group_consistent()
-    assert '0/16' in cell.text() and not cell.isChecked()
+    assert '0/16' in cell.toolTip() and not cell.isChecked()
     assert '17, 18' in cell.toolTip()
     wall.undo()
     np.testing.assert_array_equal(analysis.effective, manual)
@@ -93,7 +93,7 @@ def test_inspector_preserves_width_and_persists_per_viewer(wall):
         second.review_shell.inspector_action.trigger()
         settle()
         assert abs(second.review_shell.inspector.width() - expanded[1]) <= 1
-        assert not second.review_shell.inspector.animation.state() == QtCore.QAbstractAnimation.State.Running
+        assert second.review_shell.inspector.animation.state() != QtCore.QAbstractAnimation.State.Running
     finally:
         second.close()
         second.deleteLater()
@@ -142,7 +142,7 @@ def test_maximise_header_shortcut_and_esc_restore_one_level(wall):
     assert plot_wall.maximised is card
     assert sum(c.isVisible() for c in plot_wall.cards) == 1
     assert card.width() > wall.width() - 100
-    assert card.plot.height() >= card.height() - 30
+    assert card.plot.height() >= card.height() - 64
     QtTest.QTest.keyClick(wall, QtCore.Qt.Key.Key_Escape)
     assert plot_wall.maximised is None and shell.outer_maximised
     QtTest.QTest.keyClick(wall, QtCore.Qt.Key.Key_Escape)
@@ -162,7 +162,7 @@ def test_maximise_header_shortcut_and_esc_restore_one_level(wall):
     assert not wall.selection  # Esc retains its normal role outside maximise.
 
 
-@pytest.mark.parametrize('width,height,columns', [(1024, 640, 1), (1280, 800, 2), (1440, 900, 3)])
+@pytest.mark.parametrize('width,height,columns', [(1024, 640, 2), (1280, 800, 3), (1440, 900, 3), (1512, 982, 3)])
 def test_columns_sizes_and_readable_card_area(wall, width, height, columns):
     wall.resize(width, height)
     settle()
@@ -181,7 +181,7 @@ def test_columns_sizes_and_readable_card_area(wall, width, height, columns):
     assert wall.stats_panel.block_table.isVisible() is False  # collapsed inspector
 
 
-@pytest.mark.parametrize('width,height', [(1024, 640), (1280, 800), (1440, 900)])
+@pytest.mark.parametrize('width,height', [(1024, 640), (1280, 800), (1440, 900), (1512, 982)])
 def test_synthetic_worstcase_no_horizontal_overflow(wall, width, height):
     run = install_synthetic_review(wall)
     assert (run.n_functions, run.n_cycles, run.blocks_measured) == (12, 400, 20)
@@ -205,7 +205,10 @@ def test_synthetic_worstcase_no_horizontal_overflow(wall, width, height):
                 assert not area.horizontalScrollBar().isVisible(), area.objectName()
                 if isinstance(area, QtWidgets.QScrollArea):
                     assert area.widget().width() <= area.viewport().width(), area.objectName()
-        assert min(c.width() for c in wall.block_header.cells.values()) >= 28
+        assert wall.block_header.height() == 18
+        assert all(c.width() > 0 and c.geometry().right() < wall.block_header.width()
+                   for c in wall.block_header.cells.values())
+        assert all('cycles used' in c.accessibleName() for c in wall.block_header.cells.values())
     wall.review_shell.picker.setCurrentIndex(39)
     wall.review_shell.select_run(39)
     assert wall.current[0] is wall.workspace.fractions[39]
@@ -291,3 +294,202 @@ def test_collapsed_ratios_fit_and_cycle_axes_align(wall, count, width, height, m
     view.plots[0].getPlotItem().setXRange(10, 50, padding=0)
     settle()
     assert all(np.allclose(p.view_box.viewRange()[0], [10, 50]) for p in view.plots)
+
+
+def test_focus_folds_inside_window_and_restores_each_panel_and_width(wall):
+    shell = wall.review_shell
+    shell.toggle_rail()
+    shell.splitter.setSizes([850, 330])
+    settle()
+    before = shell.splitter.sizes()
+    QtTest.QTest.keyClick(wall, QtCore.Qt.Key.Key_F,
+                         QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.ShiftModifier)
+    settle()
+    assert shell.focused and shell.focus_action.isChecked()
+    assert shell.rail.isHidden() and shell.rail_strip.isVisibleTo(wall)
+    assert shell.inspector.collapsed and shell.inspector.width() == 30
+    assert shell.splitter.transient
+    assert shell.focus_action.shortcut() == QtCore.QKeyCombination(
+        QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.ShiftModifier,
+        QtCore.Qt.Key.Key_F)
+    shell.rail_strip.click()
+    settle()
+    assert shell.rail.isVisibleTo(wall) and shell.inspector.collapsed
+    shell.inspector.button.click()
+    QtTest.QTest.qWait(200)
+    settle()
+    assert not shell.inspector.collapsed and shell.rail.isVisibleTo(wall)
+    shell.set_focus(False)
+    settle()
+    assert shell.splitter.sizes() == before
+    assert not shell.inspector.collapsed and shell.rail.isVisibleTo(wall)
+    assert not shell.splitter.transient
+    assert not wall.settings.value('review/wall/focus_v1', True, type=bool)
+
+
+def test_focus_preserves_collapsed_preference_and_survives_new_viewer(wall):
+    shell = wall.review_shell
+    shell.inspector.set_collapsed(True, animate=False)
+    before = shell.splitter.sizes()
+    shell.set_focus(True)
+    shell.show_inspector_tab(1)
+    settle()
+    assert not shell.inspector.collapsed
+    assert wall.settings.value(shell.inspector.key, False, type=bool)
+    shell.splitter.save()
+    second = gui.MainWindow(restore_geometry=False)
+    second.resize(1280, 800)
+    second.show()
+    settle()
+    try:
+        assert second.review_shell.focused
+        second.review_shell.set_focus(False)
+        settle()
+        assert second.review_shell.inspector.collapsed
+    finally:
+        second.close()
+        second.deleteLater()
+    shell.set_focus(False)
+    settle()
+    assert shell.inspector.collapsed and shell.splitter.sizes() == before
+
+
+def test_block_strip_range_drag_shift_and_axis_zoom(wall, monkeypatch):
+    strip = wall.block_header
+    a = wall.analysis
+    last = strip.cells[4]
+    history = a.history_count
+    # Mouse moves only preview; the shared masks and plots are untouched.
+    updates = []
+    original = wall.plot_wall.refresh
+    monkeypatch.setattr(wall.plot_wall, 'refresh', lambda *a, **k: (updates.append(1), original(*a, **k))[-1])
+    first = strip.cells[2]
+    end = first.mapFrom(strip, last.geometry().center())
+    QtTest.QTest.mousePress(first, QtCore.Qt.MouseButton.LeftButton)
+    QtTest.QTest.mouseMove(first, end)
+    assert a.history_count == history and not updates
+    QtTest.QTest.mouseRelease(first, QtCore.Qt.MouseButton.LeftButton, pos=end)
+    assert a.history_count == history + 3 and len(updates) == 1
+    assert not a.effective[np.isin(a.run.block, [2, 3, 4])].any()
+    for card in wall.plot_wall.cards:
+        assert all(not card.blocks.cells[b].isChecked() for b in (2, 3, 4))
+    # Shift-click extends the strip's last anchor, and includes that range.
+    QtTest.QTest.mouseClick(strip.cells[5], QtCore.Qt.MouseButton.LeftButton,
+                           QtCore.Qt.KeyboardModifier.ShiftModifier)
+    assert a.effective[np.isin(a.run.block, [2, 3, 4, 5])].all()
+    plot = wall.plot_wall.plots[0]
+    plot.getPlotItem().setXRange(17, 64, padding=0)
+    settle()
+    vb = plot.view_box
+    for b in (2, 3):
+        cycles = a.run.cycle[a.run.block == b]
+        scene_x = vb.mapViewToScene(QtCore.QPointF(float(cycles.min())-.5, 0)).x()
+        assert abs(strip.cells[b].x() - max(vb.sceneBoundingRect().left(), scene_x)) <= 1
+    assert strip.cells[1].isHidden()
+
+
+def test_content_popovers_and_overflow_keep_controls_and_actions(wall):
+    shell = wall.review_shell
+    install_synthetic_review(wall)
+    wall.resize(1024, 640)
+    settle()
+    shell.toolbar.reflow()
+    folded = [(w, menu) for w, menu, _, _ in shell.toolbar.entries if menu.menuAction().isVisible()]
+    assert folded
+    assert shell.toolbar.overflow.isVisibleTo(wall)
+    assert all(not w.isVisibleTo(wall) for w, _ in folded)
+    assert wall.reset_analysis_action in shell.more_menu.actions()
+    # Open nonblocking, inspect real menu content, retain picker checks.
+    wall.function_menu.popup(wall.function_button.mapToGlobal(QtCore.QPoint(0, 26)))
+    settle()
+    assert wall.function_list.isVisible()
+    assert wall.function_list.height() <= wall.height() * .5
+    assert wall.function_menu.height() < wall.height()
+    checked = wall.function_list.item(0).checkState()
+    wall.function_list.item(0).setCheckState(QtCore.Qt.CheckState.Unchecked if checked == QtCore.Qt.CheckState.Checked
+                                           else QtCore.Qt.CheckState.Checked)
+    assert wall.function_menu.isVisible()  # Multiple checks need no repeated opening.
+    wall.function_menu.hide()
+    shell.options_menu.popup(shell.options_button.mapToGlobal(QtCore.QPoint(0, 26)))
+    settle()
+    assert shell.options_menu.isVisible()
+    assert wall.log_action in shell.options_menu.actions()
+    assert wall.fit_all_action in shell.options_menu.actions()
+    shell.options_menu.hide()
+    wall.resize(1512, 982)
+    settle()
+    shell.toolbar.reflow()
+    assert not any(menu.menuAction().isVisible() for _, menu, _, _ in shell.toolbar.entries)
+    assert shell.picker.isVisibleTo(wall) and wall.function_button.isVisibleTo(wall)
+
+
+def test_local_log_yfit_mswd_and_reset_preserve_shared_cycles(wall):
+    card, other = wall.plot_wall.cards[:2]
+    plot = card.plot
+    before = wall.analysis.effective.copy()
+    plot.getPlotItem().setXRange(10, 50, padding=0)
+    plot.getPlotItem().setYRange(1, 2, padding=0)
+    card.fit_button.click()
+    assert np.allclose(plot.view_box.viewRange()[0], [10, 50])
+    assert plot.view_box.viewRange()[1][1] > 100
+    card.log_button.click()
+    assert plot._log and not other.plot._log
+    assert 'ln(' in card.name.text()
+    assert 'MSWD' in card.summary.text()
+    assert 'MSWD of block means' in card.summary.toolTip()
+    point = plot.view_box.mapViewToScene(QtCore.QPointF(30, plot.view_box.viewRange()[1][0]))
+    QtTest.QTest.mouseDClick(plot.viewport(), QtCore.Qt.MouseButton.LeftButton,
+                           pos=plot.mapFromScene(point))
+    settle()
+    assert plot.view_box.viewRange()[0][1] > 50
+    np.testing.assert_array_equal(wall.analysis.effective, before)
+
+
+@pytest.mark.parametrize('width,height', [(1512, 982), (1440, 900), (1280, 800), (1024, 640)])
+def test_toolbar_and_panels_fit_all_sizes_and_focus(wall, width, height):
+    wall.resize(width, height)
+    settle()
+    shell = wall.review_shell
+    for focus in (False, True):
+        shell.set_focus(focus)
+        settle()
+        assert wall.size() == QtCore.QSize(width, height)
+        bounds = wall.rect()
+        for widget in (shell.toolbar, shell.centre, shell.inspector):
+            assert bounds.contains(QtCore.QRect(widget.mapTo(wall, QtCore.QPoint()), widget.size()))
+        for widget, menu, _, _ in shell.toolbar.entries:
+            if menu.menuAction().isVisible():
+                continue
+            assert shell.toolbar.rect().contains(QtCore.QRect(widget.mapTo(shell.toolbar, QtCore.QPoint()), widget.size()))
+        if width >= 1280:
+            assert wall.plot_wall.verticalScrollBar().maximum() == 0
+        for card in wall.plot_wall.cards:
+            assert card.plot.view_box.height() >= 128
+            assert card.blocks.height() == 18
+        if focus:
+            assert wall.plot_wall.viewport().width() > width * .88
+
+
+def test_maximise_restores_open_rail_and_focus_strips(wall):
+    shell = wall.review_shell
+    shell.toggle_rail()
+    settle()
+    original = shell.splitter.sizes()
+    shell.toggle_outer()
+    settle()
+    assert shell.rail.isHidden() and shell.inspector.isHidden()
+    assert wall.plot_wall.viewport().width() > wall.width() - 60
+    shell.restore()
+    settle()
+    assert shell.rail.isVisibleTo(wall) and shell.splitter.sizes() == original
+    shell.set_focus(True)
+    shell.toggle_outer()
+    settle()
+    assert shell.rail_strip.isHidden() and shell.inspector.isHidden()
+    shell.restore()
+    settle()
+    assert shell.rail_strip.isVisibleTo(wall) and shell.inspector.collapsed
+    assert shell.splitter.transient
+    shell.set_focus(False)
+    settle()
+    assert shell.rail.isVisibleTo(wall) and shell.splitter.sizes() == original

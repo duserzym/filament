@@ -642,10 +642,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.layout_name == "classic":
             self.plot_wall = PlotWall()
         else:
-            from rawtims_gui.review_layouts import ReviewPlotWall, SharedBlocks
-            self.block_header = SharedBlocks()
-            self.block_header.blockClicked.connect(self.toggle_block)
-            layout.addWidget(self.block_header)
+            from rawtims_gui.review_layouts import ReviewPlotWall
+            self.block_header = None
             self.plot_wall = ReviewPlotWall()
         self.plot_wall.toggleRequested.connect(self.request_toggle)
         self.plot_wall.selectRequested.connect(self.request_select)
@@ -761,6 +759,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.refresh_walkthrough_availability()
 
     def show_correction_page(self, name):
+        if hasattr(self, 'review_shell'):
+            self.review_shell.inspector.set_collapsed(False, animate=False)
         self.inspector_tabs.setCurrentIndex(INSPECTOR_TABS.index("Corrections"))
         for index in range(self.correction_pages.count()):
             if self.correction_pages.tabText(index) == name:
@@ -770,6 +770,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _build_status_bar(self) -> None:
         self.setStatusBar(FittedStatusBar(self))
         status = self.statusBar()
+        if self.layout_name == 'wall':
+            status.setFixedHeight(24)
+            status.setStyleSheet('QStatusBar { padding: 0; min-height: 0; }')
         self.run_label = QtWidgets.QLabel("")
         self.run_label.setObjectName("StatusRun")
         self.cycles_label = QtWidgets.QLabel("")
@@ -793,9 +796,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.version_label.setObjectName("VersionLabel")
         for label in (self.run_label, self.cycles_label, self.history_label, self.version_label):
             label.setContentsMargins(10, 0, 4, 0)
-        status.addPermanentWidget(self.run_label)
-        status.addPermanentWidget(self.cycles_label)
-        status.addPermanentWidget(self.history_label)
+        if self.layout_name == 'wall':
+            status.addPermanentWidget(self.review_shell.state, 1)
+            self.run_label.hide()
+            self.cycles_label.hide()
+            self.history_label.hide()
+        else:
+            status.addPermanentWidget(self.run_label)
+            status.addPermanentWidget(self.cycles_label)
+            status.addPermanentWidget(self.history_label)
         status.addPermanentWidget(self.skipped_button)
         status.addPermanentWidget(self.version_label)
         status.showMessage("No runs open")
@@ -969,6 +978,8 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.centre_stack.setCurrentWidget(self.review_page)
         if step in STEP_TABS:
+            if hasattr(self, 'review_shell'):
+                self.review_shell.inspector.set_collapsed(False, animate=False)
             self.inspector_tabs.blockSignals(True)
             self.inspector_tabs.setCurrentIndex(INSPECTOR_TABS.index(STEP_TABS[step]))
             self.inspector_tabs.blockSignals(False)
@@ -1186,6 +1197,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_log_ratio(self, checked: bool) -> None:
         self.log_ratio = bool(checked)
+        for plot in self.plot_wall.plots:
+            plot.log_override = None
         state = self._state()
         if state is not None:
             self.plot_wall.refresh(state, rebuild=True)
@@ -1201,20 +1214,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _fill_function_picker(self) -> None:
         self.function_list.blockSignals(True)
-        self.function_list.clear()
         analysis = self.analysis
-        if analysis is not None:
-            plotted = set(self.plotted_keys())
-            mapped = set(self.mapping.function_keys) if self.mapping is not None else set()
-            for function in analysis.functions:
-                if (function.kind == "intensity") != (self.plot_kind == "intensities"):
-                    continue
-                item = QtWidgets.QListWidgetItem(function.key + ("  (contract)" if function.key in mapped else ""))
-                item.setData(QtCore.Qt.ItemDataRole.UserRole, function.key)
+        plotted = set(self.plotted_keys())
+        mapped = set(self.mapping.function_keys) if self.mapping is not None else set()
+        choices = [(f.key, f.key + ("  (contract)" if f.key in mapped else ""))
+                   for f in analysis.functions
+                   if (f.kind == "intensity") == (self.plot_kind == "intensities")] if analysis else []
+        current = [(self.function_list.item(i).data(QtCore.Qt.ItemDataRole.UserRole),
+                    self.function_list.item(i).text()) for i in range(self.function_list.count())]
+        # Keep popup contents alive while checking multiple functions.
+        if current != choices:
+            self.function_list.clear()
+            for key, label in choices:
+                item = QtWidgets.QListWidgetItem(label)
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, key)
                 item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
-                item.setCheckState(QtCore.Qt.CheckState.Checked if function.key in plotted else QtCore.Qt.CheckState.Unchecked)
                 self.function_list.addItem(item)
+        for i, (key, _label) in enumerate(choices):
+            self.function_list.item(i).setCheckState(QtCore.Qt.CheckState.Checked if key in plotted
+                                                   else QtCore.Qt.CheckState.Unchecked)
         self.function_list.blockSignals(False)
+        row_height = max(22, self.function_list.sizeHintForRow(0))
+        self.function_list.setFixedHeight(min(int(self.height() * .5),
+                                             max(row_height, self.function_list.count() * row_height + 4)))
         self.function_button.setText(f"Functions ({len(self.plotted_keys())})")
 
     def _function_checked(self, _item: QtWidgets.QListWidgetItem) -> None:
@@ -1330,6 +1352,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self._after_edit()
         self.statusBar().showMessage(f"Block {block} {'included' if op['include'] else 'excluded'}", 5000)
         return op
+
+    def toggle_block_range(self, blocks):
+        analysis = self.analysis
+        if analysis is None or not blocks:
+            return
+        include = not bool(analysis.block_included[list(analysis.blocks).index(blocks[0])])
+        for block in blocks:
+            analysis.toggle_block(block, include)
+        self._after_edit()
+        self.statusBar().showMessage(f"Blocks {blocks[0]}–{blocks[-1]} {'included' if include else 'excluded'}", 5000)
 
     def request_block_toggle(self, key: str, row: int) -> None:
         analysis = self.analysis

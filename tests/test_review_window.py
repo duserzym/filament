@@ -7,15 +7,15 @@ pixel-exact synthetic events.
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
+import pytest
 
 QtCore = pytest.importorskip("PySide6.QtCore")
-from PySide6 import QtGui, QtTest, QtWidgets  # noqa: E402
+from PySide6 import QtGui, QtTest, QtWidgets
+from reader_fixtures import B998, FIXTURES, GHR1_PB_XLS, GHR1_U_XLS, TIMSDP_FILES
 
-from reader_fixtures import B998, FIXTURES, GHR1_PB_XLS, GHR1_U_XLS, TIMSDP_FILES  # noqa: E402
-from rawtims_gui import main as gui_main  # noqa: E402
-from rawtims_gui.studio.theme import active_theme, build_application  # noqa: E402
+from rawtims_gui import main as gui_main
+from rawtims_gui.studio.theme import active_theme, build_application
 
 B998_MAPPED = ["206/204 D", "206/207 D", "206/205 D", "207/205 D", "204/205 D", "208/205 D"]
 NO_MODIFIER = QtCore.Qt.KeyboardModifier.NoModifier
@@ -128,7 +128,7 @@ def test_inline_fraction_id_edit_and_chips(b998):
 def test_plot_wall_shows_the_mapped_functions(b998):
     window = b998
     assert [plot.key for plot in window.plot_wall.plots] == B998_MAPPED
-    assert window.plot_wall.column_count() == 2
+    assert window.plot_wall.column_count() == (3 if window.layout_name == "wall" else 2)
     plot = window.plot_wall.plot("206/204 D")
     assert plot.rows_shown.size == 96
     assert "206/204 D" in plot.title_text and "%" in plot.title_text
@@ -342,6 +342,7 @@ def test_fit_all_points_is_a_view_preference_and_preserves_zoom_until_data_chang
 
 def test_invalid_points_do_not_stretch_the_default_range(b998):
     from dataclasses import replace
+
     from rawtims.analysis import Analysis
     from rawtims_gui.plots import PlotState
 
@@ -383,7 +384,7 @@ def test_review_fits_without_horizontal_scrolling(b998, size):
     assert not wall.horizontalScrollBar().isVisible()
     assert wall.container.width() <= wall.viewport().width()
     if window.layout_name == "wall":
-        assert wall.column_count() == (3 if size[0] >= 1440 else 2 if size[0] >= 1100 else 1)
+        assert wall.column_count() == (3 if size[0] >= 1280 else 2)
     else:
         assert 1 <= wall.column_count() <= 2
     for plot in wall.plots:

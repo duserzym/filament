@@ -7,10 +7,10 @@ from dataclasses import dataclass
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from rawtims.branding import DISPLAY_NAME
 from rawtims_gui.plot_palette import plot_palette
 from rawtims_gui.plots import PlotWall, format_number, plot_stats
 from rawtims_gui.studio.naming import natural_sort_key
+from rawtims_gui.studio.review_toolbar import ReviewToolbar
 from rawtims_gui.studio.splitters import StudioSplitter, _SplitterHandle
 from rawtims_gui.studio.theme import active_theme
 from rawtims_gui.studio.widgets import ElidedLabel, set_style
@@ -25,7 +25,7 @@ class PanelSize:
 
 
 WORK_SIZE = PanelSize(QtCore.QSize(940, 680), QtCore.QSize(420, 180), QtCore.QSize(16777215, 16777215))
-CARD_SIZE = PanelSize(QtCore.QSize(440, 200), QtCore.QSize(160, 182), QtCore.QSize(16777215, 900))
+CARD_SIZE = PanelSize(QtCore.QSize(440, 200), QtCore.QSize(160, 212), QtCore.QSize(16777215, 900))
 INSPECTOR_SIZE = PanelSize(QtCore.QSize(300, 680), QtCore.QSize(240, 180), QtCore.QSize(430, 16777215))
 
 
@@ -103,102 +103,160 @@ class ReviewSplitter(StudioSplitter):
 
 
 class BlockCell(ReviewToolButton):
-    """Tab/Space toggle; arrow keys move through the shared block sequence."""
+    """Focusable segments; all mouse edits commit only on release."""
+
     def keyPressEvent(self, event):
+        cells = list(self.parentWidget().cells.values())
         direction = {QtCore.Qt.Key.Key_Left: -1, QtCore.Qt.Key.Key_Right: 1,
                      QtCore.Qt.Key.Key_Home: -10000, QtCore.Qt.Key.Key_End: 10000}.get(event.key())
         if direction is not None:
-            cells = list(self.parentWidget().findChildren(BlockCell))
-            index = max(0, min(len(cells) - 1, cells.index(self) + direction))
-            cells[index].setFocus()
-            self.window().block_header.ensureWidgetVisible(cells[index])
+            cells[max(0, min(len(cells)-1, cells.index(self)+direction))].setFocus()
             event.accept()
         elif event.key() in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
             self.click()
-            event.accept()
         else:
             super().keyPressEvent(event)
 
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.setFocus()
+            self.parentWidget().begin(self.block, event.modifiers())
+            event.accept()
+        else:
+            super().mousePressEvent(event)
 
-class SharedBlocks(QtWidgets.QScrollArea):
-    """One group mask, compact enough for twenty blocks at laptop widths."""
-    panel_size = PanelSize(QtCore.QSize(940, 26), QtCore.QSize(0, 26), QtCore.QSize(16777215, 42))
+    def mouseMoveEvent(self, event):
+        self.parentWidget().drag_to(self.mapToParent(event.position().toPoint()))
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            strip = self.parentWidget()
+            strip.drag_to(self.mapToParent(event.position().toPoint()))
+            strip.finish()
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
+
+class SharedBlocks(QtWidgets.QWidget):
+    """An 18 px cycle-axis strip, repeated per card and synced by Analysis.
+
+    Segment edges use the linked ViewBox transform, including while zoomed.
+    A drag only updates a border; it never recalculates or replots the data.
+    """
     blockClicked = QtCore.Signal(int)
+    rangeRequested = QtCore.Signal(list)
 
-    def __init__(self):
+    def __init__(self, plot=None):
         super().__init__()
+        self.plot = plot
         self.setObjectName('SharedBlocks')
-        self.setMinimumWidth(self.panel_size.minimum.width())
-        self.setWidgetResizable(True)
-        self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self.setFixedHeight(26)
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.body = QtWidgets.QWidget()
-        self.row = QtWidgets.QHBoxLayout(self.body)
-        self.row.setContentsMargins(0, 0, 4, 0)
-        self.row.setSpacing(2)
-        self.setWidget(self.body)
+        self.setFixedHeight(18)
+        self.setMinimumWidth(0)
         self.cells = {}
-        self.axis_aligned = False
+        self.analysis = None
+        self.anchor = None
+        self.drag = None
+        if plot is not None:
+            plot.view_box.sigRangeChanged.connect(self.align_axis)
+            plot.view_box.sigResized.connect(self.align_axis)
 
-    def align_axis(self, enabled):
-        self.axis_aligned = enabled
-        required = sum(max(c.minimumWidth(), c.minimumSizeHint().width()) for c in self.cells.values())
-        required += max(0, len(self.cells) - 1) * self.row.spacing()
-        aligned = enabled and self.viewport().width() >= required + 82
-        self.row.setContentsMargins(70 if aligned else 0, 0, 12 if aligned else 4, 0)
+    def align_axis(self, *_args):
+        if self.analysis is None or self.plot is None:
+            return
+        vb = self.plot.view_box
+        left = vb.mapViewToScene(QtCore.QPointF(vb.viewRange()[0][0], 0)).x()
+        right = left + vb.width()
+        for block, cell in self.cells.items():
+            cycles = self.analysis.run.cycle[self.analysis.run.block == block]
+            x0 = vb.mapViewToScene(QtCore.QPointF(float(cycles.min())-.5, 0)).x()
+            x1 = vb.mapViewToScene(QtCore.QPointF(float(cycles.max())+.5, 0)).x()
+            start, end = round(max(left, x0)), round(min(right, x1))
+            cell.setGeometry(start, 0, max(0, end-start), 18)
+            cell.setVisible(end > start)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.align_axis(self.axis_aligned)
+        self.align_axis()
+
+    def begin(self, block, modifiers):
+        start = self.anchor if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier and self.anchor in self.cells else block
+        self.drag = (start, block)
+        self.anchor = start
+        self._highlight()
+
+    def drag_to(self, point):
+        if self.drag is None:
+            return
+        visible = [c for c in self.cells.values() if not c.isHidden()]
+        if visible:
+            cell = min(visible, key=lambda c: abs(c.geometry().center().x()-point.x()))
+            self.drag = (self.drag[0], cell.block)
+            self._highlight()
+
+    def _highlight(self):
+        for block, cell in self.cells.items():
+            active = self.drag is not None and min(self.drag) <= block <= max(self.drag)
+            cell.setDown(active)
+
+    def finish(self):
+        if self.drag is None:
+            return
+        start, end = self.drag
+        self.drag = None
+        self._highlight()
+        blocks = [b for b in self.cells if min(start, end) <= b <= max(start, end)]
+        if len(blocks) == 1:
+            self.blockClicked.emit(blocks[0])
+        else:
+            self.rangeRequested.emit(blocks)
 
     def refresh(self, analysis):
+        self.analysis = analysis
         blocks = list(map(int, analysis.blocks)) if analysis is not None else []
-        compact = len(blocks) > 12
-        self.setFixedHeight(42 if compact else 26)
         if list(self.cells) != blocks:
-            while self.row.count():
-                self.row.takeAt(0).widget().deleteLater()
+            for cell in self.cells.values():
+                cell.hide()
+                cell.deleteLater()
             self.cells = {}
+            self.anchor = None
             for block in blocks:
-                cell = BlockCell()
+                cell = BlockCell(self)
+                cell.block = block
                 cell.setCheckable(True)
-                cell.setMinimumWidth(28 if compact else 54)
-                cell.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+                cell.setText(str(block))
+                cell.setMinimumSize(0, 0)
                 cell.clicked.connect(lambda _checked=False, b=block: self.blockClicked.emit(b))
                 self.cells[block] = cell
-                self.row.addWidget(cell)
         if analysis is None:
             return
         columns = [analysis.index(k) for k in analysis.group_keys]
         effective = analysis.effective[:, columns].all(axis=1) if columns else np.ones(analysis.n_cycles, dtype=bool)
         theme = active_theme()
-        plot = plot_palette(theme)
+        palette = plot_palette(theme)
         for block, included in zip(blocks, analysis.block_included):
             rows = analysis.run.block == block
             used, total = int(effective[rows].sum()), int(rows.sum())
-            self.row.setStretch(blocks.index(block), total)
             cell = self.cells[block]
-            cell.setText(f'{block}\n{used}/{total}' if compact else f'{block} · {used}/{total}')
             cell.setChecked(bool(included))
             cell.setAccessibleName(f'Block {block}: {used}/{total} cycles used')
             cycles = ', '.join(str(int(c)) for c in analysis.run.cycle[rows])
             cell.setToolTip(f'Block {block} · cycles {cycles}\n{used}/{total} used across shared ratios. '
-                            'Click or Space/Return: toggle (undoable). ← →: move between blocks.')
-            set_style(cell, f'QToolButton {{ padding: 3px 1px; font-size: {10 if compact else 11}px; '
-                              f'color: {theme.text if included else plot.excluded}; '
-                              f'background: {theme.surface if included else plot.blockOff}; '
-                              f'border: 1px solid {theme.axis_line if included else plot.excluded}; border-radius: 5px; }} '
-                              f'QToolButton:pressed, QToolButton:focus {{ background: {theme.accent_soft}; border-color: {theme.accent}; }}')
-        self.align_axis(self.axis_aligned)
+                            'Click / Space: toggle · Shift-click / drag: block range · ← →: move')
+            set_style(cell, f'QToolButton {{ padding: 0; min-width: 0; min-height: 0; font-size: 9px; '
+                      f'color: {theme.muted if included else palette.excluded}; '
+                      f'background: {theme.surface if included else palette.blockOff}; '
+                      f'border: 1px solid {theme.axis_line}; border-radius: 2px; }} '
+                      f'QToolButton:pressed, QToolButton:focus {{ background: {theme.accent_soft}; border-color: {theme.accent}; }}')
+        self.align_axis()
 
 
 class RatioCard(QtWidgets.QFrame):
     panel_size = CARD_SIZE
 
     def __init__(self, plot, maximise):
-        super().__init__()
+        super().__init__(plot.parentWidget())
         self.plot = plot
         self.setMinimumWidth(self.panel_size.minimum.width())
         self.setMaximumHeight(self.panel_size.maximum.height())
@@ -208,33 +266,87 @@ class RatioCard(QtWidgets.QFrame):
         layout.setContentsMargins(4, 2, 4, 2)
         layout.setSpacing(0)
         self.header = PanelHeader()
-        self.header.setFixedHeight(22)
+        self.header.setFixedHeight(38)
         plot.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Expanding)
-        header = QtWidgets.QHBoxLayout(self.header)
+        header = QtWidgets.QGridLayout(self.header)
         header.setContentsMargins(4, 0, 0, 0)
         header.setSpacing(4)
-        self.name = QtWidgets.QLabel(plot.key)
+        self.name = ElidedLabel(plot.key)
+        self.name.setMinimumWidth(0)
+        self.name.setToolTip(plot.key)
         self.name.setStyleSheet('font-size: 11px; font-weight: 600;')
-        header.addWidget(self.name)
+        header.addWidget(self.name, 0, 0)
         self.summary = ElidedLabel('')
         self.summary.setMinimumWidth(0)
         self.summary.setStyleSheet('font-size: 11px;')
-        header.addWidget(self.summary, 1)
+        self.summary.setStyleSheet('font-size: 10px;')
+        header.addWidget(self.summary, 1, 0, 1, 5)
+        header.setColumnStretch(0, 1)
+        self.log_button = tool('ln', f'Log scale for {plot.key}', self.toggle_log)
+        self.log_button.setCheckable(True)
+        self.fit_button = tool('↕', f'Fit y axis for {plot.key}', plot.fit_y)
+        header.addWidget(self.log_button, 0, 1)
+        header.addWidget(self.fit_button, 0, 2)
         self.max_button = tool('⤢', f'Maximise / restore {plot.key}', lambda: maximise(self))
         self.max_button.setFixedSize(22, 22)
         self.max_button.setStyleSheet('QToolButton { padding: 0; font-size: 16px; }')
-        header.addWidget(self.max_button)
+        for button in (self.log_button, self.fit_button, self.max_button):
+            button.setFixedSize(20, 20)
+            button.setStyleSheet('QToolButton { padding: 0; min-width: 0; min-height: 0; font-size: 11px; }')
+        header.addWidget(self.max_button, 0, 3)
         self.header.doubleClicked.connect(lambda: maximise(self))
         layout.addWidget(self.header)
         layout.addWidget(plot, 1)
+        self.blocks = SharedBlocks(plot)
+        layout.addWidget(self.blocks)
+        self.blocks.blockClicked.connect(lambda block: self.window().toggle_block(block))
+        self.blocks.rangeRequested.connect(lambda blocks: self.window().toggle_block_range(blocks))
+        from rawtims_gui.studio.plot_tools import PlotTools
+        self.tools = PlotTools(plot)
+        self.tools.modeChanged.connect(self.set_navigation_mode)
+        self.tools.resetRequested.connect(plot.reset_view)
+        self.tools.moved.connect(lambda point: self.window().settings.setValue(f'plots/tools/{plot.key}', point))
+        settings = getattr(self.window(), 'settings', None)
+        if settings:
+            point = settings.value(f'plots/tools/{plot.key}')
+            if isinstance(point, QtCore.QPoint):
+                self.tools.move(point)
+                self.tools._has_place = True
+        self.tools.place()
+        self.tools.hide()
+        plot.installEventFilter(self)
+
+    def eventFilter(self, watched, event):
+        if watched is self.plot:
+            if event.type() == QtCore.QEvent.Type.Enter:
+                self.tools.show()
+                self.tools.place()
+            elif event.type() == QtCore.QEvent.Type.Leave and not self.tools.underMouse():
+                self.tools.hide()
+        return super().eventFilter(watched, event)
+
+    def set_navigation_mode(self, mode):
+        import pyqtgraph as pg
+        self.plot.view_box.navigation_mode = mode
+        self.plot.view_box.setMouseMode(pg.ViewBox.RectMode if mode == 'zoom' else pg.ViewBox.PanMode)
+        self.tools.buttons[mode].setChecked(True)
+
+    def toggle_log(self, checked):
+        self.plot.log_override = checked
+        self.plot.update_state(self.window().plot_wall.state)
+        self.refresh(self.window().plot_wall.state)
 
     def refresh(self, state):
         stats = plot_stats(state.analysis, state.mapping, self.plot.key)
-        name = f'ln({self.plot.key})' if state.log_ratio and self.plot._ratio_scale else self.plot.key
+        name = f'ln({self.plot.key})' if self.plot._log else self.plot.key
         mean, se = format_number(stats.mean), format_number(stats.se_pct, 3)
         self.name.setText(name)
-        self.summary.setText(f'{mean} ± {se}% SE · n {stats.n_used}/{stats.n_total}')
-        self.summary.setToolTip(f'{name}: mean {mean}, {se}% SE (1σ), n {stats.n_used}/{stats.n_total}')
+        mswd = format_number(state.analysis.block_weighted_mean(self.plot.key, convention="standard").mswd, 3)
+        self.summary.setText(f'{mean} ± {se}% SE · n {stats.n_used}/{stats.n_total} · MSWD {mswd}')
+        self.summary.setToolTip(f'{name}: mean {mean}, {se}% SE (1σ), n {stats.n_used}/{stats.n_total}; MSWD of block means {mswd}')
+        self.log_button.setVisible(self.plot._ratio_scale)
+        self.log_button.setChecked(self.plot._log)
+        self.blocks.refresh(state.analysis)
         if not getattr(self.plot, 'external_title', False):
             self.plot.external_title = True
             self.plot.getPlotItem().setTitle(None)
@@ -250,6 +362,7 @@ class ReviewPlotWall(PlotWall):
         self.maximised = None
         self.maximise_card = self._toggle_card
         super().__init__(parent)
+        self.grid.setSpacing(6)
 
     def set_plots(self, keys, state):
         if self.maximised and hasattr(self.window(), 'review_shell'):
@@ -263,11 +376,30 @@ class ReviewPlotWall(PlotWall):
         super().set_plots(keys, state)
         for plot in self.plots:
             self.grid.removeWidget(plot)
-            plot.setMinimumHeight(154)
+            plot.setMinimumHeight(152)
             card = RatioCard(plot, self.toggle_card)
             self.cards.append(card)
             card.refresh(state)
+        self.tools.hide()
+        self.window().block_header = self.cards[0].blocks if self.cards else None
         self._relayout()
+        for card in self.cards:
+            point = self.window().settings.value(f'plots/tools/{card.plot.key}')
+            if isinstance(point, QtCore.QPoint):
+                card.tools._has_place = True
+                card.tools.move(point)
+                card.tools.place()
+
+    def set_navigation_mode(self, mode):
+        super().set_navigation_mode(mode)
+        for card in self.cards:
+            card.set_navigation_mode(mode)
+
+    def begin_resize_preview(self):
+        for card in self.cards:
+            card.tools.finish()
+            card.tools.hide()
+        super().begin_resize_preview()
 
     def refresh(self, state, *, rebuild=False):
         super().refresh(state, rebuild=rebuild)
@@ -283,7 +415,7 @@ class ReviewPlotWall(PlotWall):
     def column_count(self):
         width = self.viewport().width()
         count = len(self.cards) or len(self.plots)
-        return 3 if width >= 960 and count >= 5 else 2 if width >= 700 else 1
+        return 3 if width >= 850 and count >= 5 else 2 if width >= 600 else 1
 
     def toggle_card(self, card):
         self.maximise_card(card)
@@ -316,10 +448,6 @@ class ReviewPlotWall(PlotWall):
         for column in range(3):
             self.grid.setColumnStretch(column, 1 if column < columns else 0)
         self.grid.setRowStretch(rows, 1)
-        if hasattr(self.window(), "block_header"):
-            # In a single column the shared cells follow the cycle axis. With
-            # multiple columns the single group row uses the whole wall width.
-            self.window().block_header.align_axis(columns == 1)
 
 
 def reduced_motion(widget):
@@ -350,6 +478,8 @@ class CollapsiblePanel(QtWidgets.QWidget):
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(0)
         self.button = tool('‹' if self.collapsed else 'Inspector ›', 'Collapse / expand inspector (⌘/Ctrl+Shift+I)', self.toggle)
+        self.button.setFixedHeight(22)
+        self.button.setStyleSheet('QToolButton { padding: 0 4px; min-width: 0; min-height: 20px; max-height: 20px; }')
         box.addWidget(self.button)
         box.addWidget(content, 1)
         self.tabs = QtWidgets.QWidget()
@@ -389,13 +519,16 @@ class CollapsiblePanel(QtWidgets.QWidget):
     def toggle(self):
         self.set_collapsed(not self.collapsed, animate=bool(getattr(self.sender(), 'mouse_activated', False)))
 
-    def set_collapsed(self, collapsed, *, animate=True):
+    def set_collapsed(self, collapsed, *, animate=True, persist=True):
         self.animation.stop()
+        persist = persist and not getattr(getattr(self.window(), "review_shell", None), "focused", False)
         if collapsed and not self.collapsed:
             self.expanded_width = self.width()
-            self.settings.setValue(self.width_key, self.expanded_width)
+            if persist:
+                self.settings.setValue(self.width_key, self.expanded_width)
         self.collapsed = collapsed
-        self.settings.setValue(self.key, collapsed)
+        if persist:
+            self.settings.setValue(self.key, collapsed)
         self.button.setText('‹' if collapsed else 'Inspector ›')
         self.content.setVisible(not collapsed)
         self.tabs.setVisible(False)
@@ -423,28 +556,77 @@ class ReviewShell(QtWidgets.QWidget):
         box = QtWidgets.QVBoxLayout(self)
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(4)
-        top = QtWidgets.QHBoxLayout()
-        top.addWidget(QtWidgets.QLabel(f'{DISPLAY_NAME}  /  Review'))
-        open_button = tool('Open…', 'Open run files', window.choose_files)
-        open_button.setStyleSheet("QToolButton { padding: 4px 10px; }")
-        top.addWidget(open_button)
+        self.toolbar = ReviewToolbar()
+        self.toolbar.setFixedHeight(34)
+        self.rail = old_rail
+        self.rail_button = tool('☰', 'Fractions and workflow', self.toggle_rail)
+        self.rail_button.setFixedWidth(26)
+        self.toolbar.add_control(self.rail_button, 'Workflow', -10)
         self.picker = QtWidgets.QComboBox()
-        self.picker.setStyleSheet("QComboBox { padding: 3px 10px; }")
-        self.picker.setMinimumWidth(120)
-        self.picker.setMaximumWidth(400)
-        self.picker.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        self.picker.setMinimumWidth(140)
+        self.picker.setMinimumContentsLength(22)
+        self.picker.setMaximumWidth(260)
         self.picker.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.picker.activated.connect(self.select_run)
-        top.addWidget(self.picker, 1)
+        self.toolbar.add_control(self.picker, 'Run / fraction', -10)
+        window.mode_bar.setFixedWidth(242)
+        window.mode_bar.layout().setContentsMargins(1, 0, 1, 0)
+        for button in window.mode_buttons.values():
+            button.setMinimumWidth(65)
+        self.toolbar.add_control(window.mode_bar, 'View', 3)
+        self.toolbar.add_control(window.function_button, 'Functions', 1)
+        self.options_button = tool('Options', 'Scale, fit and shared selection', lambda: None)
+        self.options_menu = QtWidgets.QMenu(self.options_button)
+        self.options_menu.addActions([window.log_action, window.fit_all_action, window.synch_action])
+        self.options_menu.addSeparator()
+        navigation = self.options_menu.addMenu('Mouse mode for all plots')
+        group = QtGui.QActionGroup(navigation)
+        for mode, label in (('review', 'Review / select cycles'), ('pan', 'Pan'), ('zoom', 'Box zoom')):
+            action = navigation.addAction(label)
+            action.setCheckable(True)
+            action.setChecked(mode == 'review')
+            group.addAction(action)
+            action.triggered.connect(lambda _checked=False, m=mode: window.plot_wall.set_navigation_mode(m))
+        self.options_menu.addSeparator()
+        self.options_menu.addAction('Why shared selection?', window.show_shared_selection_help)
+        self.options_button.setMenu(self.options_menu)
+        self.options_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.toolbar.add_control(self.options_button, 'Options', 2)
+        self.toolbar.add_control(window.undo_button, 'Undo', 4)
+        self.toolbar.add_control(window.redo_button, 'Redo', 5)
+        self.focus_action = window._action('Focus on the plot', self.set_focus, 'Ctrl+Shift+F', checkable=True)
+        self.focus_button = QtWidgets.QToolButton()
+        self.focus_button.setDefaultAction(self.focus_action)
+        self.focus_action.setIconText('Focus')
+        self.focus_button.setText('Focus')
+        self.toolbar.add_control(self.focus_button, 'Focus', -5)
+        self.info_button = tool('Run info', 'Run information and warnings', lambda: window.show_correction_page('Run info'))
+        self.toolbar.add_control(self.info_button, 'Run information', 6)
+        self.more_menu = self.toolbar.menu
+        self.more_menu.addSeparator()
+        self.more_menu.addActions([window.open_files_action, window.open_folder_action, window.save_action])
+        self.more_menu.addSeparator()
+        self.more_menu.addAction(window.reset_analysis_action)
+        self.more_menu.addAction('Maximise / restore plots', self.toggle_outer)
+        self.toolbar.always_overflow = True
+        box.addWidget(self.toolbar)
+        # Old controls remain as classic fixtures; all wall commands above share
+        # their actions, so shortcuts, enablement and history have one source.
+        window.wall_header.hide()
         self.state = ElidedLabel('No fraction selected')
-        self.state.setMinimumWidth(180)
-        top.addWidget(self.state, 1)
-        box.addLayout(top)
+        self.state.setFixedHeight(18)
+        self.state.setMinimumWidth(0)
+        window.legend.hide()
+        window.review_page.layout().setSpacing(2)
+        centre.layout().setSpacing(2)
+        window.warning_chip.hide()
+        self.focused = False
+        self._focus_saved = None
         self.splitter = ReviewSplitter(window.settings)
         self.splitter.dragStarted.connect(window.plot_wall.begin_resize_preview)
         self.splitter.dragFinished.connect(window.plot_wall.finish_resize_preview)
         old_rail.setParent(self)
-        old_rail.hide()
+        old_rail.setVisible(window.settings.value('review/wall/rail_visible_v1', False, type=bool))
         inspector.layout().itemAt(0).widget().hide()
         inspector.layout().setContentsMargins(6, 0, 6, 6)
         inspector.layout().setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetNoConstraint)
@@ -461,17 +643,30 @@ class ReviewShell(QtWidgets.QWidget):
         self.splitter.setStretchFactor(1, 0)
         self.splitter.restore()
         self.splitter.reset_panels = self.reset_panels
-        box.addWidget(self.splitter, 1)
+        self.work_row = QtWidgets.QHBoxLayout()
+        self.work_row.setContentsMargins(0, 0, 0, 0)
+        self.work_row.setSpacing(2)
+        self.rail_strip = tool('›', 'Unfold workflow and fractions', self.toggle_rail)
+        self.rail_strip.setFixedWidth(22)
+        self.rail_strip.setStyleSheet('QToolButton { padding: 0; min-width: 0; min-height: 0; }')
+        self.rail_strip.hide()
+        self.work_row.addWidget(self.rail_strip, 0, QtCore.Qt.AlignmentFlag.AlignTop)
+        self.work_row.addWidget(old_rail)
+        self.work_row.addWidget(self.splitter, 1)
+        box.addLayout(self.work_row, 1)
         self.centre = centre
         window.plot_wall.maximise_card = self.toggle_card
-        window.plot_control_bar.installEventFilter(self)
         self.max_action = window._action('Maximise Work Panel', self.maximise_focused, 'Ctrl+Shift+Return')
         self.inspector_action = window._action('Toggle Inspector', lambda: self.inspector.set_collapsed(
             not self.inspector.collapsed, animate=False), 'Ctrl+Shift+I')
-        for action in (self.inspector_action, self.max_action):
+        for action in (self.focus_action, self.inspector_action, self.max_action):
             window.view_menu.addAction(action)
+        if window.settings.value('review/wall/focus_v1', False, type=bool):
+            QtCore.QTimer.singleShot(0, self, lambda: self.set_focus(True))
 
     def reset_panels(self):
+        self.set_focus(False)
+        self.rail.hide()
         self.restore_all()
         self.inspector.expanded_width = self.inspector.default
         self.inspector.set_collapsed(False, animate=False)
@@ -483,16 +678,42 @@ class ReviewShell(QtWidgets.QWidget):
             self.inspector.setMaximumWidth(self.inspector.maximum)
 
     def fit_controls(self):
-        window = self.owner
-        compact = window.plot_control_bar.width() < 560
-        window.log_button.setVisible(not compact and window.plot_kind == 'ratios')
-        window.fit_all_button.setVisible(not compact)
-        window.redo_button.setVisible(not compact)
+        self.toolbar.reflow()
 
-    def eventFilter(self, watched, event):
-        if watched is self.owner.plot_control_bar and event.type() == QtCore.QEvent.Type.Resize:
-            self.fit_controls()
-        return super().eventFilter(watched, event)
+    def toggle_rail(self):
+        self.rail.setVisible(self.rail.isHidden())
+        self.rail_strip.setVisible(self.focused and self.rail.isHidden())
+        if not self.focused:
+            self.owner.settings.setValue('review/wall/rail_visible_v1', not self.rail.isHidden())
+
+    def set_focus(self, enabled):
+        """Studio 780498c / 17c970a: mark folded before changing geometry.
+
+        Keep the saved user widths separate from transient Focus geometry.
+        Unfolding either handle affects only its own panel.
+        """
+        enabled = bool(enabled)
+        if enabled == self.focused:
+            return
+        self.restore_all()
+        self.focused = enabled
+        self.focus_action.setChecked(enabled)
+        if enabled:
+            self._focus_saved = (self.splitter.sizes(), self.inspector.collapsed,
+                                 self.inspector.expanded_width, not self.rail.isHidden())
+            self.splitter.transient = True
+            self.rail.hide()
+            self.rail_strip.show()
+            self.inspector.set_collapsed(True, animate=False, persist=False)
+        else:
+            sizes, collapsed, expanded, rail_visible = self._focus_saved
+            self.rail.setVisible(rail_visible)
+            self.rail_strip.hide()
+            self.inspector.expanded_width = expanded
+            self.inspector.set_collapsed(collapsed, animate=False, persist=False)
+            self.splitter.setSizes(sizes)
+            self.splitter.transient = False
+        self.owner.settings.setValue('review/wall/focus_v1', enabled)
 
     def show_inspector_tab(self, index):
         self.owner.inspector_tabs.setCurrentIndex(index)
@@ -519,25 +740,40 @@ class ReviewShell(QtWidgets.QWidget):
         if window.current:
             state, reasons = window.workspace.fraction_status(window.current[0])
             used, total = window.cycles_used()
-            self.state.setText(f'● {state.capitalize()}   ·   {used}/{total} cycles used')
-            self.state.setToolTip('\n'.join(reasons) or 'Fraction ready for export')
-            set_style(self.state, f'font-weight: 600; color: {active_theme().success if state == "ready" else active_theme().text};')
+            self.state.setText(f'● {state.capitalize()} · {used}/{total} cycles used · History {window.analysis.history_count}'
+                               + (' · redo available' if window.analysis.can_redo else '')
+                               + '     ■ used   □ excluded   SE · 1σ · 2σ     ⌘-click / ⇧-drag select · Delete reject · B block')
+            self.state.setToolTip(('\n'.join(reasons) or 'Fraction ready for export') + '\n' + window.legend.toolTip())
+            set_style(self.state, f'font-size: 10px; color: {active_theme().muted};')
         else:
             self.state.setText('No fraction selected')
         locked = window.analysis is not None and not window.synch_action.isEnabled()
         set_style(window.synch_button,
             f'QToolButton {{ background: transparent; border: none; color: {active_theme().muted}; font-weight: normal; }}'
             if locked else '')
-        window.block_header.refresh(window.analysis)
+        warnings = window.analysis.run.warnings if window.analysis is not None else []
+        self.info_button.setText(f'⚠ {len(warnings)}' if warnings else 'Run info')
+        self.info_button.setToolTip('\n'.join(warnings) if warnings else 'Run information and method')
+        self.toolbar.entries = [(w, menu, content, -4 if warnings else 6) if w is self.info_button
+                                else (w, menu, content, priority)
+                                for w, menu, content, priority in self.toolbar.entries]
+        window.warning_chip.hide()
         self.fit_controls()
 
     def _snapshot(self):
-        self._restore_stack.append((self.outer_maximised, self.owner.plot_wall.maximised, self.splitter.sizes()))
+        self._restore_stack.append((self.outer_maximised, self.owner.plot_wall.maximised, self.splitter.sizes(),
+                                    (not self.rail.isHidden(), not self.rail_strip.isHidden())))
 
-    def _apply(self, outer, card, sizes=None):
-        self.splitter.transient = outer
+    def _apply(self, outer, card, sizes=None, rail_visibility=None):
+        self.splitter.transient = outer or self.focused
         self.outer_maximised = outer
         self.inspector.setVisible(not outer)
+        if outer:
+            self.rail.hide()
+            self.rail_strip.hide()
+        elif rail_visibility is not None:
+            self.rail.setVisible(rail_visibility[0])
+            self.rail_strip.setVisible(rail_visibility[1])
         self.owner.plot_wall.maximised = card
         if sizes and not outer:
             self.splitter.setSizes(sizes)
@@ -574,8 +810,8 @@ class ReviewShell(QtWidgets.QWidget):
     def restore(self):
         if not self._restore_stack:
             return False
-        outer, card, sizes = self._restore_stack.pop()
-        self._apply(outer, card, sizes)
+        outer, card, sizes, rail_visibility = self._restore_stack.pop()
+        self._apply(outer, card, sizes, rail_visibility)
         return True
 
     def restore_all(self):

@@ -139,7 +139,8 @@ def test_worker_apply_cancel_stale_and_failure(window,monkeypatch):
 
 def test_toolbar_drag_splitter_preview_and_navigation(window):
     w = window
-    tools = w.plot_wall.tools
+    tools = w.plot_wall.cards[0].tools
+    tools.show()
     tools.place()
     origin = tools.pos()
     grip = tools.grip
@@ -156,7 +157,7 @@ def test_toolbar_drag_splitter_preview_and_navigation(window):
     target = tools.drag[2]
     mouse(QtCore.QEvent.Type.MouseButtonRelease, QtCore.QPoint(-50, 35), QtCore.Qt.MouseButton.NoButton)
     assert tools.pos() == target and not tools.ghost.isVisible()
-    assert w.settings.value('plots/tools_position') == target
+    assert w.settings.value(f'plots/tools/{w.plot_wall.cards[0].plot.key}') == target
     assert QtWidgets.QApplication.overrideCursor() is None
     assert tools.parentWidget().rect().contains(tools.geometry())
     w.review_shell.splitter.dragStarted.emit()
@@ -283,10 +284,11 @@ def test_project_warning_and_real_apply_roundtrip(window,tmp_path):
     assert '36.3 → 40' in w.reduction_panel.diff.text()
     f=w.workspace.fractions[0]
     w.select_run(f,'U')
-    w.warning_chip.click()
+    w.review_shell.info_button.click()
     assert '270/267' in w.run_info_panel.text.text()
     assert 'terminal' in w.run_info_panel.text.text()
-    assert w.warning_chip.isVisibleTo(w)
+    assert w.review_shell.info_button.isVisibleTo(w)
+    assert w.review_shell.info_button.text().startswith('⚠')
     w.open_paths([str(p/'KG5_z7_Pb.trip')],synchronous=True)
     assert w.source_bar.isVisibleTo(w)
     assert 'B1609_F12_GA9683326 z3 Pb-56377.xls' in w.source_notice.text()
