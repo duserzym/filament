@@ -34,6 +34,7 @@ class Walkthrough(QtCore.QObject):
         super().__init__(window)
         self.window = window
         self.step = 0
+        self.synthetic = False
         self.label = QtWidgets.QLabel()
         self.label.setWordWrap(True)
         self.label.setMinimumWidth(0)
@@ -57,6 +58,7 @@ class Walkthrough(QtCore.QObject):
         self.close.clicked.connect(bar.hide)
 
     def start(self, *, folder=None, step=1, synchronous=False):
+        self.synthetic = False
         folder = Path(folder) if folder else examples_folder(self.window.settings)
         problem = availability(folder)
         if problem:
@@ -74,6 +76,19 @@ class Walkthrough(QtCore.QObject):
         else:
             self.window.reduction_controller.start_worker(lambda: load_dead_time_walkthrough(folder), install,
                                                           lambda message: self.window.statusBar().showMessage(message))
+        return True
+
+    def start_fixture(self, path, *, step=3):
+        """Offline smoke walkthrough using an explicitly supplied synthetic run."""
+        from rawtims.analysis import Analysis
+        from rawtims.readers import open_run
+        self.synthetic = True
+        workspace = Workspace(self.window.workspace.remembered)
+        workspace.add([Analysis(open_run(path))])
+        self.window._install_workspace(workspace, None, None)
+        self.set_step(step, scripted=True)
+        if step >= 3 and self.window.analysis.run.reduction_parameters.daly_dead_time_ns != 40:
+            raise RuntimeError('Synthetic walkthrough Apply failed: ' + self.window.reduction_panel.status.text())
         return True
 
     def set_step(self, step, *, scripted=False):
@@ -109,8 +124,9 @@ class Walkthrough(QtCore.QObject):
             w.set_workflow_step('Export')
         if scripted and step >= 5:
             self.use_shared()
-        self.label.setText(f'Walkthrough {step}/5 · {STEPS[step]}')
-        self.label.setToolTip(REFERENCE)
+        self.label.setText(f'Walkthrough {step}/5 · {STEPS[step]}' if not self.synthetic else
+                           f'SYNTHETIC walkthrough {step}/5 · Workbook dead-time demonstration (40 ns); invented signals, no KD33 reference dates.')
+        self.label.setToolTip('Invented fixture; no reference dates.' if self.synthetic else REFERENCE)
         self.shared.setVisible(step == 4)
         self.back.setEnabled(step > 1)
         self.next.setEnabled(step < 5)

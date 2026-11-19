@@ -40,7 +40,7 @@ where = ["src"]
 include = ["rawtims*", "rawtims_gui*"]
 
 [tool.setuptools.package-data]
-rawtims_gui = ["studio/assets/icons/*.svg"]
+rawtims_gui = ["studio/assets/icons/*.svg", "assets/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

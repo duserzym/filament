@@ -135,10 +135,13 @@ class RulesPanel(QtWidgets.QWidget):
         form.setContentsMargins(0, 0, 0, 0)
         form.setHorizontalSpacing(8)
         form.setVerticalSpacing(5)
+        form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.WrapLongRows)
         form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.rule_combo = QtWidgets.QComboBox()
         self.rule_combo.setObjectName("RuleChoice")
         _narrow(self.rule_combo)
+        self.rule_combo.setMinimumWidth(200)
+        self.rule_combo.currentTextChanged.connect(self.rule_combo.setToolTip)
         for key, label in RULES.items():
             self.rule_combo.addItem(label, key)
         form.addRow("Rule", self.rule_combo)

@@ -7,10 +7,10 @@ from pyproject.toml, so renaming the app never touches this file.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import sys
 import tomllib
 
-from PyInstaller.utils.hooks import copy_metadata
 
 
 PACKAGING_DIRECTORY = Path(SPECPATH).resolve()
@@ -21,11 +21,6 @@ PROJECT_VERSION = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(enco
 sys.path.insert(0, str(SOURCE_ROOT))
 from rawtims import branding  # noqa: E402
 
-if branding.VERSION != PROJECT_VERSION:
-    raise SystemExit(
-        f"Installed rawtims metadata says {branding.VERSION}, pyproject.toml says {PROJECT_VERSION}; "
-        "reinstall with `pip install -e .` before building."
-    )
 APPLICATION_NAME = branding.DISPLAY_NAME
 EXECUTABLE_NAME = branding.EXECUTABLE_NAME
 BUNDLE_ID = branding.BUNDLE_ID
@@ -33,9 +28,20 @@ URL_SCHEME = branding.URL_SCHEME
 
 data_files = [
     (str(SOURCE_ROOT / "rawtims_gui" / "studio" / "assets" / "icons"), "rawtims_gui/studio/assets/icons"),
+    (str(PROJECT_ROOT / "docs" / "user-guide.md"), "guide"),
+    (str(PROJECT_ROOT / "docs" / "recalculation-demo.md"), "guide"),
+    (str(PROJECT_ROOT / "docs" / "tripoli-gap.md"), "guide"),
+    (str(SOURCE_ROOT / "rawtims_gui" / "assets" / branding.GUI_ICON_FILENAME), "rawtims_gui/assets"),
+    (str(PROJECT_ROOT / "docs" / "guide"), "guide/guide"),
+    (str(PROJECT_ROOT / "packaging" / branding.ICON_FILENAME), "rawtims_gui/assets"),
 ]
-# importlib.metadata.version("rawtims") must work in the frozen app.
-data_files += copy_metadata("rawtims")
+# Never copy the venv's editable-install metadata: it can name another checkout.
+metadata_directory = Path(workpath) / "checkout-metadata" / "rawtims.egg-info"
+metadata_directory.mkdir(parents=True, exist_ok=True)
+(metadata_directory / "PKG-INFO").write_text(
+    f"Metadata-Version: 2.1\nName: rawtims\nVersion: {PROJECT_VERSION}\n\n",
+    encoding="utf-8",
+)
 
 analysis = Analysis(
     [str(SOURCE_ROOT / "rawtims_gui" / "main.py")],
@@ -71,6 +77,12 @@ analysis = Analysis(
     optimize=1,
 )
 
+# Analysis may collect metadata implicitly through importlib.metadata calls.
+analysis.datas = [entry for entry in analysis.datas
+    if not (entry[0].endswith("direct_url.json") and ".dist-info" in entry[0])
+    and not re.fullmatch(r"rawtims(?:-.+)?\.(?:egg|dist)-info", Path(entry[0]).parts[0], re.IGNORECASE)]
+analysis.datas.append(("rawtims.egg-info/PKG-INFO", str(metadata_directory / "PKG-INFO"), "DATA"))
+
 python_archive = PYZ(analysis.pure)
 
 executable = EXE(
@@ -105,7 +117,7 @@ if sys.platform == "darwin":
     application_bundle = BUNDLE(
         application_directory,
         name=f"{APPLICATION_NAME}.app",
-        icon=None,
+        icon=str(PACKAGING_DIRECTORY / branding.ICON_FILENAME),
         bundle_identifier=BUNDLE_ID,
         version=PROJECT_VERSION,
         info_plist={

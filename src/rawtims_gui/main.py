@@ -269,6 +269,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._autosave_timer.timeout.connect(self.write_recovery)
         self.setWindowTitle(branding.DISPLAY_NAME)
         self.setMinimumSize(MINIMUM_SIZE)
+        asset_root = Path(sys._MEIPASS) / "rawtims_gui" if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+        icon = asset_root / "assets" / branding.GUI_ICON_FILENAME
+        self.setWindowIcon(QtGui.QIcon(str(icon)))
         self.setAcceptDrops(True)
         # Paint one wallpaper behind the central area and the status bar.
         self.setProperty("wallpaperRoot", True)
@@ -394,6 +397,8 @@ class MainWindow(QtWidgets.QMainWindow):
         view.addAction(self.reset_layout_action)
         self.view_menu = view
         help_menu = bar.addMenu("Help")
+        from rawtims_gui.user_guide import show_user_guide
+        help_menu.addAction(self._action("User guide", lambda: show_user_guide(self)))
         self.walkthrough_action = self._action("Walkthrough: change the dead time", lambda: self.walkthrough.start())
         help_menu.addAction(self.walkthrough_action)
         help_menu.addAction(self._action("Choose walkthrough examples folder…", self.choose_examples_folder))
@@ -2197,11 +2202,14 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog=branding.EXECUTABLE_NAME, description=f"{branding.DISPLAY_NAME}: raw ID-TIMS data review")
     parser.add_argument("--layout", choices=("classic", "wall"), default="wall",
                         help="Review layout (default: wall; classic is a one-release fallback)")
+    parser.add_argument("--walkthrough-fixture", metavar="PATH", help="Use an invented run for the offline walkthrough smoke check")
     parser.add_argument("--walkthrough-step", type=int, choices=range(1, 6), help="Open KD33 walkthrough at step 1–5 (no external launch)")
     parser.add_argument("--examples-folder", help="Read-only walkthrough examples folder for this launch")
     parser.add_argument("--theme", choices=THEME_MODES, help="Theme for this launch (default: the saved choice, else light)")
     parser.add_argument("--open", nargs="+", metavar="PATH", help="Open run files, folders or a saved session at start")
+    parser.add_argument("--smoke-checks", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--export", nargs=2, metavar=("FORMAT", "PATH"), help="Render the window to PATH and exit; FORMAT must be png")
+    parser.add_argument("--version-output", metavar="FILE", help="Write the package version and exit before creating a window")
     parser.add_argument("--version", action="version", version=branding.RAW_APP_LABEL)
     parser.add_argument("--verify", nargs="+", metavar="PATH",
                         help="Open run files or folders without a window, pair them, use the default mapping, apply no "
@@ -2221,6 +2229,9 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_arguments(sys.argv[1:] if argv is None else argv)
+    if args.version_output:
+        Path(args.version_output).expanduser().write_text(branding.VERSION + "\n", encoding="utf-8")
+        return 0
     if args.verify is not None:
         return run_verify(args.verify, args.verification_output)
     settings = app_settings()
@@ -2237,10 +2248,26 @@ def main(argv: list[str] | None = None) -> int:
         window.resize(DEFAULT_SIZE)
         if args.open:
             window.open_paths(args.open, synchronous=True)
-        if args.walkthrough_step and not window.walkthrough.start(folder=args.examples_folder, step=args.walkthrough_step, synchronous=True):
+        if args.walkthrough_fixture:
+            window.walkthrough.start_fixture(args.walkthrough_fixture, step=args.walkthrough_step or 3)
+        elif args.walkthrough_step and not window.walkthrough.start(folder=args.examples_folder, step=args.walkthrough_step, synchronous=True):
             print(window.statusBar().currentMessage(), file=sys.stderr)
             return 1
         output = Path(args.export[1]).expanduser()
+        if args.smoke_checks:
+            from rawtims_gui.user_guide import check_guide_resources, show_user_guide
+            from rawtims_gui.table_exports import write_xlsx
+            from PySide6 import QtSvg  # noqa: F401 - validate the frozen plugin dependency
+            check_guide_resources()
+            dialog = show_user_guide(window)
+            for _ in range(4):
+                QtWidgets.QApplication.processEvents()
+            if not dialog.grab().save(str(output.with_suffix(".guide.png")), "PNG"):
+                raise RuntimeError("Bundled guide could not render")
+            dialog.close()
+            if window.windowIcon().isNull():
+                raise RuntimeError("Bundled application icon is missing")
+            write_xlsx(output.with_suffix(".xlsx"), [], [])
         if not export_window(window, str(output)):
             print(f"Could not write {output}", file=sys.stderr)
             return 1

@@ -1,0 +1,1735 @@
+{
+  "source": "KD33 z1",
+  "screenshots": {
+    "open-run": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 197360
+    },
+    "review-wall": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 127212
+    },
+    "reject-cycles": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 126827
+    },
+    "run-info": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 137958
+    },
+    "run-warnings": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 153706
+    },
+    "rules-2sigma": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 133307
+    },
+    "rules-chauvenet": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 128539
+    },
+    "rules-applied": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 120948
+    },
+    "reduction-parameters": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 131797
+    },
+    "export-send": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 124304
+    },
+    "send-command": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 125860
+    },
+    "walkthrough-1": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 141950
+    },
+    "walkthrough-2": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 147453
+    },
+    "walkthrough-3": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 161976
+    },
+    "walkthrough-4": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 139701
+    },
+    "walkthrough-5": {
+      "pixels": [
+        1440,
+        900
+      ],
+      "bytes": 138498
+    }
+  },
+  "fit": [
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Walkthrough 1",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 665
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Walkthrough 1",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 747
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Walkthrough 1",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 847
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Walkthrough 1",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 1007
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Walkthrough 2",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 161
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Walkthrough 2",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 243
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Walkthrough 2",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 343
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Walkthrough 2",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 503
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Walkthrough 3",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 294
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Walkthrough 3",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 376
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Walkthrough 3",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 476
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Walkthrough 3",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 636
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Walkthrough 4",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 665
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Walkthrough 4",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 747
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Walkthrough 4",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 847
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Walkthrough 4",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 1007
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Walkthrough 5",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Walkthrough 5",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Walkthrough 5",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Walkthrough 5",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 22
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 960
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 104
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 1042
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 204
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 1142
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 364
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 146
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 1302
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 169
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "Pb"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 22
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 161
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 635
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 104
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 274,
+          "viewport_width": 274,
+          "scroll_y": 0
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 243
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 62
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 717
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 204
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 87
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 343
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 162
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 817
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Import",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Stats",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Rules",
+      "scrolls": [
+        {
+          "page": "RulesPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 364
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Mapping",
+      "scrolls": [
+        {
+          "page": "CorrectionsPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 247
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Reduction",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 503
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Run info",
+      "scrolls": [
+        {
+          "page": "InspectorPage",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 322
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Export",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "intensities",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "table",
+      "scrolls": [
+        {
+          "page": "ExportBody",
+          "content_width": 266,
+          "viewport_width": 266,
+          "scroll_y": 977
+        }
+      ],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "Focus",
+      "scrolls": [],
+      "problems": [],
+      "element": "U"
+    },
+    {
+      "window": [
+        1512,
+        982
+      ],
+      "panel": "User guide",
+      "dialog": [
+        960,
+        760
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1440,
+        900
+      ],
+      "panel": "User guide",
+      "dialog": [
+        960,
+        760
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1280,
+        800
+      ],
+      "panel": "User guide",
+      "dialog": [
+        960,
+        736
+      ],
+      "problems": []
+    },
+    {
+      "window": [
+        1024,
+        640
+      ],
+      "panel": "User guide",
+      "dialog": [
+        960,
+        576
+      ],
+      "problems": []
+    }
+  ]
+}
