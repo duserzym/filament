@@ -9,14 +9,15 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-from rawtims import _version
+from rawtims import _version, branding
 from scripts import build_desktop
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize("stale_format", ["egg-info", "dist-info"])
-def test_spec_stamps_checkout_version_despite_stale_metadata(tmp_path, monkeypatch, stale_format):
+@pytest.mark.parametrize("target_platform", ["darwin", "win32"])
+def test_spec_stamps_checkout_version_despite_stale_metadata(tmp_path, monkeypatch, stale_format, target_platform):
     stale = tmp_path / "stale"
     info = stale / f"rawtims.{stale_format}"
     info.mkdir(parents=True)
@@ -47,16 +48,35 @@ def test_spec_stamps_checkout_version_despite_stale_metadata(tmp_path, monkeypat
     ])
 
     def analysis(*args, **kwargs):
+        assert any("*.png" in source and target == "rawtims_gui/assets"
+                   for source, target in kwargs["datas"])
         return captured
+
+    icon_calls = {}
+
+    def capture_icon(kind):
+        def capture(*args, **kwargs):
+            icon_calls[kind] = Path(kwargs["icon"])
+        return capture
 
     with monkeypatch.context() as spec_patches:
         spec_patches.setattr(util, "find_spec", lambda name: None)
         spec_patches.setattr(sys, "path", list(sys.path))
+        spec_patches.setattr(sys, "platform", target_platform)
         runpy.run_path(str(ROOT / "packaging/rawtims.spec"), init_globals={
             "SPECPATH": str(ROOT / "packaging"), "workpath": str(tmp_path / "work"),
             "Analysis": analysis,
             **dict.fromkeys(("PYZ", "EXE", "COLLECT", "BUNDLE"), lambda *a, **kw: None),
+            "EXE": capture_icon("EXE"), "BUNDLE": capture_icon("BUNDLE"),
         })
+
+    expected_icon = branding.ICO_FILENAME if target_platform == "win32" else branding.ICON_FILENAME
+    assert icon_calls["EXE"] == ROOT / "packaging" / expected_icon
+    assert icon_calls["EXE"].is_file()
+    if target_platform == "darwin":
+        assert icon_calls["BUNDLE"] == ROOT / "packaging" / branding.ICON_FILENAME
+    else:
+        assert "BUNDLE" not in icon_calls
 
     assert ("other.dist-info/METADATA", "other-metadata", "DATA") in captured.datas
     assert len(captured.datas) == 2

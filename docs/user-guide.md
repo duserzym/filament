@@ -1,7 +1,7 @@
 # User guide
 
 Use filament to review measured cycles, then send ratios to your age reduction app.
-Dates are calculated in IDTIMS_UPbRPy. The name and icon are placeholders.
+Dates are calculated in IDTIMS_UPbRPy. The name remains a working name; the chosen icon is the rhenium ribbon with a glowing bead.
 
 ## Open a run
 

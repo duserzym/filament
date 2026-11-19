@@ -57,6 +57,7 @@ from rawtims.fractions import Fraction, FractionError, SessionInfo
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping
 from rawtims.rules import RuleProposal
 from rawtims_gui import recovery
+from rawtims_gui.app_icon import build_app_icon
 from rawtims_gui.corrections_panel import CorrectionsPanel
 from rawtims_gui.cycle_table import CycleTable
 from rawtims_gui.export_panel import ExportPanel
@@ -269,9 +270,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._autosave_timer.timeout.connect(self.write_recovery)
         self.setWindowTitle(branding.DISPLAY_NAME)
         self.setMinimumSize(MINIMUM_SIZE)
-        asset_root = Path(sys._MEIPASS) / "rawtims_gui" if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
-        icon = asset_root / "assets" / branding.GUI_ICON_FILENAME
-        self.setWindowIcon(QtGui.QIcon(str(icon)))
+        self.setWindowIcon(build_app_icon())
         self.setAcceptDrops(True)
         # Paint one wallpaper behind the central area and the status bar.
         self.setProperty("wallpaperRoot", True)
@@ -2240,6 +2239,7 @@ def main(argv: list[str] | None = None) -> int:
         theme_mode = "light"
     app = build_application([sys.argv[0]], theme_mode=theme_mode)
     app.setApplicationDisplayName(branding.DISPLAY_NAME)
+    app.setWindowIcon(build_app_icon())
 
     if args.export is not None:
         # Scripted export: always 1280 x 800 (the offscreen screen is smaller),
@@ -2255,9 +2255,10 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         output = Path(args.export[1]).expanduser()
         if args.smoke_checks:
-            from rawtims_gui.user_guide import check_guide_resources, show_user_guide
-            from rawtims_gui.table_exports import write_xlsx
             from PySide6 import QtSvg  # noqa: F401 - validate the frozen plugin dependency
+
+            from rawtims_gui.table_exports import write_xlsx
+            from rawtims_gui.user_guide import check_guide_resources, show_user_guide
             check_guide_resources()
             dialog = show_user_guide(window)
             for _ in range(4):

@@ -1,0 +1,48 @@
+{
+  "source_repository": "IDTIMS_UPbRPy",
+  "source_commit": "94d6f22ef7af667043d26f38867791043c2cf63d",
+  "copied_on": "2026-11-19",
+  "artwork": "filament v2c (including refined small rays)",
+  "files": {
+    "src/rawtims_gui/assets/filament.svg": {
+      "source_path": "src/idtims_app/assets/app_icon.svg",
+      "sha256": "61b7760d2be20723cf4070cc65be6e62e23ae97924da3e62286fb566a900d880"
+    },
+    "src/rawtims_gui/assets/filament_16.png": {
+      "source_path": "src/idtims_app/assets/app_icon_16.png",
+      "sha256": "7f243796b16a78e455ea325511155d7b74a308a9410d2ab388eff99ef1a9dc65"
+    },
+    "src/rawtims_gui/assets/filament_32.png": {
+      "source_path": "src/idtims_app/assets/app_icon_32.png",
+      "sha256": "d011003e80fe5211636af3ca3d40e22df61f0b70531d54eaca07b7895437ff91"
+    },
+    "src/rawtims_gui/assets/filament_64.png": {
+      "source_path": "src/idtims_app/assets/app_icon_64.png",
+      "sha256": "772487cbb6bd55a86f267d269da78eeef91b2241bc52e20bd7ff6e31a2fad5bc"
+    },
+    "src/rawtims_gui/assets/filament_128.png": {
+      "source_path": "src/idtims_app/assets/app_icon_128.png",
+      "sha256": "e39edad66cc87aeaffb78c7700671580069044a0297715954dc7cd11abb231b4"
+    },
+    "src/rawtims_gui/assets/filament_256.png": {
+      "source_path": "src/idtims_app/assets/app_icon_256.png",
+      "sha256": "7a0b17192668dc6b4d8900761574786f328074269a0b3ecac4b6c45a454cffc4"
+    },
+    "src/rawtims_gui/assets/filament_512.png": {
+      "source_path": "src/idtims_app/assets/app_icon_512.png",
+      "sha256": "d9b65c66287bdf40be1701196f758a95a3057055830849dba639c21211219312"
+    },
+    "src/rawtims_gui/assets/filament_1024.png": {
+      "source_path": "src/idtims_app/assets/app_icon_1024.png",
+      "sha256": "776a1ac29eb133d89aec1d4bdd6c155237ff79e070d41139ad527fc09cede543"
+    },
+    "packaging/filament.icns": {
+      "source_path": "src/idtims_app/assets/app_icon.icns",
+      "sha256": "ec3acd1c3838c7238b1a72ca55c6fc22d0d03e941d540689cca822b2c4eee0f5"
+    },
+    "src/rawtims_gui/assets/filament_small.svg": {
+      "source_path": "docs/icon_options/filament_v2/filament_v2c/icon_small.svg",
+      "sha256": "36bacd5507b96adc4cb5341e575e1cab00acf9f9b9045b79c6fa197d9ff5731e"
+    }
+  }
+}

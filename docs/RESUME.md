@@ -101,7 +101,7 @@ values or acquisition fixtures have been added.
 - Raw `.raw` integrations, calibration and baseline fitting remain Phase 2;
   matching processed workbooks does not validate those operations.
 - Historical hand-edit order cannot be recovered from final masks alone.
-- App name/icon, license, and any change to default automatic rejection still
+- App name, license, and any change to default automatic rejection still
   need Yiming's decisions.
 
 # Phase 2 local implementation (2026-11-18)
@@ -124,3 +124,13 @@ was added in this engine phase. Parameter changes use the public engine API and
 are serialized as history operations. Two-sequence Pb, incomplete Pb cycles and
 unmatched cached rows remain explicit raw-route limits; see the supported-run
 counts in the reduction note. No server or window was used.
+
+Icon selected 2026-11-19: the v2c rhenium ribbon moved from IDTIMS_UPbRPy,
+including its refined 16/32 px renders. Source commit and SHA-256 values are
+in `icon-provenance.json`; `icon-small-sizes.png` preserves the size review.
+The app name remains a working name. `scripts/make_icon.py` verifies curated
+assets and exports the Windows ICO; Qt loads all seven PNG sizes.
+
+Validation: `make test-quick` passed all 565 tests (including branding,
+build/spec and user-guide coverage); Ruff passed on changed Python files.
+No application bundle was built.

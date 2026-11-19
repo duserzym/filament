@@ -486,7 +486,8 @@ Hands-on work: Opus 5.5 subagents until Codex quota returns on 2026-11-18 12:48,
    cycles in all ratios at once (SYNCH) or per ratio? The default "Auto" button follows your answer.
 4. **Software at BSU now.** Does the IsoprobeT still run IonVantage (`.xls` workbooks), or has BSU moved to
    IsoLinx (`.TIMSDP`)?
-5. Licence for the new repositories (Apache-2.0 suggested), and the app name and icon when you are ready.
+5. Licence for the new repositories (Apache-2.0 suggested), and the final app name when you are ready.
+   The ribbon icon was selected on 2026-11-19; see `icon-provenance.json`.
 
 ## 10. Architecture check
 

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import hashlib
+import json
 import re
+from pathlib import Path
+
+import pytest
 
 from rawtims import _version, branding
 
@@ -18,7 +22,7 @@ def test_app_name_literal_appears_only_in_branding():
     for folder in SEARCHED:
         for path in sorted((ROOT / folder).rglob("*")):
             generated = "__pycache__" in path.parts or any(part.endswith(".egg-info") for part in path.parts)
-            if not path.is_file() or generated or path.suffix in {".pyc", ".png", ".icns", ".ico"}:
+            if not path.is_file() or generated or path.suffix in {".pyc", ".png", ".icns", ".ico", ".svg"}:
                 continue
             relative = path.relative_to(ROOT)
             if relative in ALLOWED:
@@ -53,3 +57,42 @@ def test_version_is_written_only_in_pyproject():
     assert branding.VERSION == version
     for path in (ROOT / "src").rglob("*.py"):
         assert f'"{version}"' not in path.read_text(encoding="utf-8"), path
+
+
+def test_curated_icon_assets_match_source_hashes():
+    provenance = json.loads((ROOT / "docs/icon-provenance.json").read_text())
+    assert len(provenance["source_commit"]) == 40
+    assert len(provenance["files"]) == 10
+    for relative, record in provenance["files"].items():
+        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == record["sha256"]
+
+
+def test_windows_icon_preserves_curated_frames():
+    from PIL import Image
+
+    icon = Image.open(ROOT / "packaging" / branding.ICO_FILENAME)
+    assert icon.ico.sizes() == {(s, s) for s in (16, 32, 48, 64, 128, 256)}
+    for size in (16, 32, 64, 128, 256):
+        frame = icon.ico.getimage((size, size))
+        source = ROOT / "src/rawtims_gui/assets" / branding.GUI_ICON_FILENAMES[size]
+        with Image.open(source) as original:
+            assert frame.tobytes() == original.convert("RGBA").tobytes()
+
+
+def test_qicon_selects_curated_small_pngs():
+    pytest.importorskip("PySide6")
+    from PySide6.QtGui import QImage
+    from PySide6.QtWidgets import QApplication
+
+    from rawtims_gui.app_icon import build_app_icon
+
+    app = QApplication.instance() or QApplication([])
+    icon = build_app_icon()
+    assert {s.width() for s in icon.availableSizes()} == set(branding.ICON_SIZES)
+    for size in (16, 32):
+        actual = icon.pixmap(size, size).toImage()
+        path = ROOT / "src/rawtims_gui/assets" / branding.GUI_ICON_FILENAMES[size]
+        expected = QImage(str(path))
+        fmt = QImage.Format.Format_ARGB32_Premultiplied
+        assert actual.convertToFormat(fmt) == expected.convertToFormat(fmt)
+    assert app is QApplication.instance()

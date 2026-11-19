@@ -31,7 +31,7 @@ data_files = [
     (str(PROJECT_ROOT / "docs" / "user-guide.md"), "guide"),
     (str(PROJECT_ROOT / "docs" / "recalculation-demo.md"), "guide"),
     (str(PROJECT_ROOT / "docs" / "tripoli-gap.md"), "guide"),
-    (str(SOURCE_ROOT / "rawtims_gui" / "assets" / branding.GUI_ICON_FILENAME), "rawtims_gui/assets"),
+    (str(SOURCE_ROOT / "rawtims_gui" / "assets" / "*.png"), "rawtims_gui/assets"),
     (str(PROJECT_ROOT / "docs" / "guide"), "guide/guide"),
     (str(PROJECT_ROOT / "packaging" / branding.ICON_FILENAME), "rawtims_gui/assets"),
 ]
@@ -91,6 +91,7 @@ executable = EXE(
     [],
     exclude_binaries=True,
     name=EXECUTABLE_NAME,
+    icon=str(PACKAGING_DIRECTORY / (branding.ICO_FILENAME if sys.platform == "win32" else branding.ICON_FILENAME)),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

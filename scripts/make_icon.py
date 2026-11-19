@@ -1,33 +1,48 @@
-"""Generate a neutral placeholder glyph; no final name or branding decision.
+"""Verify the curated ribbon assets and export the Windows icon.
 
-Uses Pillow already in the development venv. Does not install packages.
+Artwork and small-size strategy credited to IDTIMS_UPbRPy/tools/make_app_icon.py.
+The copied SVG, PNGs and Apple ICNS are the source of truth; do not re-render.
+See docs/icon-provenance.json for source commit, original paths and SHA-256.
+Uses existing Pillow only; no application bundle is built.
 """
+
+from __future__ import annotations
+
+import hashlib
+import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from rawtims import branding
 
 ROOT = Path(__file__).resolve().parents[1]
+ICO_SIZES = (16, 32, 48, 64, 128, 256)
 
 
 def main():
-    image = Image.new('RGBA', (1024, 1024))
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((32, 32, 992, 992), radius=210, fill='#526170')
-    # A simple measurement pulse on a neutral slate tile.
-    draw.line([(232, 610), (382, 610), (468, 356), (556, 672), (634, 498), (792, 498)],
-              fill='#f3f5f7', width=56, joint='curve')
-    for point in ((232, 610), (792, 498)):
-        x, y = point
-        draw.ellipse((x-28, y-28, x+28, y+28), fill='#f3f5f7')
-    icon = ROOT / 'packaging' / branding.ICON_FILENAME
-    image.save(icon, format='ICNS')
-    asset = ROOT / 'src/rawtims_gui/assets' / branding.GUI_ICON_FILENAME
-    asset.parent.mkdir(parents=True, exist_ok=True)
-    image.resize((256, 256), Image.Resampling.LANCZOS).save(asset, optimize=True)
-    print(icon)
+    provenance = json.loads((ROOT / "docs/icon-provenance.json").read_text())
+    for relative, record in provenance["files"].items():
+        path = ROOT / relative
+        if hashlib.sha256(path.read_bytes()).hexdigest() != record["sha256"]:
+            raise ValueError(f"Curated icon changed: {path}")
+    assets = ROOT / "src/rawtims_gui/assets"
+    images = {
+        size: Image.open(assets / name).convert("RGBA")
+        for size, name in branding.GUI_ICON_FILENAMES.items()
+        if size <= 256
+    }
+    # Only 48 px needs resampling; preserve the curated 16/32 px artwork.
+    images[48] = images[64].resize((48, 48), Image.Resampling.LANCZOS)
+    target = ROOT / "packaging" / branding.ICO_FILENAME
+    images[256].save(
+        target,
+        format="ICO",
+        sizes=[(s, s) for s in ICO_SIZES],
+        append_images=[images[s] for s in ICO_SIZES if s != 256],
+    )
+    print(target)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

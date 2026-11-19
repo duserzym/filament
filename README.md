@@ -30,6 +30,9 @@ writes the bare package version without opening a window. Set
 normal builds automatically use **UPb Lab Code Signing** if its certificate exists.
 `RAWTIMS_BUILD_ROOT` can select another disposable folder outside the checkout.
 
-Regenerate the neutral placeholder icon with `.venv/bin/python scripts/make_icon.py`
+Verify the chosen ribbon icon and regenerate its Windows `.ico` with `.venv/bin/python scripts/make_icon.py`
 and guide screenshots with `.venv/bin/python scripts/capture_guide.py`. Both use
-existing development dependencies; they do not install packages.
+existing development dependencies; they do not install packages. The SVG, seven PNGs
+(including refined 16/32 px artwork) and macOS ICNS are copied unchanged from
+IDTIMS_UPbRPy v2c; [provenance and SHA-256](docs/icon-provenance.json) and the
+[small-size comparison](docs/icon-small-sizes.png) record the selection.
