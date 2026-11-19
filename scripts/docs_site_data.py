@@ -347,9 +347,8 @@ def write_data(values, payload, output):
     (output/'data').mkdir(parents=True, exist_ok=True)
     (output/'javascripts').mkdir(parents=True, exist_ok=True)
     (output/'data/values.json').write_text(json.dumps(values, indent=2, sort_keys=True, allow_nan=False)+'\n')
-    # Fixed global name: deadtime.js and the docs test read window.FILAMENT_Z1,
-    # so it must not follow a future app rename.
-    (output/'javascripts/z1-data.js').write_text('window.FILAMENT_Z1 = '+json.dumps(payload, sort_keys=True, allow_nan=False, separators=(',', ':'))+';\n')
+    # Neutral global name (no app name): deadtime.js and the docs test read window.WALKTHROUGH_Z1.
+    (output/'javascripts/z1-data.js').write_text('window.WALKTHROUGH_Z1 = '+json.dumps(payload, sort_keys=True, allow_nan=False, separators=(',', ':'))+';\n')
 
 
 def main():

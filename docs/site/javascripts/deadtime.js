@@ -88,7 +88,7 @@
   function mount() {
     const lab=document.getElementById('deadtime-lab');
     if (!lab || lab.dataset.ready) return;
-    const data=root.FILAMENT_Z1;
+    const data=root.WALKTHROUGH_Z1;
     if (!data) return;
     lab.dataset.ready='yes';
     const slider=document.getElementById('tau-slider'), output=document.getElementById('tau-value');

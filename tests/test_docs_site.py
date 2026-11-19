@@ -17,7 +17,7 @@ SITE = ROOT/'docs/site'
 
 def read_payload(path=SITE/'javascripts/z1-data.js'):
     text = path.read_text()
-    prefix = 'window.FILAMENT_Z1 = '
+    prefix = 'window.WALKTHROUGH_Z1 = '
     assert text.startswith(prefix) and text.endswith(';\n')
     return json.loads(text[len(prefix):-2])
 
@@ -110,7 +110,7 @@ def test_browser_functions_against_engine_grid():
 const assert=require('assert'),fs=require('fs'),vm=require('vm');
 const math=require(process.argv[1]);
 const context={window:{}};vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),context);
-const data=context.window.FILAMENT_Z1;
+const data=context.window.WALKTHROUGH_Z1;
 for(const tau of [30,36.3,40,45]) {
   const actual=math.evaluate(data,tau), expected=math.gridEntry(data,tau);
   for(const name of math.labels) for(const field of ['mean','se_pct']) {
