@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import csv
-from datetime import UTC, datetime
 import io
-from pathlib import Path
 import re
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
+from reader_fixtures import B998, FIXTURES, TIMSDP_FILES, read
 
 from rawtims.analysis import Analysis
 from rawtims.contract import (
@@ -16,6 +17,7 @@ from rawtims.contract import (
     COLUMN_NAMES,
     CONTRACT_ID,
     PB_RATIOS,
+    U_OXIDE_FORMULAS,
     U_RATIOS,
     ContractError,
     FractionRow,
@@ -29,10 +31,8 @@ from rawtims.contract import (
     rho_column,
     se_column,
     write_csv,
-    U_OXIDE_FORMULAS,
 )
 from rawtims.fractions import Fraction, SessionInfo, fraction_row
-from reader_fixtures import B998, FIXTURES, TIMSDP_FILES, read
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_DOC = ROOT / "docs" / "contract-idtims-fractions-v1.md"
@@ -115,7 +115,7 @@ def _doc_table_names() -> tuple[set[str], set[str]]:
 def test_every_contract_table_column_is_known_and_every_known_column_is_in_the_contract():
     named, ratios = _doc_table_names()
     assert ratios == set(PB_RATIOS) | set(U_RATIOS)
-    assert len(named) == 45  # 8 identity, 8 setup, 29 provenance
+    assert len(named) == 62  # 8 identity, 8 setup, 29 provenance, 17 database/chemistry
     assert named <= set(COLUMN_NAMES)
     for name in COLUMN_NAMES:  # every non-ratio column comes from a contract table
         if name.endswith((" Mean", " % Standard Error")) or name.startswith("rho "):
@@ -332,9 +332,9 @@ def test_missing_mean_statistic_reads_as_arithmetic(prefix):
     assert "Mean Statistic" not in csv_text([row])
 
 
-def test_clarification_9_contract_hash_and_sibling_copy():
+def test_clarification_10_contract_hash_and_sibling_copy():
     import hashlib
-    expected = "8fb322ed6cd654f214f46988bd9b679a9cad71556283704d16036f947b6ad7cc"
+    expected = "691f5f410862508ebe94220b74aa43a38b16ab617e6d515263d551cbbab50205"
     assert hashlib.sha256(CONTRACT_DOC.read_bytes()).hexdigest() == expected
     sibling = ROOT.parent / "IDTIMS_UPbRPy" / "docs" / CONTRACT_DOC.name
     if sibling.is_file():

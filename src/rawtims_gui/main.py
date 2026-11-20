@@ -724,6 +724,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.correction_pages.addTab(fitted_page(self.corrections_panel), "Mapping")
         self.inspector_tabs.addTab(self.correction_pages, "Corrections")
         self.export_panel = ExportPanel()
+        self.export_panel.database_settings = self.settings
         self.export_panel.saveXlsxRequested.connect(lambda: self.save_review_xlsx())
         self.export_panel.saveTablesRequested.connect(lambda: self.save_review_tables())
         self.export_panel.sendRequested.connect(lambda: self.send_to_age_app())

@@ -99,7 +99,7 @@ def test_saved_json_holds_no_per_cycle_values(tmp_path):
     workspace = _edited_workspace()
     path = save_session(workspace.session_state(), tmp_path / "s.rawtims")
     document = json.loads(path.read_text(encoding="utf-8"))
-    assert document["format"] == SESSION_FORMAT and document["format_version"] == SESSION_FORMAT_VERSION
+    assert document["format"] == SESSION_FORMAT and document["format_version"] == 1
     assert document["saved_at"].endswith("+00:00")
     assert path.stat().st_size < 40_000
 

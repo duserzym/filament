@@ -30,15 +30,15 @@ IDTIMS_UPbRPy/Tripoli layout of ``examples/MA1_zircon_CA-ID-TIMS.csv``) with
 from __future__ import annotations
 
 import csv
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
 import io
 import itertools
 import math
 import os
-from pathlib import Path
 import re
 import tempfile
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Literal
 
 CONTRACT_NAME = "idtims-fractions"
@@ -143,6 +143,15 @@ def _build_columns() -> tuple[Column, ...]:
         ("Notes", "text"),
     ]
     columns += [Column(name, kind, "provenance") for name, kind in provenance]
+    columns += [Column(name, kind, "database") for name, kind in (
+        ("Fraction UID", "text"), ("Database Server", "text"), ("Database Read At", "text"),
+        ("Source Grain UID", "text"), ("Source Spot UID", "text"), ("Source Fragment Note", "text"),
+        ("Capsule Set", "text"), ("Chemistry Batch UID", "text"), ("Annealing", "text"),
+        ("Annealing Temperature (°C)", "float"), ("Annealing Duration (h)", "float"),
+        ("Chemical Abrasion", "text"), ("Chemical Abrasion Temperature (°C)", "float"),
+        ("Chemical Abrasion Duration (h)", "float"), ("Chemistry Steps", "text"),
+        ("Spike Solution", "text"), ("Spike Version UID", "text"),
+    )]
     return tuple(columns)
 
 
@@ -347,6 +356,7 @@ def header_for(rows: Sequence[FractionRow]) -> list[str]:
 
 def csv_text(rows: Sequence[FractionRow]) -> str:
     """The CSV text :func:`write_csv` writes. Raises :class:`ContractError` for invalid rows or duplicate IDs."""
+    _check_database_servers(rows)
     seen: set[str | None] = set()
     problems: list[str] = []
     for row in rows:
@@ -438,6 +448,7 @@ def parse_csv_text(text: str, *, source: str = "<text>") -> list[FractionRow]:
             raise ContractError(f"{where}: Fraction ID {row.fraction_id!r} already used on line {seen[row.fraction_id]}")
         seen[row.fraction_id] = line_number
         rows.append(row)
+    _check_database_servers(rows)
     return rows
 
 
@@ -452,6 +463,12 @@ def read_csv(path: str | os.PathLike[str]) -> list[FractionRow]:
 
 
 # --------------------------------------------------------------------- merge
+def _check_database_servers(rows: Sequence[FractionRow]) -> None:
+    servers = {row.get("Database Server") for row in rows if row.get("Database Server")}
+    if len(servers) > 1:
+        raise ContractError("A fractions file cannot name more than one Database Server")
+
+
 def merge_rows(sources: Sequence[tuple[str, Sequence[FractionRow]]]) -> list[FractionRow]:
     """Merge rows that share a ``Fraction ID`` across files (contract "Rows and merging").
 
@@ -460,6 +477,7 @@ def merge_rows(sources: Sequence[tuple[str, Sequence[FractionRow]]]) -> list[Fra
     raise :class:`MergeConflict` naming the fraction, the column and both
     files. The result keeps the order of first appearance.
     """
+    _check_database_servers([row for _label, rows in sources for row in rows])
     merged: dict[str | None, dict[str, Any]] = {}
     for label, rows in sources:
         for row in rows:
@@ -473,6 +491,14 @@ def merge_rows(sources: Sequence[tuple[str, Sequence[FractionRow]]]) -> list[Fra
                     values.setdefault(column, row.get(column))
             for name, value in [*values.items(), *row.extra.items()]:
                 target = entry["values"] if name in COLUMN_BY_NAME else entry["extra"]
+                if name == "Database Read At" and name in target:
+                    from datetime import datetime
+                    try:
+                        value = max((target[name], value), key=datetime.fromisoformat)
+                    except (ValueError, TypeError):
+                        raise MergeConflict("Database Read At must be an ISO timestamp with an offset") from None
+                    target[name] = value
+                    continue
                 if name in target and target[name] != value:
                     raise MergeConflict(
                         f"fraction {row.fraction_id!r}, column {name!r}: {entry['origin'][name]} has {target[name]!r} "

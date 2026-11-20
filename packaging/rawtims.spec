@@ -4,14 +4,14 @@ Every user-visible name comes from src/rawtims/branding.py and the version
 from pyproject.toml, so renaming the app never touches this file.
 """
 
+# PyInstaller injects the build classes and paths when evaluating this recipe.
+# ruff: noqa: F821
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import sys
 import tomllib
-
-
+from pathlib import Path
 
 PACKAGING_DIRECTORY = Path(SPECPATH).resolve()
 PROJECT_ROOT = PACKAGING_DIRECTORY.parent
@@ -19,7 +19,7 @@ SOURCE_ROOT = PROJECT_ROOT / "src"
 PROJECT_VERSION = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
 
 sys.path.insert(0, str(SOURCE_ROOT))
-from rawtims import branding  # noqa: E402
+from rawtims import branding
 
 APPLICATION_NAME = branding.DISPLAY_NAME
 EXECUTABLE_NAME = branding.EXECUTABLE_NAME
@@ -48,7 +48,7 @@ analysis = Analysis(
     pathex=[str(SOURCE_ROOT)],
     binaries=[],
     datas=data_files,
-    hiddenimports=["PySide6.QtSvg", "openpyxl", "et_xmlfile"],
+    hiddenimports=["PySide6.QtSvg", "openpyxl", "et_xmlfile", "keyring", "keyring.backends.macOS", "keyring.backends.Windows", "keyring.backends.SecretService"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -59,7 +59,6 @@ analysis = Analysis(
         "bokeh",
         "jedi",
         "jupyterlab",
-        "keyring",
         "matplotlib",
         "nbformat",
         "notebook",

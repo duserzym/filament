@@ -11,6 +11,9 @@ to read or write it is an implementation.
 Clarification 9 (2026-11-18): optional reduction-parameter provenance columns
 below preserve `/1`. Existing columns, units and sigma levels are unchanged.
 
+Clarification 10 (2026-11-20): optional database-link and chemistry-summary columns
+below preserve `/1`. Existing columns, units and sigma levels are unchanged.
+
 ## Purpose
 
 Each row is one measured fraction, or one block of it (see "Rows and merging"). It holds the
@@ -67,8 +70,7 @@ The writer fills what it knows; the reduction app lets the user complete the res
 | `Source Spot` | no | LA-ICP-MS spot on that grain |
 | `Aliquot` | no | Free label for grouping fractions |
 
-Database identifiers for grains and spots come later, as optional `Source Grain UID` and
-`Source Spot UID` columns. They are not part of v1.
+Database identifiers and the chemistry summary are optional columns (clarification 10, below).
 
 ### Analysis setup
 
@@ -172,6 +174,69 @@ Optional, and strongly encouraged from the raw-data app.
 | `Raw App Session`, `Raw App Session SHA256` | The writer's own session file (rejected block/cycle lists, dead time, Daly gain, baseline and interference settings); readers keep it as provenance |
 | `Exported At` | ISO 8601 with offset |
 | `Notes` | Free text |
+
+### Database link (optional, clarification 10)
+
+Filled only after a person confirms, in the raw-data app, that a run's fraction is a given
+UPbDB `tims` fraction. Names alone (sample, fraction label) never imply identity, so a writer
+never fills these columns from a name match it has not had confirmed. Values are copied
+from the database when the link is confirmed or refreshed; the UIDs keep the database
+authoritative.
+
+| Column | Meaning |
+|---|---|
+| `Fraction UID` | UUID of the UPbDB `tims` fraction |
+| `Database Server` | Base URL of the UPbDB the UIDs belong to (scheme + host + optional port and path, no trailing slash, no credentials) |
+| `Database Read At` | ISO 8601 with offset: when the copied values were read from that server (for an offline link, when the cached copy was fetched) |
+| `Source Grain UID` | UUID(s) of the registered grain(s) the fraction came from |
+| `Source Spot UID` | UUID(s) of the LA-ICP-MS spot(s) on those grains |
+| `Source Fragment Note` | The database fragment note for each source that is a fragment; empty entry otherwise |
+| `Capsule Set` | Capsule / hex-beaker set name, e.g. `Krogh`. `Beaker` holds the capsule label, e.g. `K1` |
+| `Chemistry Batch UID` | UUID of the UPbDB chemistry batch |
+
+`Source Mount`, `Source Grain`, `Source Spot`, `Source Grain UID`, `Source Spot UID` and
+`Source Fragment Note` are per-source lists when a fraction has several sources: one entry
+per active source, in the order the database lists them, joined with `; ` (semicolon,
+space). Every filled list column of a row has the same number of entries; an entry is
+empty where the source has no value (a grain without an LA spot). A single-source fraction
+holds plain values. Entries never contain `;`.
+
+When files are merged, differing `Database Read At` values are not a conflict: the reader
+keeps the latest. Every other column keeps the existing rule (differing non-empty values
+are an error). A file whose rows name more than one `Database Server` is refused.
+
+### Chemistry summary (optional, clarification 10)
+
+A copy of the chemistry recorded in the database for this fraction (batch steps merged
+with the fraction's own overrides; skipped steps left out), read at `Database Read At`.
+
+| Column | Meaning |
+|---|---|
+| `Annealing` | Text per annealing step, e.g. `900 °C, 60 h` |
+| `Annealing Temperature (°C)`, `Annealing Duration (h)` | Numbers, only when exactly one annealing step applies |
+| `Chemical Abrasion` | Text per chemical-abrasion step, e.g. `190 °C, 12 h, 29 M HF`, plus the recorded outcome when there is one, e.g. `190 °C, 12 h, 29 M HF (dissolved_in_ca)` |
+| `Chemical Abrasion Temperature (°C)`, `Chemical Abrasion Duration (h)` | Numbers, only when exactly one chemical-abrasion step applies |
+| `Chemistry Steps` | Every applied step in order, `; `-joined, each `<method code> <parameters>` in short text, e.g. `SP-TIMS-ANNEAL 900 °C 60 h; SP-TIMS-CA 190 °C 12 h 29 M HF; …` |
+| `Spike Solution` | Spike registry version key `<spike id>/<subfraction>/<version>`, e.g. `ET535/master/v3`, of the spike recorded for this fraction in the database |
+| `Spike Version UID` | UUID of that UPbDB spike version |
+
+Several steps of one kind are `; `-joined in step order in the text column, and the two
+numeric columns are then empty. A writer also fills empty `Spike Weight (g)`, `Spike` (the
+spike's registry id) and `Beaker` from the database; it never overwrites a value the user
+typed and instead reports the difference.
+
+`Spike Solution` is a proposal for the reduction app, not a selection: the reader
+preselects that exact registry version (spike, subfraction and version) and asks the user
+to confirm it before reduction. If its local registry does not contain that key, or `Spike`
+names a different spike, the reader reports it and does not reduce that fraction until the
+user chooses.
+
+Why copied and not only looked up: the CSV is the contract, so it must stay readable and
+reducible offline, in notebooks and years later without a server; publication tables need
+the conditions as numbers; the reduction app never holds database credentials. The UIDs and
+`Database Read At` make each copy traceable and checkable against the database, which stays
+authoritative. A reader with database access may compare and report differences, but must
+not rewrite the copied values silently.
 
 ## Legacy (reader side only)
 

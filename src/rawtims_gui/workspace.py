@@ -380,6 +380,12 @@ class Workspace:
         blocked = [e for e in elements if not self._slot_free(other, e)]
         if blocked:
             return False, f"Fraction {new_id} already has a {blocked[0]} run (one the session could not open).", fraction
+        if fraction.database_link is not None and other.database_link is not None:
+            a, b = fraction.database_link, other.database_link
+            if (a.server, a.fraction_uid) != (b.server, b.fraction_uid):
+                return False, "These fractions have different database links. Unlink one before merging.", fraction
+        if other.database_link is None:
+            other.database_link = fraction.database_link
         for entry in lost:
             entry.fraction = other
         for analysis in runs:

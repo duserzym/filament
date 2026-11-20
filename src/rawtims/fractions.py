@@ -55,6 +55,7 @@ from rawtims.mapping import (
     ratio_usable,
 )
 from rawtims.readers.functions import suggest_fraction_id
+from rawtims.upbdb import DatabaseLink
 
 SPIKE_TYPES = ("535", "2535")
 COLLECTORS = ("F", "D")
@@ -111,6 +112,7 @@ class Fraction:
     notes: str | None = None
     pb_mapping: ElementMapping | None = None
     u_mapping: ElementMapping | None = None
+    database_link: DatabaseLink | None = None
 
     def __post_init__(self) -> None:
         if not self.fraction_id or not str(self.fraction_id).strip():
@@ -293,6 +295,11 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
         "Collector": fraction.collector,
         "Pb Collector Detail": fraction.pb_collector_detail,
     }
+    if fraction.database_link is not None:
+        copied = database_link_values(fraction.database_link)
+        for key, value in copied.items():
+            if values.get(key) in (None, ""):
+                values[key] = value
     notes: list[str] = []
     rules: list[tuple[str, str]] = []
     instruments: list[str] = []
@@ -395,6 +402,54 @@ def fraction_row(fraction: Fraction, exported_at: datetime, session_info: Sessio
     return FractionRow(values=values)
 
 
+def apply_link(fraction: Fraction, link: DatabaseLink) -> None:
+    """Apply a confirmed link, replacing only a blank or pairing-generated Sample."""
+    automatic = {fraction.fraction_id}
+    automatic.update(analysis.run.metadata.sample_id for analysis in (fraction.pb, fraction.u)
+                     if analysis is not None)
+    if fraction.sample in (None, "") or fraction.sample in automatic:
+        fraction.sample = link.sample_name
+    fraction.database_link = link
+
+
+def database_link_values(link: DatabaseLink) -> dict[str, Any]:
+    """Contract snapshot, with aligned entries for every active source."""
+    c = link.chemistry
+    values = {
+        "Sample": link.sample_name,
+        "Fraction UID": link.fraction_uid, "Database Server": link.server,
+        "Database Read At": link.database_read_at, "Capsule Set": link.capsule_set_name,
+        "Chemistry Batch UID": link.batch_uid, "Beaker": link.capsule_label,
+        "Spike": c.spike_registry_id, "Spike Weight (g)": c.spike_weight_g,
+        "Annealing": c.annealing, "Annealing Temperature (°C)": c.annealing_temperature_c,
+        "Annealing Duration (h)": c.annealing_duration_h, "Chemical Abrasion": c.chemical_abrasion,
+        "Chemical Abrasion Temperature (°C)": c.ca_temperature_c,
+        "Chemical Abrasion Duration (h)": c.ca_duration_h,
+        "Chemistry Steps": c.chemistry_steps, "Spike Solution": c.spike_solution,
+        "Spike Version UID": c.spike_version_uid,
+    }
+    for column, attribute in (("Source Mount", "mount_name"), ("Source Grain", "grain_label"),
+                              ("Source Spot", "spot_label"), ("Source Grain UID", "grain_uid"),
+                              ("Source Spot UID", "spot_uid"), ("Source Fragment Note", "fragment_note")):
+        entries = [getattr(source, attribute) if attribute != "fragment_note" or source.is_fragment else ""
+                   for source in link.sources]
+        values[column] = "; ".join(entries) if any(entries) else None
+    return values
+
+
+def database_link_warnings(fraction: Fraction) -> list[str]:
+    if fraction.database_link is None:
+        return []
+    copied = database_link_values(fraction.database_link)
+    warnings = []
+    for attribute, column in (("sample", "Sample"), ("beaker", "Beaker"), ("spike", "Spike"), ("spike_weight_g", "Spike Weight (g)"),
+                              ("source_mount", "Source Mount"), ("source_grain", "Source Grain"), ("source_spot", "Source Spot")):
+        value, db = getattr(fraction, attribute), copied[column]
+        if value not in (None, "") and db not in (None, "") and value != db:
+            warnings.append(f"{column}: your value {value!r} differs from database {db!r}; your value is kept.")
+    return warnings
+
+
 def fraction_rows(fractions: Sequence[Fraction], exported_at: datetime, session_info: SessionInfo | None = None) -> list[FractionRow]:
     return [fraction_row(fraction, exported_at, session_info) for fraction in fractions]
 
@@ -406,6 +461,7 @@ __all__ = [
     "FractionError",
     "Pairing",
     "SessionInfo",
+    "apply_link",
     "filter_rule_text",
     "fraction_row",
     "fraction_rows",

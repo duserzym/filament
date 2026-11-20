@@ -11,6 +11,10 @@ mapping in effect). New mapping changes also live in the analysis history,
 including the flags adopted by joining functions. Optional legacy comparison
 masks preserve the original per-ratio selections after reconciliation.
 
+Unlinked sessions write version 1; sessions with database links write version 2.
+Readers accept both. Each fraction’s optional ``database_link`` is a
+:data:`rawtims.branding.DATABASE_LINK_FORMAT` version 1 snapshot (including confirmation and chemistry).
+
 Format (``format`` = :data:`rawtims.branding.SESSION_FORMAT`)::
 
     {
@@ -70,10 +74,11 @@ from rawtims.branding import (
     SESSION_FORMAT,
     SESSION_FORMAT_VERSION,
 )
-from rawtims.fractions import Fraction, FractionError
+from rawtims.fractions import Fraction
 from rawtims.mapping import ElementMapping, MappingError, MethodMapping
 from rawtims.readers import UnsupportedFile, open_run
 from rawtims.stats import STAT_MODES
+from rawtims.upbdb import DatabaseError, DatabaseLink
 
 ELEMENTS = ("Pb", "U")
 # Fraction attributes saved under "fields" (identity, setup and provenance fields of the contract).
@@ -283,10 +288,11 @@ def session_document(state: SessionState, path: str | os.PathLike[str] | None, *
             "runs": slots,
             "fields": {name: getattr(fraction, name) for name in FRACTION_FIELDS},
             "mappings": mappings,
+            **({"database_link": fraction.database_link.to_dict()} if fraction.database_link is not None else {}),
         })
     document: dict[str, Any] = {
         "format": SESSION_FORMAT,
-        "format_version": SESSION_FORMAT_VERSION,
+        "format_version": SESSION_FORMAT_VERSION if any(f.database_link is not None for f in state.fractions) else 1,
         "app": RAW_APP_LABEL,
         "saved_at": stamp.astimezone(UTC).isoformat(timespec="seconds"),
         "runs": runs,
@@ -444,8 +450,8 @@ def _restore_run(record: Mapping[str, Any], session_dir: Path, where: str) -> tu
     try:
         if record.get("history_version", HISTORY_VERSION) != HISTORY_VERSION:
             raise ReplayMismatch(f"history version {record.get('history_version')!r} is not {HISTORY_VERSION}")
-        from rawtims.reduction_params import ReductionParameters, as_acquired
         from rawtims.readers.ionvantage_raw import input_hashes, raw_folder
+        from rawtims.reduction_params import ReductionParameters, as_acquired
         records = [record.get("initial_reduction_provenance", {}), record.get("reduction_provenance", {}), *record.get("history", []), *record.get("redo_history", [])]
         hashes = [r[k] for r in records for k in ("raw_inputs", "old_raw_inputs") if r.get(k)]
         if hashes:
@@ -549,9 +555,10 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
             analyses[element] = restored[str(run_id)]
         fields = {name: value for name, value in dict(entry.get("fields") or {}).items() if name in FRACTION_FIELDS}
         try:
-            fraction = Fraction(fraction_id=fid, **fields)
+            link = DatabaseLink.from_dict(entry["database_link"]) if "database_link" in entry else None
+            fraction = Fraction(fraction_id=fid, database_link=link, **fields)
             fraction.pb, fraction.u = analyses["Pb"], analyses["U"]
-        except (FractionError, TypeError) as error:
+        except (ValueError, TypeError, KeyError, DatabaseError) as error:
             raise SessionError(f"{path.name}: fraction {fid!r} cannot be restored ({error})") from None
         state.fractions.append(fraction)
         for element, record, problem in lost:

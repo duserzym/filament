@@ -25,9 +25,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from rawtims import branding
 from rawtims.contract import FractionRow
-from rawtims.fractions import COLLECTORS, SPIKE_TYPES, Fraction
+from rawtims.fractions import COLLECTORS, SPIKE_TYPES, Fraction, database_link_warnings
+from rawtims_gui.database_dialog import ConnectDialog, LinkDialog
 from rawtims_gui.studio.widgets import ElidedLabel, set_style, set_table_item
+from rawtims_gui.studio.workers import FunctionWorker
 
 TEXT_FIELDS = (
     ("sample", "Sample"),
@@ -136,6 +139,10 @@ class ExportPanel(QtWidgets.QWidget):
         super().__init__(parent)
         self.fraction: Fraction | None = None
         self._loading = False
+        self.database_client = None
+        self.database_settings = QtCore.QSettings(branding.QSETTINGS_ORG, branding.QSETTINGS_APP)
+        self._database_workers = set()
+        self._database_dialog = None
         outer = QtWidgets.QVBoxLayout(self)
         outer.setContentsMargins(0, 6, 0, 0)
         outer.setSpacing(6)
@@ -153,6 +160,36 @@ class ExportPanel(QtWidgets.QWidget):
         layout.setSpacing(6)
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
+
+        database_title = QtWidgets.QLabel("Database")
+        database_title.setObjectName("SectionTitle")
+        layout.addWidget(database_title)
+        self.database_status = QtWidgets.QLabel("not connected")
+        self.database_status.setWordWrap(True)
+        self.database_status.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Preferred)
+        self.database_status.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        layout.addWidget(self.database_status)
+        database_buttons = QtWidgets.QGridLayout()
+        self.database_connect = QtWidgets.QPushButton("Connect…")
+        self.database_link = QtWidgets.QPushButton("Link to database…")
+        self.database_unlink = QtWidgets.QPushButton("Unlink")
+        self.database_signout = QtWidgets.QPushButton("Sign out")
+        for index, button in enumerate((self.database_connect, self.database_signout, self.database_link, self.database_unlink)):
+            button.setMinimumWidth(0)
+            button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
+            button.setToolTip(button.text())
+            database_buttons.addWidget(button, index // 2, index % 2)
+        layout.addLayout(database_buttons)
+        self.database_detail = QtWidgets.QLabel()
+        self.database_detail.setWordWrap(True)
+        self.database_detail.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Preferred)
+        self.database_detail.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        layout.addWidget(self.database_detail)
+        self.database_connect.clicked.connect(self.connect_database)
+        self.database_link.clicked.connect(self.link_database)
+        self.database_unlink.clicked.connect(lambda: self.fieldEdited.emit("database_link", None))
+        self.database_signout.clicked.connect(self.signout_database)
+        self._refresh_database()
 
         title = QtWidgets.QLabel("Contract preview")
         title.setObjectName("SectionTitle")
@@ -420,6 +457,7 @@ class ExportPanel(QtWidgets.QWidget):
     def update_panel(self, fraction: Fraction | None, statuses: list[tuple[Fraction, str, list[str]]],
                      row: FractionRow | None, row_error: str | None, element: str | None) -> None:
         self.fraction = fraction
+        self._refresh_database()
         self._loading = True
         try:
             for widget in (*self.fields.values(), self.fraction_id):
@@ -447,6 +485,75 @@ class ExportPanel(QtWidgets.QWidget):
         self.copy_button.setEnabled(row is not None)
         self.cycles_button.setEnabled(element is not None)
         self.compare_legacy_button.setEnabled(element is not None)
+
+    def _refresh_database(self):
+        client = self.database_client
+        busy = bool(self._database_workers) or (self._database_dialog is not None and self._database_dialog.busy)
+        self.database_status.setText(client.status if client else "not connected")
+        self.database_link.setEnabled(self.fraction is not None and not busy)
+        link = self.fraction.database_link if self.fraction else None
+        self.database_unlink.setEnabled(link is not None and not busy)
+        self.database_signout.setEnabled(client is not None and not busy)
+        self.database_connect.setEnabled(not busy)
+        text = ""
+        if link:
+            text = (f"Linked: {link.sample_name} {link.fraction_name} · {link.capsule_label} {link.capsule_set_name}"
+                    + (f" · batch {link.batch_started_on}" if link.batch_started_on else ""))
+            text += "\n" + "\n".join(database_link_warnings(self.fraction))
+        self.database_detail.setText(text.strip())
+        self.database_detail.setVisible(bool(text.strip()))
+
+    def connect_database(self):
+        server = self.database_settings.value("database/server", "", type=str)
+        dialog = ConnectDialog(server, self)
+        self._database_dialog = dialog
+        dialog.workFinished.connect(self._refresh_database)
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            self.database_client = dialog.client
+            self.database_settings.setValue("database/server", dialog.client.server)
+        self._refresh_database()
+        return dialog
+
+    def link_database(self):
+        if self.fraction is None:
+            return
+        if self.database_client is None:
+            self.connect_database()
+        if self.database_client is None:
+            return
+        dialog = LinkDialog(self.database_client, self.fraction.fraction_id, self, fraction=self.fraction)
+        self._database_dialog = dialog
+        dialog.workFinished.connect(self._refresh_database)
+        if dialog.sample.text() and dialog.name.text():
+            QtCore.QTimer.singleShot(0, dialog.lookup)
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            self.fieldEdited.emit("database_link", dialog.link)
+        self._refresh_database()
+        return dialog
+
+    def signout_database(self):
+        if self.database_client is None or self._database_workers:
+            return
+        worker = FunctionWorker(self.database_client.logout)
+        worker.signals.succeeded.connect(self._database_signed_out)
+        worker.signals.failed.connect(self._database_signout_failed)
+        worker.signals.finished.connect(self._database_worker_done)
+        self._database_workers.add(worker)
+        self._refresh_database()
+        QtCore.QThreadPool.globalInstance().start(worker)
+
+    @QtCore.Slot(object)
+    def _database_signed_out(self, _result):
+        self.database_client = None
+
+    @QtCore.Slot(str, str)
+    def _database_signout_failed(self, message, _trace):
+        self.database_status.setText(message)
+
+    @QtCore.Slot()
+    def _database_worker_done(self):
+        self._database_workers.clear()
+        self._refresh_database()
 
     def _fill_fractions(self, statuses: list[tuple[Fraction, str, list[str]]]) -> None:
         from rawtims_gui.studio.theme import active_theme

@@ -45,7 +45,7 @@ def test_branding_values_follow_the_app_name():
 
 def test_session_format_is_neutral():
     assert branding.SESSION_FORMAT == "rawtims session"
-    assert branding.SESSION_FORMAT_VERSION == 1
+    assert branding.SESSION_FORMAT_VERSION == 2
     assert branding.SESSION_EXTENSION == ".rawtims"
     assert branding.APP_NAME not in branding.SESSION_FORMAT + branding.SESSION_EXTENSION
 

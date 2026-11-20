@@ -9,8 +9,8 @@ design pieces are vendored under rawtims_gui/studio/.
 from __future__ import annotations
 
 import ast
-from pathlib import Path
 import pkgutil
+from pathlib import Path
 
 import rawtims
 
@@ -47,3 +47,15 @@ def test_vendored_studio_files_record_their_source():
     for name in ("theme.py", "widgets.py"):
         header = (ROOT / "src" / "rawtims_gui" / "studio" / name).read_text(encoding="utf-8").splitlines()[0]
         assert header.startswith("# Copied from UPbRPy commit 0b16f36, path GUI/"), name
+
+
+def test_database_client_and_optional_keyring_are_packaged():
+    assert "upbdb" in SUBMODULES
+    tree = ast.parse((ROOT / "packaging" / "rawtims.spec").read_text())
+    analysis = next(node for node in ast.walk(tree)
+                    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "Analysis")
+    keywords = {k.arg: k.value for k in analysis.keywords}
+    hidden = ast.literal_eval(keywords["hiddenimports"])
+    excluded = ast.literal_eval(keywords["excludes"])
+    assert "keyring" in hidden and "keyring" not in excluded
+    assert {"keyring.backends.macOS", "keyring.backends.Windows", "keyring.backends.SecretService"} <= set(hidden)

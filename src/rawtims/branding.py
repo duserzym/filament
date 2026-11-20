@@ -34,8 +34,13 @@ RAW_APP_LABEL = f"{APP_NAME} {VERSION}"
 
 # Saved session files.
 SESSION_FORMAT = "rawtims session"
-SESSION_FORMAT_VERSION = 1
+SESSION_FORMAT_VERSION = 2
 SESSION_EXTENSION = ".rawtims"
+# Database snapshot schemas and keychain service stay stable across app renames.
+DATABASE_LINK_FORMAT = "filament database link"
+DATABASE_CACHE_FORMAT = "filament database cache"
+DATABASE_KEYRING_SERVICE = "filament"
+DATABASE_PASSWORD_ENV = "FILAMENT_UPBDB_PASSWORD"
 
 # Chosen ribbon artwork; source bytes and hashes are in docs/icon-provenance.json.
 ICON_BASENAME = APP_NAME

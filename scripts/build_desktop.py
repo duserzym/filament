@@ -113,7 +113,7 @@ def application_executable(application: Path) -> Path:
 
 
 def require_build_dependencies() -> None:
-    missing = [name for name in ("PyInstaller", "PySide6", "pyqtgraph") if importlib.util.find_spec(name) is None]
+    missing = [name for name in ("PyInstaller", "PySide6", "pyqtgraph", "keyring") if importlib.util.find_spec(name) is None]
     if missing:
         raise RuntimeError(
             f"Missing desktop build dependencies: {', '.join(missing)}. "
