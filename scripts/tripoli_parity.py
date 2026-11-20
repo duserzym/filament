@@ -18,7 +18,7 @@ def main(argv=None):
     # Guard both requested inputs and the known Drive roots, even when an env
     # override is used. Reporting must never create a file under either Drive.
     protected = [args.drive.resolve(), args.sheets.resolve()]
-    protected += [p for p in Path.home().glob('My Drive*') if p.is_dir()]
+    protected += [p for p in Path.home().glob('*Drive*') if p.is_dir()]
     output = args.output.resolve()
     if any(output == p or p in output.parents for p in protected):
         parser.error('report output must be outside the read-only data folders')

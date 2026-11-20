@@ -241,7 +241,7 @@ not rewrite the copied values silently.
 ## Legacy (reader side only)
 
 A CSV without a `Contract` column is read in today's IDTIMS_UPbRPy/Tripoli layout
-(`examples/MA1_zircon_CA-ID-TIMS.csv`):
+(`examples/synthetic_zircon_CA-ID-TIMS.csv`):
 - `Grain ID` is taken as the fraction label (`Fraction ID`).
 - All other column names are the same as in this contract.
 

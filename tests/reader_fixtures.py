@@ -33,6 +33,7 @@ TIMSDP_FILES = {
 
 SYNTHETIC_U = SYNTHETIC / "synthetic_BSU_U_oxide_R18.xls"
 SYNTHETIC_PB = SYNTHETIC / "synthetic_ET2535_Pb_202.xls"
+SYNTHETIC_FRACTIONS = SYNTHETIC / "synthetic_MA1_zircon_CA-ID-TIMS.csv"
 
 
 @cache

@@ -43,8 +43,8 @@ The spec was confirmed for Phase 1 with these conditions, which override anythin
 ### 1.1 What the IsoprobeT writes at Boise State (evidence, not guesswork)
 
 **There is no raw IsoprobeT file from Yiming's own runs on this machine.** I searched Yiming's Drive
-(`My Drive*/Research/`: `Lab`, `Lab/TIMS`, `Lab_visits/2024_Boise`, `2025_Boise` and `2026_Boise`, and
-`Projects`), the `yiming-z@umn.edu` Drive (`Grenville_TIMS`), `~/Github/IDTIMS_UPbRPy` (`examples/`,
+(`~/Research/`: `Lab`, `Lab/TIMS`, `Lab_visits/2024_Boise`, `2025_Boise` and `2026_Boise`, and
+`Projects`), `~/Research/Grenville_TIMS`, `~/Github/IDTIMS_UPbRPy` (`examples/`,
 `MCR_data/`), `~/Github/ET_Redux/ET_Redux Data` (only `.ser` lab defaults, empty `samples/`), `~/Data`,
 `~/Documents` and `~/Downloads`. A Spotlight name search found nothing either. Everything I found there is
 fraction-level output: Tripoli means already pasted into BSU spreadsheets.
@@ -181,11 +181,10 @@ citations are in [tripoli-research-notes.md](tripoli-research-notes.md). The ess
 
 ### 1.3 Licenses
 
-- Current Tripoli: Apache-2.0, "Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org"
-  (`LICENSE`, `CITATION.cff`).
-- Legacy C# Tripoli: Apache-2.0 per its file headers, "Copyright 2004-2021 James F. Bowring and
-  www.Earth-Time.org" (the repo has no LICENSE file).
-- ET_Redux: Apache-2.0, "Copyright 2006-2018 James F. Bowring, CIRDLES.org, and Earth-Time.org".
+- Current Tripoli: Apache-2.0 (`LICENSE`, `CITATION.cff`); copyright holders are recorded in the
+  upstream headers and the vendored fixture NOTICE.
+- Legacy C# Tripoli: Apache-2.0 per its file headers (the repo has no LICENSE file).
+- ET_Redux: Apache-2.0; see its upstream copyright headers.
 - None of them has a NOTICE file.
 
 What this allows (a plain reading of Apache-2.0, not legal advice):
@@ -204,11 +203,11 @@ What this allows (a plain reading of Apache-2.0, not legal advice):
   them.
 
 Papers to cite:
-- Bowring, McLean & Bowring 2011, G-cubed 12, Q0AA19, doi:10.1029/2010GC003479 (Tripoli and U-Pb_Redux;
+- G-cubed 12 (2011), Q0AA19, doi:10.1029/2010GC003479 (Tripoli and U-Pb_Redux;
   verified).
-- [FROM MEMORY, unchecked] McLean, Bowring & Bowring 2011, G-cubed 12, Q0AA18 (ID-TIMS data reduction and
+- [FROM MEMORY, unchecked] G-cubed 12 (2011), Q0AA18 (ID-TIMS data reduction and
   the UO2 math cited by Tripoli's `autoUO2Correction.md`).
-- [FROM MEMORY, unchecked] Condon et al. 2015 and McLean et al. 2015, GCA 164 (ET535/ET2535 calibration).
+- [FROM MEMORY, unchecked] GCA 164 (2015), ET535/ET2535 calibration papers.
 
 Citations marked FROM MEMORY stay marked until checked against the papers themselves; none goes into the
 README or the app's About text before that.
@@ -322,8 +321,8 @@ The contract is `idtims-fractions/1`, agreed with the reduction-app session on 2
 filament side:
 - `rawtims.contract` holds a dataclass `FractionRow` with `to_csv`/`from_csv` and a column list that is the
   single source of the header names.
-- A test writes the agreed example and reads `IDTIMS_UPbRPy/examples/MA1_zircon_CA-ID-TIMS.csv` (legacy
-  layout) without loss.
+- A test writes the agreed example and reads
+  `tests/fixtures/synthetic/synthetic_MA1_zircon_CA-ID-TIMS.csv` (legacy layout) without loss.
 - A test asserts that the exported mean and % SE of a fixture match Tripoli's `Oracle-*` short report for
   the same file.
 - Any change goes through a message to the reduction session first.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write the SYNTHETIC IonVantage-like workbooks under tests/fixtures/synthetic/ (SPEC section 0, decision 4).
+"""Write SYNTHETIC workbooks and a legacy fractions CSV under tests/fixtures/synthetic/.
 
 They cover cases no real fixture has, until real Boise State files arrive:
 
@@ -12,6 +12,10 @@ They cover cases no real fixture has, until real Boise State files arrive:
 * ``synthetic_ET2535_Pb_202.xls``: a BSU-style Pb run with ``202/205 D`` and
   the other ``D`` functions, beam interpolation on (16 rows per block), and a
   repeated ``Daly/Faraday Gain`` column as in the real BSU workbook.
+* ``synthetic_MA1_zircon_CA-ID-TIMS.csv``: twelve invented fractions in the
+  legacy 24-column layout, including both Daly and Faraday collectors, a UTF-8
+  BOM and CRLF line endings. Ratios are derived from shared invented isotope
+  abundances; no measured values or real sample identifiers are used.
 
 Magnitudes follow BSU/Grenville spreadsheets (238/235 ≈ 0.40, 233/235 ≈ 1.005,
 206/204 ≈ 1500, 202/205 ≈ 1.007); noise is seeded and a few outlier cycles are
@@ -35,9 +39,11 @@ complain about the missing formatting records. Standard library only.
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
+import csv
+import io
 import random
 import struct
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = ROOT / "tests" / "fixtures" / "synthetic"
@@ -303,6 +309,33 @@ FILES = {
 }
 
 
+def legacy_fractions_csv() -> bytes:
+    """An independent legacy CSV fixture, reproducible with seed 20261120."""
+    noise = Noise(20261120)
+    ratios = ("206Pb/204Pb", "206Pb/207Pb", "206Pb/205Pb", "207Pb/205Pb",
+              "204Pb/205Pb", "208Pb/205Pb", "238U/235U", "233U/235U", "238U/233U")
+    header = ["Grain ID", "Sample Weight (mg)", "Spike Weight (g)", "Spike Type", "Spike", "Collector"]
+    for ratio in ratios:
+        header.extend((f"{ratio} Mean", f"{ratio} % Standard Error"))
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow(header)
+    for index in range(1, 13):
+        pb64 = (1800.0 + 7200.0 * index) * noise.rel(0.08)
+        pb67 = 12.8 * noise.rel(0.025)
+        pb65 = (0.4 + 0.3 * index * index) * noise.rel(0.06)
+        u85 = (0.08 + 0.021 * index * index) * noise.rel(0.04)
+        u35 = 1.002 * noise.rel(0.006)
+        means = (pb64, pb67, pb65, pb65 / pb67, pb65 / pb64,
+                 0.21 * pb65 * noise.rel(0.03), u85, u35, u85 / u35)
+        row = [f"SYN-{index}", "0.01", f"{0.014 + 0.0005 * index:.4f}",
+               "535", "SYNTHETIC-535", "F" if index in (3, 5, 6) else "D"]
+        for mean, se in zip(means, (0.18, 0.012, 0.007, 0.014, 0.18, 0.015, 0.005, 0.002, 0.006)):
+            row.extend((f"{mean:.10f}", f"{se * noise.rel(0.12):.10f}"))
+        writer.writerow(row)
+    return stream.getvalue().encode("utf-8-sig")
+
+
 def write_all(out: Path) -> list[Path]:
     out.mkdir(parents=True, exist_ok=True)
     written = []
@@ -310,6 +343,9 @@ def write_all(out: Path) -> list[Path]:
         path = out / name
         write_xls(path, build())
         written.append(path)
+    path = out / "synthetic_MA1_zircon_CA-ID-TIMS.csv"
+    path.write_bytes(legacy_fractions_csv())
+    written.append(path)
     return written
 
 

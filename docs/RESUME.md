@@ -13,8 +13,9 @@ env -u PYTHONPATH .venv/bin/python scripts/tripoli_parity.py
 ```
 
 Inputs are read-only and remain outside the repository. Override their locations
-with `FILAMENT_BOISE_EXAMPLES` and `FILAMENT_BSU_SHEETS` (the latter defaults to
-`Grenville_TIMS/Egypt`). Tests skip unavailable private inputs. No private cycle
+with `FILAMENT_BOISE_EXAMPLES` and `FILAMENT_BSU_SHEETS` (defaults: the matching folders in a
+Google Drive mirror under the home folder, else `~/Data/filament/legacy-projects` and
+`~/Data/filament/reference-sheets`). Tests skip unavailable private inputs. No private cycle
 values or acquisition fixtures have been added.
 
 - Safe pure-Python MS-NRBF reader: `read_trip(path) -> TripProject`, with inert

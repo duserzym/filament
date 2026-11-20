@@ -26,8 +26,17 @@ from rawtims.readers.functions import build_functions
 from rawtims.readers.trip import MAX_BYTES, TripProject, read_trip
 from rawtims.stats import describe
 
-DEFAULT_DRIVE = Path('~/My Drive/Research/Lab_visits/2026_Boise/Example_Isoprobe_data')
-DEFAULT_SHEETS = Path('~/My Drive/Grenville_TIMS/Egypt')
+def _drive_default(relative: str, fallback: str) -> Path:
+    """First Google Drive mirror under the home folder holding ``relative``."""
+    for drive in sorted(Path.home().glob('My Drive*')):
+        if (drive / relative).is_dir():
+            return drive / relative
+    return Path(fallback).expanduser()
+
+
+DEFAULT_DRIVE = _drive_default('Research/Lab_visits/2026_Boise/Example_Isoprobe_data',
+                               '~/Data/filament/legacy-projects')
+DEFAULT_SHEETS = _drive_default('Grenville_TIMS/Egypt', '~/Data/filament/reference-sheets')
 MEAN_RTOL = 2e-12
 CYCLE_RTOL = 2e-13
 # Named evidence exceptions are content pinned. A new project cannot inherit one

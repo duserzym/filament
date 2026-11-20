@@ -23,7 +23,7 @@ Reader rules: a BOM is tolerated; ``Contract`` must be ``idtims-fractions/1``
 on every row (another major version is rejected with a message); unknown
 columns are kept as text in :attr:`FractionRow.extra` and written back; a file
 without a ``Contract`` column is read as a legacy CSV (the
-IDTIMS_UPbRPy/Tripoli layout of ``examples/MA1_zircon_CA-ID-TIMS.csv``) with
+IDTIMS_UPbRPy/Tripoli layout of ``examples/synthetic_zircon_CA-ID-TIMS.csv``) with
 ``Grain ID`` taken as ``Fraction ID``.
 """
 

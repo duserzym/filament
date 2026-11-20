@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import numpy as np
 import pytest
+from reader_fixtures import (
+    FIXTURES,
+    NBS981_XLS,
+    SYNTHETIC,
+    SYNTHETIC_FRACTIONS,
+    TIMSDP_FILES,
+    TRIPOLI,
+)
 
 from rawtims.model import FORMAT_IONVANTAGE_XLS, FORMAT_ISOLINX_TIMSDP
 from rawtims.readers import UnsupportedFile, open_paths, open_run, sniff
-from reader_fixtures import FIXTURES, NBS981_XLS, SYNTHETIC, TIMSDP_FILES, TRIPOLI
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,9 +51,9 @@ def test_open_paths_on_the_fixtures_folder():
             assert reasons[name] == "Tripoli report, not a raw run file"
         else:
             assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[name]
-    # A fractions CSV (the vendored legacy MA1 file) is not a run file either.
-    assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons["MA1_zircon_CA-ID-TIMS.csv"]
-    assert set(reasons) == set(oracles) | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", "MA1_zircon_CA-ID-TIMS.csv"}
+    # A synthetic fractions CSV in the legacy layout is not a run file either.
+    assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[SYNTHETIC_FRACTIONS.name]
+    assert set(reasons) == set(oracles) | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", SYNTHETIC_FRACTIONS.name}
 
 
 def test_open_paths_ignores_hidden_and_temporary_files(tmp_path):

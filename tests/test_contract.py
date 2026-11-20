@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from reader_fixtures import B998, FIXTURES, TIMSDP_FILES, read
+from reader_fixtures import B998, SYNTHETIC_FRACTIONS, TIMSDP_FILES, read
 
 from rawtims.analysis import Analysis
 from rawtims.contract import (
@@ -36,7 +36,6 @@ from rawtims.fractions import Fraction, SessionInfo, fraction_row
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_DOC = ROOT / "docs" / "contract-idtims-fractions-v1.md"
-MA1 = FIXTURES / "idtims_upbrpy" / "MA1_zircon_CA-ID-TIMS.csv"
 EXPORTED_AT = datetime(2026, 11, 14, 15, 30, tzinfo=UTC)
 
 # The column defaults of IDTIMS_UPbRPy load_grains (src/IDTIMS_UPbRPy/UPbR.py, app branch a37a52e),
@@ -219,12 +218,16 @@ def test_writer_refuses_incomplete_blocks_and_2535_without_202(b998_row):
 
 # ------------------------------------------------------------------- legacy
 def test_legacy_ma1_reads_all_rows_without_loss():
-    with MA1.open(encoding="utf-8-sig", newline="") as handle:
+    data = SYNTHETIC_FRACTIONS.read_bytes()
+    assert data.startswith(b"\xef\xbb\xbf") and data.count(b"\r\n") == 13
+    with SYNTHETIC_FRACTIONS.open(encoding="utf-8-sig", newline="") as handle:
         table = list(csv.reader(handle))
     header, body = table[0], table[1:]
-    assert header[0] == "Grain ID" and "Contract" not in header
-    rows = read_csv(MA1)
+    assert len(header) == 24 and header[0] == "Grain ID" and "Contract" not in header
+    rows = read_csv(SYNTHETIC_FRACTIONS)
     assert len(rows) == len(body) == 12
+    assert [row.fraction_id for row in rows] == [f"SYN-{index}" for index in range(1, 13)]
+    assert {row.get("Collector") for row in rows} == {"D", "F"}
     for row, cells in zip(rows, body):
         assert row.legacy and not row.extra
         for name, text in zip(header, cells):
@@ -240,7 +243,7 @@ def test_legacy_ma1_reads_all_rows_without_loss():
 
 
 def test_legacy_ma1_round_trips_through_the_contract(tmp_path):
-    rows = read_csv(MA1)
+    rows = read_csv(SYNTHETIC_FRACTIONS)
     written = write_csv(rows, tmp_path / "ma1.fractions.csv")
     back = read_csv(written)
     assert [r.values for r in back] == [r.values | {"Contract": CONTRACT_ID} for r in rows]
@@ -254,7 +257,7 @@ def test_contract_file_converts_to_load_grains_defaults_by_renaming_fraction_id_
     assert load_grains_missing(converted, "535") == []
     assert load_grains_missing(converted, "2535") == ["202Pb/205Pb % Standard Error", "202Pb/205Pb Mean"]
     # And the legacy layout itself, as load_grains reads it today.
-    ma1_header = next(csv.reader(MA1.open(encoding="utf-8-sig", newline="")))
+    ma1_header = next(csv.reader(SYNTHETIC_FRACTIONS.open(encoding="utf-8-sig", newline="")))
     assert load_grains_missing(ma1_header, "535") == []
 
 
@@ -334,7 +337,7 @@ def test_missing_mean_statistic_reads_as_arithmetic(prefix):
 
 def test_clarification_10_contract_hash_and_sibling_copy():
     import hashlib
-    expected = "691f5f410862508ebe94220b74aa43a38b16ab617e6d515263d551cbbab50205"
+    expected = "f3dc8bb1968133e9f94b7edb1da543c6860058c47d83b06d1f1c7b456183d3a1"
     assert hashlib.sha256(CONTRACT_DOC.read_bytes()).hexdigest() == expected
     sibling = ROOT.parent / "IDTIMS_UPbRPy" / "docs" / CONTRACT_DOC.name
     if sibling.is_file():

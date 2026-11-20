@@ -6,7 +6,7 @@ Date: 2026-11-14. Research only, nothing built or run except reading files and o
 
 | Source | Where | Version / commit |
 |---|---|---|
-| Current Tripoli (Java 17 / JavaFX) | https://github.com/CIRDLES/Tripoli, cloned `--depth 1` to `/private/tmp/claude-501/-Users-yimingzhang-Github-LAICPMS-UPbR-database/12d01a62-fbba-4e10-ba95-b1d227580d96/scratchpad/tripoli` | commit `00dc941` (2026-10-09) |
+| Current Tripoli (Java 17 / JavaFX) | https://github.com/CIRDLES/Tripoli, cloned `--depth 1` to `~/scratchpad/tripoli` | commit `00dc941` (2026-10-09) |
 | Legacy C# Tripoli ("OGTripoli") | https://github.com/CIRDLES/OGTripoli (fork of `bowring/Tripoli`), cloned to `.../scratchpad/ogtripoli` | `.currentVersion` = 4.10.0.3 (2021) |
 | Tripoli user manual | https://github.com/CIRDLES/tripoli-manual, cloned to `.../scratchpad/tripoli-manual` | 2024-06 |
 | ET_Redux | local `~/Github/ET_Redux` | commit `01fc486` (2022-07-31) |
@@ -20,20 +20,20 @@ In the rest of this file, `TC/` means `tripoli/TripoliCore/src/main/java/org/cir
 
 | Project | License | Copyright holder (from file headers) | Evidence |
 |---|---|---|---|
-| Current Tripoli | Apache License 2.0 | "Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org." (159 files); a few older files say "2004-2024 James F. Bowring and www.Earth-Time.org" or "2016-2018 James F. Bowring and CIRDLES.org" | `tripoli/LICENSE`; `tripoli/CITATION.cff` (`license: Apache-2.0`); header in every `.java` file |
-| Legacy C# Tripoli (OGTripoli) | Apache 2.0, per file headers. **The repo has no LICENSE file** and GitHub reports license "none" for both `CIRDLES/OGTripoli` and `bowring/Tripoli` | "Copyright 2004-2021 James F. Bowring and www.Earth-Time.org" | header of `OG/vendors_data/IsotopXPhoeniX_ImportedTIMSDPDataFile.cs`, `OG/TripoliLicense.cs`, etc. |
-| ET_Redux | Apache License 2.0 | "Copyright 2006-2018 James F. Bowring, CIRDLES.org, and Earth-Time.org" | `ET_Redux/LICENSE`; README badge; header in `ER/UPb_Redux/fractions/UPbReduxFractions/UPbFraction.java` |
-| Tripoli manual | CC-BY-4.0 in the page front-matter (`license: CC-BY-4.0`); the repo itself has no LICENSE file | Noah McLean (author field) | `tripoli-manual/using_Tripoli/06-LoadingData.md` |
+| Current Tripoli | Apache License 2.0 | Upstream copyright holders; preserved in the vendored fixture NOTICE | `tripoli/LICENSE`; `tripoli/CITATION.cff` (`license: Apache-2.0`); header in every `.java` file |
+| Legacy C# Tripoli (OGTripoli) | Apache 2.0, per file headers. **The repo has no LICENSE file** and GitHub reports license "none" for both `CIRDLES/OGTripoli` and `bowring/Tripoli` | Upstream copyright holders (see file headers) | header of `OG/vendors_data/IsotopXPhoeniX_ImportedTIMSDPDataFile.cs`, `OG/TripoliLicense.cs`, etc. |
+| ET_Redux | Apache License 2.0 | Upstream copyright holders (see file headers) | `ET_Redux/LICENSE`; README badge; header in `ER/UPb_Redux/fractions/UPbReduxFractions/UPbFraction.java` |
+| Tripoli manual | CC-BY-4.0 in the page front-matter (`license: CC-BY-4.0`); the repo itself has no LICENSE file | Upstream manual author (see front matter) | `tripoli-manual/using_Tripoli/06-LoadingData.md` |
 
 None of these repos has a NOTICE file.
 
 Third-party content inside Tripoli to watch out for: `TC/utilities/mathUtilities/MatLabCholesky.java` embeds MATLAB source comments marked "Copyright 1993-2017 The MathWorks, Inc." Do not copy that file or its comments.
 
 **What Apache 2.0 allows (general reading of the license text, not legal advice):**
-- A clean re-implementation in Python that reuses ideas, algorithms, file-format knowledge and published formulas needs no license at all. Copyright covers expression, not methods or facts. A credit line ("informed by CIRDLES Tripoli and ET_Redux") is courtesy, and also good scholarly practice: cite Bowring, McLean & Bowring 2011, G-cubed 12, Q0AA19, doi:10.1029/2010GC003479.
+- A clean re-implementation in Python that reuses ideas, algorithms, file-format knowledge and published formulas needs no license at all. Copyright covers expression, not methods or facts. A credit line ("informed by CIRDLES Tripoli and ET_Redux") is courtesy, and also good scholarly practice: cite G-cubed 12 (2011), Q0AA19, doi:10.1029/2010GC003479.
 - Physical constants, default parameters (for example 18O/16O = 0.00205, Chauvenet probability 0.5, minimum 20 data points) and lists of ratio names are facts or uncopyrightable short phrases, so copying them is fine. Whole data tables (for example `NuclidesChartData.csv` or the periodic-table CSV) are also Apache-licensed, so you can include them with attribution.
 - Example data files in the repo (`.TIMSDP`, `.exp`, `.xls` and the `Oracle-*` expected reports) are Apache-2.0 as part of the repo. You can vendor them as test fixtures if you keep a LICENSE copy and an attribution note.
-- **If you ever translate code directly** (Java to Python line by line, which counts as a derivative work), Apache 2.0 section 4 requires you to: (a) include a copy of the Apache 2.0 license; (b) state prominently in each modified file that you changed it; (c) keep all copyright, patent, trademark and attribution notices from the source, for example "Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org"; (d) carry forward any NOTICE file (there is none). You may license your own additions differently, including MIT, but the translated parts stay under Apache terms with those notices. Apache 2.0 is compatible with GPLv3 but not GPLv2. Section 6 grants no trademark rights, so do not call the product "Tripoli".
+- **If you ever translate code directly** (Java to Python line by line, which counts as a derivative work), Apache 2.0 section 4 requires you to: (a) include a copy of the Apache 2.0 license; (b) state prominently in each modified file that you changed it; (c) keep all copyright, patent, trademark and attribution notices from the source; (d) carry forward any NOTICE file (there is none). You may license your own additions differently, including MIT, but the translated parts stay under Apache terms with those notices. Apache 2.0 is compatible with GPLv3 but not GPLv2. Section 6 grants no trademark rights, so do not call the product "Tripoli".
 - Legacy C# code: the per-file headers grant Apache 2.0, so the same rules apply. Because the repo lacks a LICENSE file, treat the headers as the grant and keep them if you translate.
 
 ---
