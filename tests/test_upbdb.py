@@ -15,6 +15,7 @@ from rawtims.upbdb import (
     Response,
     Source,
     TokenStore,
+    applied_chemistry_steps,
     cache_age,
     chemistry_summary,
     match_fractions,
@@ -134,6 +135,17 @@ def test_chemistry_overrides_skip_outcome_and_spike():
     assert c.spike_weight_g == 0.0000123456789
 
 
+def test_applied_steps_share_export_text_and_only_mark_changed_overrides():
+    batch = deepcopy(BATCH)
+    batch["fraction_step_records"][0]["parameters"]["duration_h"] = 60
+    steps = applied_chemistry_steps(batch, "f1")
+    assert [s.code for s in steps] == ["SP-TIMS-ANNEAL", "SP-TIMS-CA", "SP-TIMS-SPIKE"]
+    assert [s.overridden for s in steps] == [False, True, True]
+    assert steps[1].outcome == "dissolved_in_ca"
+    text = "; ".join(f"{s.code} {s.text}".rstrip() + (f" ({s.outcome})" if s.outcome else "") for s in steps)
+    assert text == chemistry_summary(batch, "f1").chemistry_steps
+
+
 def test_two_ca_and_anneal_steps_leave_numbers_empty():
     batch = deepcopy(BATCH)
     batch["steps"] += [{"id": "c2", "ordinal": 5, "method_code": "SP-TIMS-CA", "parameters": {"temperature_c": 180, "duration_h": 6}},
@@ -154,6 +166,10 @@ def test_spike_fallback_other_steps_and_no_chemistry():
     assert c.spike_solution == "ET535/master/v3" and c.spike_weight_g == 0.01
     assert "SP-TIMS-WASH HCl" in c.chemistry_steps
     assert chemistry_summary({}, "f1").chemistry_steps == ""
+    # An explicitly unknown addition weight must not inherit a batch default.
+    batch["spikes"] = [{"fraction_id": "f1", "step_id": "p", "spike_weight_g": None}]
+    assert chemistry_summary(batch, "f1").spike_weight_g is None
+    assert applied_chemistry_steps(batch, "f1")[-1].text == "ET535/master/v3"
 
 
 def test_chemistry_steps_show_spike_key_weight_and_parameter_units():

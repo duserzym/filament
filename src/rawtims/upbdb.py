@@ -208,11 +208,10 @@ def _step_parameters_text(params: dict, definitions: list[dict]) -> str:
     return ", ".join(parts)
 
 
-def chemistry_summary(batch: dict, fraction_uid: str) -> ChemistrySummary:
+def _effective_steps(batch: dict, fraction_uid: str):
     overrides = {r["step_id"]: r for r in batch.get("fraction_step_records", [])
                  if r.get("fraction_id") == fraction_uid}
     additions = {r["step_id"]: r for r in batch.get("spikes", []) if r.get("fraction_id") == fraction_uid}
-    anneals, cas, texts, spike_values = [], [], [], {}
     for step in sorted(batch.get("steps", []), key=lambda s: s.get("ordinal", 0)):
         record = overrides.get(step["id"], {})
         if record.get("skipped"):
@@ -223,8 +222,54 @@ def chemistry_summary(batch: dict, fraction_uid: str) -> ChemistrySummary:
             addition = additions.get(step["id"], {})
             if addition.get("spike_version_id"):
                 params["spike_version"] = addition["spike_version_id"]
-            if addition.get("spike_weight_g") is not None:
+            if "spike_weight_g" in addition:
                 params["spike_weight_g"] = addition["spike_weight_g"]
+        yield step, record, params
+
+
+def _spike_values(batch: dict, params: dict) -> dict:
+    version_id = params.get("spike_version") or ""
+    version = batch.get("spike_versions", {}).get(version_id, {})
+    key = "/".join(str(version[k]) for k in ("registry_id", "subfraction", "version")) if all(
+        version.get(k) for k in ("registry_id", "subfraction", "version")) else ""
+    return {"spike_version_uid": version_id, "spike_solution": key,
+            "spike_registry_id": version.get("registry_id", ""),
+            "spike_weight_g": _number(params.get("spike_weight_g"))}
+
+
+def _chemistry_step_text(batch: dict, step: dict, params: dict) -> str:
+    if step["method_code"] == "SP-TIMS-SPIKE":
+        spike = _spike_values(batch, params)
+        weight = spike["spike_weight_g"]
+        return ", ".join(part for part in (spike["spike_solution"], f"{weight:g} g" if weight is not None else "") if part)
+    return _step_parameters_text(params, step.get("parameter_definitions") or [])
+
+
+@dataclass(frozen=True)
+class AppliedChemistryStep:
+    code: str
+    method_name: str
+    text: str
+    outcome: str
+    overridden: bool
+
+
+def applied_chemistry_steps(batch: dict, fraction_uid: str) -> list[AppliedChemistryStep]:
+    """Display the same applied steps and parameter text used in the CSV."""
+    result = []
+    for step, record, params in _effective_steps(batch, fraction_uid):
+        code = step["method_code"]
+        outcome = (record.get("outcome") or params.get("outcome") or "") if code == "SP-TIMS-CA" else ""
+        overridden = any(value != step.get("parameters", {}).get(key) for key, value in params.items())
+        result.append(AppliedChemistryStep(code, step.get("method_name") or code,
+                                          _chemistry_step_text(batch, step, params), outcome, overridden))
+    return result
+
+
+def chemistry_summary(batch: dict, fraction_uid: str) -> ChemistrySummary:
+    anneals, cas, texts, spike_values = [], [], [], {}
+    for step, record, params in _effective_steps(batch, fraction_uid):
+        code = step["method_code"]
         items = []
         for key, unit in (("temperature_c", "°C"), ("duration_h", "h")):
             if params.get(key) not in (None, "", []):
@@ -243,21 +288,10 @@ def chemistry_summary(batch: dict, fraction_uid: str) -> ChemistrySummary:
         elif code == "SP-TIMS-CA":
             cas.append((text, params))
         elif code == "SP-TIMS-SPIKE":
-            addition = additions.get(step["id"], {})
-            version_id = addition.get("spike_version_id") or params.get("spike_version") or ""
-            version = batch.get("spike_versions", {}).get(version_id, {})
-            key = "/".join(str(version[k]) for k in ("registry_id", "subfraction", "version")) if all(
-                version.get(k) for k in ("registry_id", "subfraction", "version")) else ""
-            spike_values = {"spike_version_uid": version_id, "spike_solution": key,
-                            "spike_registry_id": version.get("registry_id", ""),
-                            "spike_weight_g": _number(addition.get("spike_weight_g", params.get("spike_weight_g")))}
-        if code == "SP-TIMS-SPIKE":
-            weight = spike_values["spike_weight_g"]
-            step_text = ", ".join(part for part in (key, f"{weight:g} g" if weight is not None else "") if part)
-        else:
-            step_text = _step_parameters_text(params, step.get("parameter_definitions") or [])
-            if code == "SP-TIMS-CA" and outcome:
-                step_text += f" ({outcome})"
+            spike_values = _spike_values(batch, params)
+        step_text = _chemistry_step_text(batch, step, params)
+        if code == "SP-TIMS-CA" and outcome:
+            step_text += f" ({outcome})"
         texts.append(f"{code} {step_text}".rstrip())
     def one(steps, key):
         return _number(steps[0][1].get(key)) if len(steps) == 1 else None

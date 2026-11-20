@@ -1,16 +1,118 @@
 """Database sign-in and explicit fraction confirmation, with cancellable workers."""
 from __future__ import annotations
 
+from datetime import datetime
+from html import escape
 from threading import Event
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims.fractions import Fraction, apply_link
-from rawtims.upbdb import Client, DatabaseError, MatchResult, parse_fraction_id
+from rawtims.upbdb import (
+    Candidate,
+    Client,
+    DatabaseError,
+    MatchResult,
+    applied_chemistry_steps,
+    cache_age,
+    parse_fraction_id,
+)
+from rawtims_gui.studio.theme import active_theme
 from rawtims_gui.studio.workers import FunctionWorker
 
 # Keep worker/signal wrappers alive if a dialog is closed during a request.
 _WORKERS = set()
+
+_METHOD_NAMES = {
+    "SP-TIMS-ANNEAL": "Anneal", "SP-TIMS-CA": "Chemical abrasion", "SP-TIMS-LEACH": "Leach",
+    "SP-TIMS-WASH": "Wash", "SP-TIMS-SPIKE": "Spike", "SP-TIMS-DISS": "Dissolution",
+    "SP-TIMS-CHLOR": "Chloride conversion", "SP-TIMS-COL": "Column chemistry", "SP-TIMS-LOAD": "Load",
+}
+
+
+class _CandidateDetails(QtWidgets.QTextBrowser):
+    """Theme-aware, selectable details with a local clipboard action."""
+
+    def __init__(self):
+        super().__init__()
+        self.setReadOnly(True)
+        self.setOpenLinks(False)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setWordWrapMode(QtGui.QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        self.anchorClicked.connect(self._copy_uid)
+        self.fraction_uid = ""
+
+    def _copy_uid(self, url):
+        if url.toString() == "copy-uid" and self.fraction_uid:
+            QtWidgets.QApplication.clipboard().setText(self.fraction_uid)
+
+    def show_candidate(self, candidate: Candidate, *, offline: bool):
+        theme = active_theme()
+        f = candidate.fraction
+        self.fraction_uid = f["id"]
+        c = candidate.chemistry
+        # Match the studio SectionTitle, SecondaryText and label typography.
+        self.document().setDefaultStyleSheet(f"""
+            body {{ color: {theme.text}; font-size: 12px; }}
+            p {{ margin-top: 4px; margin-bottom: 4px; }}
+            .heading {{ font-size: 16px; font-weight: 700; }}
+            .section {{ color: {theme.muted}; font-size: 10px; font-weight: 600;
+                        margin-top: 12px; margin-bottom: 5px; }}
+            .muted {{ color: {theme.muted}; font-size: 11px; }}
+            .outcome {{ color: {theme.danger}; font-weight: 600; }}
+            a {{ color: {theme.accent}; text-decoration: none; }}
+        """)
+        header = escape(f"{candidate.sample['name']} {f['name']}")
+        metadata = " · ".join(str(v) for v in (f.get("capsule_label"), f.get("capsule_set_name"),
+                                                   candidate.batch.get("started_on"), f.get("status")) if v)
+        parts = [f'<p class="heading">{header}</p>', f'<p class="muted">{escape(metadata)}</p>',
+                 '<p class="section">Sources</p>']
+        sources = [s for s in f.get("sources", []) if not s.get("retired_at")]
+        for source in sources:
+            labels = " · ".join(str(v) for v in (source.get("mount_name") or source.get("mount_label"),
+                                                       source.get("spot_label"), source.get("grain_label")) if v)
+            note = source.get("fragment_note") or "Fragment"
+            fragment = f' <i class="muted">— {escape(note)}</i>' if source.get("is_fragment") else ""
+            parts.append(f'<p>{escape(labels or "Source labels unavailable")}{fragment}</p>')
+        if not sources:
+            parts.append('<p class="muted">No LA source (sample-only fraction)</p>')
+        parts.append('<p class="section">Chemistry</p>')
+        steps = applied_chemistry_steps(candidate.batch, f["id"])
+        for number, step in enumerate(steps, 1):
+            name = _METHOD_NAMES.get(step.code, step.method_name)
+            override = ' <i class="muted">(this capsule)</i>' if step.overridden else ""
+            parameters = f' — {escape(step.text)}' if step.text else ""
+            outcome = f' <span class="outcome">⚠ {escape(step.outcome.replace("_", " "))}</span>' if step.outcome else ""
+            parts.append(f'<p>{number}. <b>{escape(name)}</b>{override}{parameters}{outcome}</p>')
+        if not steps:
+            parts.append('<p class="muted">No chemistry steps recorded</p>')
+        parts.append('<p class="section">Spike</p>')
+        if c.spike_solution or c.spike_weight_g is not None:
+            spike = [escape(c.spike_solution or "Solution not recorded")]
+            if c.spike_weight_g is not None:
+                spike.append(f"{c.spike_weight_g:g} g")
+            parts.append(f'<p>{" · ".join(spike)}</p>')
+        else:
+            parts.append('<p class="muted">No spike recorded yet</p>')
+        try:
+            stamp = datetime.fromisoformat(candidate.read_at).astimezone().strftime("%Y-%m-%d %H:%M")
+            stamp += f" ({cache_age(candidate.read_at)})"
+        except ValueError:
+            stamp = candidate.read_at
+        parts += ['<p class="section">Database</p>',
+                  f'<p class="muted">Read {escape(stamp)}{" · from offline cache" if offline else ""}</p>',
+                  (f'<p class="muted">Fraction UID: <span>{escape(self.fraction_uid[:8])}</span>'
+                   ' &nbsp; <a href="copy-uid">Copy UID</a></p>')]
+        if candidate.chemistry_message:
+            parts.append(f'<p class="muted">{escape(candidate.chemistry_message)}</p>')
+        self.setHtml("<body>" + "".join(parts) + "</body>")
+        # QTextCharFormat tooltips work reliably in Qt rich text, including
+        # when the UID is shortened or the surrounding paragraph wraps.
+        uid_cursor = self.document().find(self.fraction_uid[:8], self.document().find("Fraction UID:").selectionEnd())
+        uid_format = QtGui.QTextCharFormat()
+        uid_format.setToolTip(self.fraction_uid)
+        uid_cursor.mergeCharFormat(uid_format)
+        self.verticalScrollBar().setValue(0)
 
 
 class _AsyncDialog(QtWidgets.QDialog):
@@ -129,7 +231,7 @@ class LinkDialog(_AsyncDialog):
     def __init__(self, client: Client, fraction_id: str, parent=None, *, fraction: Fraction | None = None):
         super().__init__(parent)
         self.setWindowTitle("Link fraction to database")
-        self.resize(880, 600)
+        self.resize(900, 640)
         self.setMaximumSize(900, 640)
         self.client = client
         self.fraction = fraction
@@ -156,10 +258,10 @@ class LinkDialog(_AsyncDialog):
         self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         self.table.setColumnWidth(0, 240)
         self.table.setColumnWidth(5, 230)
+        self.table.setMinimumHeight(self.table.horizontalHeader().height() + 4 * self.table.verticalHeader().defaultSectionSize() + 30)
         layout.addWidget(self.table, 2)
-        self.summary = QtWidgets.QPlainTextEdit()
-        self.summary.setReadOnly(True)
-        layout.addWidget(self.summary, 1)
+        self.summary = _CandidateDetails()
+        layout.addWidget(self.summary, 3)
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
         self.link_button = buttons.addButton("Link", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole)
         self.link_button.setEnabled(False)
@@ -228,13 +330,7 @@ class LinkDialog(_AsyncDialog):
             self.summary.clear()
             return
         candidate = self.match_result.candidates[selected[0].row()]
-        c = candidate.chemistry
-        self.summary.setPlainText("\n".join(filter(None, [
-            candidate.chemistry_message, "Annealing: " + (c.annealing or "—"),
-            "Chemical abrasion: " + (c.chemical_abrasion or "—"), "Steps: " + (c.chemistry_steps or "—"),
-            "Spike: " + (c.spike_solution or "—"),
-            "Spike weight (g): " + (repr(c.spike_weight_g) if c.spike_weight_g is not None else "—"),
-            "Fraction UID: " + candidate.fraction["id"], "Database read at: " + candidate.read_at])))
+        self.summary.show_candidate(candidate, offline=self.match_result.offline)
 
     def confirm(self):
         selected = self.table.selectionModel().selectedRows()

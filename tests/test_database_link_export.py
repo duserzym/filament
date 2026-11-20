@@ -9,6 +9,7 @@ from reader_fixtures import SYNTHETIC_PB, SYNTHETIC_U, read
 from test_upbdb import candidate
 
 from rawtims.analysis import Analysis
+from rawtims.branding import RAW_APP_LABEL
 from rawtims.contract import (
     ContractError,
     FractionRow,
@@ -111,7 +112,12 @@ def test_user_values_never_overwritten_and_differences_reported():
 def test_unlinked_csv_byte_identical_to_pre_database_writer():
     # SHA256 generated with the original fractions.py and contract.py writer at
     # the task's starting revision, using this fixed fixture and export time.
-    text = csv_text([fraction_row(fraction(), STAMP)])
+    # Normalize only the app version to that baseline; every CSV byte remains
+    # covered while ordinary release bumps do not invalidate this regression.
+    row = fraction_row(fraction(), STAMP)
+    assert row.get("Raw App") == RAW_APP_LABEL
+    row.values["Raw App"] = "filament 0.1.0"
+    text = csv_text([row])
     assert hashlib.sha256(text.encode()).hexdigest() == "23909997d37f755dc9e003425f03a513be2d63351d983e47ebbf78ec16be3207"
     assert "Fraction UID" not in text and "Database Server" not in text
 
