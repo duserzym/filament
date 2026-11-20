@@ -40,6 +40,10 @@ def test_spec_stamps_checkout_version_despite_stale_metadata(tmp_path, monkeypat
     for name in ("PyInstaller", "PyInstaller.utils"):
         monkeypatch.setitem(sys.modules, name, ModuleType(name))
     monkeypatch.setitem(sys.modules, hooks.__name__, hooks)
+    # Recipe evaluation is independent of installed build dependencies.
+    certifi = ModuleType("certifi")
+    certifi.where = lambda: str(tmp_path / "cacert.pem")
+    monkeypatch.setitem(sys.modules, "certifi", certifi)
     captured = SimpleNamespace(pure=[], scripts=[], binaries=[], datas=[
         # Analysis can automatically copy metadata for version() calls.
         ("rawtims.egg-info/PKG-INFO", "stale-egg-info", "DATA"),
@@ -48,6 +52,9 @@ def test_spec_stamps_checkout_version_despite_stale_metadata(tmp_path, monkeypat
     ])
 
     def analysis(*args, **kwargs):
+        assert (certifi.where(), "certifi") in kwargs["datas"]
+        assert {"truststore", "certifi"} <= set(kwargs["hiddenimports"])
+        assert (str(ROOT / "release-notes/*.md"), "rawtims_gui/release-notes") in kwargs["datas"]
         assert any("*.png" in source and target == "rawtims_gui/assets"
                    for source, target in kwargs["datas"])
         return captured

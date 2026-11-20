@@ -22,6 +22,8 @@ gui = [
   "pyqtgraph>=0.14.0",
   "openpyxl>=3.1.5",
   "keyring>=25.0",
+  "truststore",
+  "certifi",
 ]
 build = [
   "PyInstaller>=6.17.0,<7",
@@ -41,7 +43,7 @@ where = ["src"]
 include = ["rawtims*", "rawtims_gui*"]
 
 [tool.setuptools.package-data]
-rawtims_gui = ["studio/assets/icons/*.svg", "assets/*.png"]
+rawtims_gui = ["studio/assets/icons/*.svg", "assets/*.png", "release-notes/*.md", "labupdate/*.md", "labupdate/VENDORED"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

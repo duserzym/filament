@@ -13,7 +13,7 @@ from rawtims import _version, branding
 
 ROOT = Path(__file__).resolve().parents[1]
 SEARCHED = ("src", "scripts", "packaging")
-ALLOWED = {Path("src/rawtims/branding.py")}
+ALLOWED = {Path("src/rawtims/branding.py"), Path("src/rawtims_gui/labupdate/VENDORED")}
 LITERAL = re.compile(r"filament", re.IGNORECASE)
 
 

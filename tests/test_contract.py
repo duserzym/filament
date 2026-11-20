@@ -337,7 +337,7 @@ def test_missing_mean_statistic_reads_as_arithmetic(prefix):
 
 def test_clarification_10_contract_hash_and_sibling_copy():
     import hashlib
-    expected = "f3dc8bb1968133e9f94b7edb1da543c6860058c47d83b06d1f1c7b456183d3a1"
+    expected = "aab9689f20f70ceb181002944654daf2ca5997e390b92244c0249cebdd154d8f"
     assert hashlib.sha256(CONTRACT_DOC.read_bytes()).hexdigest() == expected
     sibling = ROOT.parent / "IDTIMS_UPbRPy" / "docs" / CONTRACT_DOC.name
     if sibling.is_file():

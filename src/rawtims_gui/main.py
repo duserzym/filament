@@ -46,6 +46,17 @@ if __package__ in {None, ""}:
     # Run as a script (PyInstaller's entry point): make `src/` importable.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Frozen windowed builds must exercise the core before importing Qt or building
+# windows/settings. The normal launch never constructs a config on this path.
+if __name__ == "__main__" and "--update-self-test" in sys.argv:
+    from rawtims_gui.labupdate.selftest import add_self_test_argument, handle_self_test
+    from rawtims_gui.update_config import update_config
+
+    update_parser = argparse.ArgumentParser(description="Signed update self-test")
+    add_self_test_argument(update_parser)
+    update_parser.add_argument("--theme", choices=("light", "dark", "system"))
+    raise SystemExit(handle_self_test(update_parser.parse_args(), update_config()))
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims import branding
@@ -244,6 +255,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout_name = layout
         install_wheel_guard(QtWidgets.QApplication.instance())
         self.settings = app_settings()
+        self._build_update_controls()
         self.workspace = Workspace(load_remembered(self.settings))
         self.current: tuple[Fraction, str] | None = None
         self.preview: tuple[Analysis, RuleProposal] | None = None
@@ -310,6 +322,22 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
 
     # ----------------------------------------------------------- actions
+    def _build_update_controls(self) -> None:
+        from rawtims_gui.labupdate.qt import CheckUpdatesButton, Updater
+        from rawtims_gui.update_config import update_config
+        from rawtims_gui.update_widgets import VersionChip
+
+        self.updater = Updater(update_config(), branding.VERSION, self, settings=self.settings)
+        self.update_controls = QtWidgets.QWidget()
+        row = QtWidgets.QHBoxLayout(self.update_controls)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(6)
+        self.version_chip = VersionChip(self.updater, self.update_controls)
+        self.check_updates_button = CheckUpdatesButton(self.updater, self.version_chip.open_dialog, self.update_controls)
+        row.addWidget(self.check_updates_button)
+        row.addWidget(self.version_chip)
+        self.update_controls.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+
     def _action(self, text: str, slot, shortcut=None, *, checkable: bool = False, tip: str | None = None) -> QtGui.QAction:
         action = QtGui.QAction(text, self)
         if shortcut is not None:
@@ -396,6 +424,7 @@ class MainWindow(QtWidgets.QMainWindow):
         view.addAction(self.reset_layout_action)
         self.view_menu = view
         help_menu = bar.addMenu("Help")
+        help_menu.addAction(self._action("Updates…", lambda: self.version_chip.open_dialog(manual=True)))
         from rawtims_gui.user_guide import show_user_guide
         help_menu.addAction(self._action("User guide", lambda: show_user_guide(self)))
         self.walkthrough_action = self._action("Walkthrough: change the dead time", lambda: self.walkthrough.start())
@@ -415,7 +444,13 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.setSpacing(6)
         brand = QtWidgets.QLabel(branding.DISPLAY_NAME)
         brand.setObjectName("RailBrand")
-        layout.addWidget(brand)
+        if self.layout_name == "classic":
+            brand_row = QtWidgets.QHBoxLayout()
+            brand_row.addWidget(brand, 1)
+            brand_row.addWidget(self.update_controls)
+            layout.addLayout(brand_row)
+        else:
+            layout.addWidget(brand)
         layout.addWidget(_section_title("Workflow"))
         self.workflow_step_list = QtWidgets.QListWidget()
         self.workflow_step_list.setItemDelegate(_WorkflowRailDelegate(self.workflow_step_list))
@@ -2184,9 +2219,14 @@ class MainWindow(QtWidgets.QMainWindow):
             event.ignore()
             return
         self._autosave_timer.stop()
+        self.updater.shutdown()
         recovery.discard()
         self.persist_geometry()
         super().closeEvent(event)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        QtCore.QTimer.singleShot(0, self.updater, self.updater.start_scheduler)
 
 
 def export_window(window: QtWidgets.QMainWindow, output_path: str) -> bool:
@@ -2200,6 +2240,8 @@ def export_window(window: QtWidgets.QMainWindow, output_path: str) -> bool:
 
 def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog=branding.EXECUTABLE_NAME, description=f"{branding.DISPLAY_NAME}: raw ID-TIMS data review")
+    from rawtims_gui.labupdate.selftest import add_self_test_argument
+    add_self_test_argument(parser)
     parser.add_argument("--layout", choices=("classic", "wall"), default="wall",
                         help="Review layout (default: wall; classic is a one-release fallback)")
     parser.add_argument("--walkthrough-fixture", metavar="PATH", help="Use an invented run for the offline walkthrough smoke check")
@@ -2229,6 +2271,10 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_arguments(sys.argv[1:] if argv is None else argv)
+    if args.update_self_test is not None:
+        from rawtims_gui.labupdate.selftest import handle_self_test
+        from rawtims_gui.update_config import update_config
+        return handle_self_test(args, update_config())
     if args.version_output:
         Path(args.version_output).expanduser().write_text(branding.VERSION + "\n", encoding="utf-8")
         return 0

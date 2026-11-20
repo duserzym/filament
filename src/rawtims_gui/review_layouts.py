@@ -609,7 +609,12 @@ class ReviewShell(QtWidgets.QWidget):
         self.more_menu.addAction(window.reset_analysis_action)
         self.more_menu.addAction('Maximise / restore plots', self.toggle_outer)
         self.toolbar.always_overflow = True
-        box.addWidget(self.toolbar)
+        toolbar_row = QtWidgets.QHBoxLayout()
+        toolbar_row.setContentsMargins(0, 0, 0, 0)
+        toolbar_row.setSpacing(6)
+        toolbar_row.addWidget(self.toolbar, 1)
+        toolbar_row.addWidget(window.update_controls)
+        box.addLayout(toolbar_row)
         # Old controls remain as classic fixtures; all wall commands above share
         # their actions, so shortcuts, enablement and history have one source.
         window.wall_header.hide()

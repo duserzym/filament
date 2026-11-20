@@ -13,6 +13,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+import certifi
+
 PACKAGING_DIRECTORY = Path(SPECPATH).resolve()
 PROJECT_ROOT = PACKAGING_DIRECTORY.parent
 SOURCE_ROOT = PROJECT_ROOT / "src"
@@ -27,6 +29,8 @@ BUNDLE_ID = branding.BUNDLE_ID
 URL_SCHEME = branding.URL_SCHEME
 
 data_files = [
+    (certifi.where(), "certifi"),
+    (str(PROJECT_ROOT / "release-notes" / "*.md"), "rawtims_gui/release-notes"),
     (str(SOURCE_ROOT / "rawtims_gui" / "studio" / "assets" / "icons"), "rawtims_gui/studio/assets/icons"),
     (str(PROJECT_ROOT / "docs" / "user-guide.md"), "guide"),
     (str(PROJECT_ROOT / "docs" / "recalculation-demo.md"), "guide"),
@@ -48,7 +52,7 @@ analysis = Analysis(
     pathex=[str(SOURCE_ROOT)],
     binaries=[],
     datas=data_files,
-    hiddenimports=["PySide6.QtSvg", "openpyxl", "et_xmlfile", "keyring", "keyring.backends.macOS", "keyring.backends.Windows", "keyring.backends.SecretService"],
+    hiddenimports=["PySide6.QtSvg", "openpyxl", "et_xmlfile", "keyring", "keyring.backends.macOS", "keyring.backends.Windows", "keyring.backends.SecretService", "truststore", "certifi"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

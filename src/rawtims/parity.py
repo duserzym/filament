@@ -35,8 +35,8 @@ def _drive_default(relative: str, fallback: str) -> Path:
 
 
 DEFAULT_DRIVE = _drive_default('Research/Lab_visits/2026_Boise/Example_Isoprobe_data',
-                               '~/Data/filament/legacy-projects')
-DEFAULT_SHEETS = _drive_default('Grenville_TIMS/Egypt', '~/Data/filament/reference-sheets')
+                               f'~/Data/{APP_NAME}/legacy-projects')
+DEFAULT_SHEETS = _drive_default('Grenville_TIMS/Egypt', f'~/Data/{APP_NAME}/reference-sheets')
 MEAN_RTOL = 2e-12
 CYCLE_RTOL = 2e-13
 # Named evidence exceptions are content pinned. A new project cannot inherit one
