@@ -86,6 +86,16 @@ def test_public_payload_has_no_source_metadata():
         walk(obj)
 
 
+def test_all_blank_partition_keeps_initial_204_exactly_zero():
+    # When the age engine assigns all common Pb to the blank (no initial 206/207/208Pb),
+    # initial 204Pb is exactly zero, never a floating-point residue such as 3e-33
+    # (IDTIMS_UPbRPy 0508143 fixed the engine; the page shows this value).
+    f = json.loads((SITE/'data/values.json').read_text())['fractionation']
+    if f['Pb206c'] == f['Pb207c'] == f['Pb208c'] == 0.0:
+        assert f['Pb204c'] == 0.0
+    assert f['Pb204c'] >= 0.0
+
+
 def test_payload_shapes_and_grid():
     d = read_payload()
     assert len(d['block']) == 228
