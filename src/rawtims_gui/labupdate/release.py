@@ -29,6 +29,9 @@ def build_feed(*, repo, version, notes_file, archives, pubkey_file, out, sign_wi
         path = Path(path)
         if not path.is_file():
             raise ValueError(f"Missing archive: {path}")
+        if urllib.parse.quote(path.name) != path.name:
+            # GitHub renames uploads with spaces and similar characters, so the URL would 404.
+            raise ValueError(f"Asset name must not need URL encoding: {path.name!r}")
         signature_file = Path(str(path) + ".sig")
         if not signature_file.exists() and sign_with:
             subprocess.run(["cargo", "tauri", "signer", "sign", "-f", str(sign_with), "-p", "", str(path)],
@@ -36,7 +39,7 @@ def build_feed(*, repo, version, notes_file, archives, pubkey_file, out, sign_wi
         signature = signature_file.read_text(encoding="utf-8").strip()
         minisign.verify_file(path, signature, pubkey)
         platforms[target] = {"signature": signature,
-            "url": f"https://github.com/{repo}/releases/download/v{version}/{urllib.parse.quote(path.name)}"}
+            "url": f"https://github.com/{repo}/releases/download/v{version}/{path.name}"}
     if not platforms:
         raise ValueError("No archives provided")
     feed = {"version": version, "notes": notes, "platforms": platforms}

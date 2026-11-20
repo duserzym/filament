@@ -75,7 +75,7 @@ def test_application_config_and_bundled_notes():
 def test_vendored_sources_parse_and_match_sha256_manifest():
     folder = ROOT / "src/rawtims_gui/labupdate"
     provenance = (folder / "VENDORED").read_text().splitlines()
-    assert provenance[0] == ("Vendored from duserzym/UPbRPy GUI/labupdate at e3970b6 on 2026-11-20. "
+    assert provenance[0] == ("Vendored from duserzym/UPbRPy GUI/labupdate at 13b1ff2 on 2026-11-20. "
                              "Do not edit; change the canonical copy and recopy.")
     manifest = dict(line.split("  ", 1)[::-1] for line in provenance[3:])
     actual = {p.name for p in folder.iterdir() if p.name != "__pycache__"}
