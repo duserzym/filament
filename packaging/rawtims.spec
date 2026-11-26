@@ -29,6 +29,7 @@ BUNDLE_ID = branding.BUNDLE_ID
 URL_SCHEME = branding.URL_SCHEME
 
 data_files = [
+    (str(SOURCE_ROOT / "rawtims" / "resources"), "rawtims/resources"),
     (certifi.where(), "certifi"),
     (str(PROJECT_ROOT / "release-notes" / "*.md"), "rawtims_gui/release-notes"),
     (str(SOURCE_ROOT / "rawtims_gui" / "studio" / "assets" / "icons"), "rawtims_gui/studio/assets/icons"),
@@ -36,6 +37,8 @@ data_files = [
     (str(PROJECT_ROOT / "docs" / "recalculation-demo.md"), "guide"),
     (str(PROJECT_ROOT / "docs" / "tripoli-gap.md"), "guide"),
     (str(PROJECT_ROOT / "docs" / "p7-fractionation-preview.md"), "guide"),
+    (str(PROJECT_ROOT / "docs" / "p8-mcmc1-forward-model.md"), "guide"),
+    (str(PROJECT_ROOT / "docs" / "p9-resources-demos.md"), "guide"),
     (str(SOURCE_ROOT / "rawtims_gui" / "assets" / "*.png"), "rawtims_gui/assets"),
     (str(PROJECT_ROOT / "docs" / "guide"), "guide/guide"),
     (str(PROJECT_ROOT / "packaging" / branding.ICON_FILENAME), "rawtims_gui/assets"),

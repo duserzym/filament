@@ -3,3 +3,13 @@ TripoliCore/src/main/resources/org/cirdles/tripoli/species/nuclides/NuclidesChar
 Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org. Apache-2.0; see LICENSE-APACHE-2.0.
 Pinned reference only; upstream resource does not establish independent abundance provenance.
 SHA-256 2e21bf8c1d3f49be481d651373c6390f8d72f3353bacae99d91d66aabbfdad45
+
+P9 periodic table and educational resources (2026-11-26)
+CIRDLES/Tripoli 00dc94109f572c22bb3f357c0f7b1bb5347f62f5, Apache-2.0.
+Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org.
+PeriodicTableOfElements.csv copied unmodified from TripoliCore/src/main/resources/org/cirdles/tripoli/elements/PeriodicTableOfElements.csv
+SHA-256 b532be1e6126b91de348540ea68c6114c5922fa1f163860a39cb2a9d37c411af
+Educational source paths and SHA-256 digests: educational-manifest.json.
+All four educational inputs are unmodified upstream public resources; the two
+two-isotope files are synthetic. Peak scans are public reference inputs only.
+Generating truth and independently certified abundance provenance are unavailable.

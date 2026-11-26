@@ -1,0 +1,36 @@
+{
+  "schema": "rawtims-educational/1",
+  "source_commit": "00dc94109f572c22bb3f357c0f7b1bb5347f62f5",
+  "source_repo": "https://github.com/CIRDLES/Tripoli",
+  "license": "Apache-2.0",
+  "demos": {
+    "two-isotope-1": {
+      "file": "educational-two-isotope-01.txt",
+      "title": "SYNTHETIC two-isotope dataset 1",
+      "type": "two-isotope",
+      "source_path": "TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/dataSources/synthetic/twoIsotopeSyntheticData/SyntheticDataset_01.txt",
+      "sha256": "21f8cea638fe5e4c42a0eabbb784c8134ed68e9264ed51c4460da0c73c15e0a3"
+    },
+    "two-isotope-2": {
+      "file": "educational-two-isotope-02.txt",
+      "title": "SYNTHETIC two-isotope dataset 2",
+      "type": "two-isotope",
+      "source_path": "TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/dataSources/synthetic/twoIsotopeSyntheticData/SyntheticDataset_02.txt",
+      "sha256": "098edce7134a7e340c9bd69632773c76473747698686d3a87fdd97db7f3de33a"
+    },
+    "peak-208": {
+      "file": "educational-peak-208.txt",
+      "title": "Public 208Pb peak scan",
+      "type": "peak-scan",
+      "source_path": "TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/dataSources/peakShapes/6NHCl dpblank-210204A-169-PKC-208Pb-PM-S5B2C1.TXT",
+      "sha256": "0e2ea319e4d8c1a3875ef1e906b8a3d31a9ea6e407b357adeabc1f7686f4efaa"
+    },
+    "peak-205": {
+      "file": "educational-peak-205.txt",
+      "title": "Public 205Pb peak scan",
+      "type": "peak-scan",
+      "source_path": "TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/dataSources/peakShapes/DVCC18-9 z9 Pb-570-PKC-205Pb-PM-S2B7C1.TXT",
+      "sha256": "0346e487eaccfd4826d016eae4ab4b649b3de0cc47da30fdc86c442c8f53c2af"
+    }
+  }
+}

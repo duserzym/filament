@@ -1,8 +1,32 @@
 # Tripoli parity roadmap
 
-Snapshot: **2026-11-25**. Owner: Yiming Zhang (they/them). Objective: inherit the functionality families of both supplied Tripoli implementations and add capabilities useful to the lab. [The inventory](tripoli-inventory.md) is the row-level source/status evidence; [the gap summary](tripoli-gap.md) remains the short entry point. This is a docs-only plan. No engine or GUI change, full test run, or new numerical validation was performed for this task.
+Plan snapshot: **2026-11-25**; implementation status refreshed **2026-11-26**. Owner: Yiming Zhang (they/them). Objective: inherit the functionality families of both supplied Tripoli implementations and add capabilities useful to the lab. [The inventory](tripoli-inventory.md) is the row-level source/status evidence; [the gap summary](tripoli-gap.md) remains the short entry point. Original planning/audit statements below describe the documentation baseline; implementation progress is recorded in the status section.
 
-There are **95 inventory rows: 19 done, 24 partial, 52 not done**. All 76 incomplete rows are in scope below, including F13, F15, F18–F31, histogram F32, annotations F33 and the newly numbered long tail. Umbrella and child rows overlap; phase coverage is not a sum of independent algorithms. “Done” retains the supported-input limits in the inventory and does not close a partially implemented child row.
+There are **95 inventory rows: 41 done, 43 partial, 11 not done**, recomputed after P9. All 54 incomplete rows remain assigned to the phases below. Umbrella and child rows overlap; phase coverage is not a sum of independent algorithms. “Done” retains the supported-input limits in the inventory and does not close a partially implemented child row.
+
+## Status after the 2026-11-26 overnight build
+
+This records implementation increments, not full completion of every phase or a
+release. D1/D2/D3 retain the recorded decisions below; D4–D20 remain open.
+The authorized bounded subsets do not decide the broader choices. Numerical
+defaults and measured `/1` exports remain unchanged; P9 gate evidence and exact
+test counts are in the scratch `gate/P9/report.md`.
+
+| Phase / commit | Built | Remaining / decision or specimen gate |
+|---|---|---|
+| P1 `13c52b8` | Review diagnostics, histograms/x–y/time views, recipes, notes, printing, C3–C8 display controls and verified UO2 oxygen monitor | General raw model/residual views depend on P6/P8; wider physical units remain acquisition-provenance gated. C1/C2 unscheduled; C8 reduction/export switch D7. Plain notes satisfy recorded D2 scope |
+| P2 `172347c` | Separate XML/TSV/OG exchange, processed report builder/templates, report preference cascade, recent inputs, inert legacy inspection/scaffolding | Binary migration/write-back requires .trip/.triphis/.tripoli specimens and reference reopens (D4); ET_Redux folder policy/runtime oracle D5; broader defaults/template choices D6. Full-model Template 1 GUI awaits P6/P8 results |
+| P3 `682c6ec` | Matching-identity concatenation, constrained expressions/library/ratio builder, two labeled block comparisons and covariance validation helpers | Block estimator/contract export D7; broader expression language D8; heterogeneous merge D9. Named covariance editor/propagation remains unbuilt |
+| P4 `d763c03` | Local immutable gains/standards history, history exclusions/undo and manual completed cycle-folder Refresh with stability checks | Watch/provisional/final merge D10; real gains XLS, standards/.triphis and captured C#/Java live lifecycle specimens required |
+| P5 `82a2b8c` | Template CSV and processed Triton, Nu TIMS, Neptune readers; all 34 public input/cycle/full-report oracle sets; independent non-Pb/U review | Sector54, MAT261/262, legacy Nu Plasma and Element2 need specimens/expected outputs and D12 priority; no new generic raw decoder |
+| P6 `5a3233b` | Read-only versioned method/detector/instrument/nuclide references, strict synthetic-schema Phoenix XML inspection, synthetic acquisition structure and intensity matrices, verified raw Faraday display units | General Full/TIMSAD and unresolved IsoprobeT methods D13; method editing D14. Need real method XML + Full + vendor cycles/decoded truth; two-sequence Pb/timing/terminal-row criteria unchanged |
+| P7 `759ca3b` | D1 isolated fractionation preview, offline C# tracer library, U components, scalar/covariance propagation, report/undo/batch revisions; age app authoritative | Calibrated ET2535 and 233–236 chains/independent results needed; broader library/editor/web, per-cycle calibration and 233/236 fractionation remain. BaPO2/Tl and contract provenance D11 |
+| P8 `8a2c574` | Deterministic MCMC1 synthetic preparation, linear/cubic forward/noise/baseline/gain initialization and reference prior/covariance arithmetic | Sampler, chains/convergence/ensembles, production diagnostics/export, MCMC2 and fitted peak models require D15/D16/D17, generating truth/calibrated standards and stored fitted-shape answers; referenced MCMC2 resource is absent |
+| P9 (this commit) | F39 read-only periodic table reusing P6 nuclides; F60 educational subset with two synthetic model/residual examples and two public recorded scans, each isolated/read-only; F59 bounded recorded-column parser | F60/F59 remain partial: no sampler/MCMC2/fitted beam model (P8 gates). F41 sorting/trim D18; F31 service/approval/mirror work D19; F94 actual C# Excel workfile specimen. D20 broader resource/lab priority remains open; only the explicitly authorized subset is built |
+
+Current inventory counts: **41 done, 43 partial, 11 not done (95 total)**.
+P9 closes F39 and moves F60/F59 to partial; F55 stays partial with educational
+desktop views. [P9 scope and evidence](p9-resources-demos.md).
 
 ## Priority decision: F25 ownership and the fraction contract
 

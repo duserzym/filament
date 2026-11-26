@@ -1,10 +1,15 @@
 # MCMC1 deterministic research model (P8, first increment)
 
-This is an explicitly imported, Qt-free **research preview**, off by default.
+This P8 increment is an explicitly imported, Qt-free **research preview**, off by default.
 `rawtims.mcmc1` implements deterministic Java MCMC1 forward calculations. It is
-not a validated Bayesian reduction. Nothing imports it from Analysis, readers,
-sessions, GUI or export code. There is no sampler, chain store, export, production
+not a validated Bayesian reduction. At the P8 commit, nothing imported it from
+Analysis, readers, sessions, GUI or export code. There is no sampler, chain store, export, production
 value, MCMC2, peak-shape tool or remote job. D15/D16/D17 remain open.
+
+**P9 addition:** [isolated educational sessions](p9-resources-demos.md) now use
+these APIs to view the two committed synthetic datasets. The statement above
+describes the P8 commit; P9 adds no production route, sampler or posterior export.
+P9 also displays recorded peak-scan columns without fitting beam shapes.
 
 | Row | Status after this increment | Scope / remaining work |
 |---|---|---|

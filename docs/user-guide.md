@@ -3,6 +3,28 @@
 Use filament to review measured cycles, then send ratios to your age reduction app.
 Dates are calculated in IDTIMS_UPbRPy. The name remains a working name; the chosen icon is the rhenium ribbon with a glowing bead.
 
+## Resources and educational demos
+
+Choose **Resources → Periodic table and nuclides…** to select an element and
+inspect isotope masses, abundances and half-lives. The list also includes the
+free neutron. These are read-only CIRDLES/Tripoli reference data pinned to Java
+`00dc941`, with attribution and version shown. Missing values stay unavailable;
+the reference never supplies reduction parameters or calibration.
+
+**Resources → Educational demos · read-only** offers two **SYNTHETIC two-isotope**
+datasets and two **public Pb peak scans**. Each choice opens a separate temporary
+session. Synthetic demos show observed counts, an initial model, residuals and
+variance; choose a baseline/Faraday/PM channel and linear or cubic intensity
+basis. Peak examples show recorded mass/intensity columns and source metadata.
+**Values** and **Source and limits** provide the numbers and provenance.
+
+These are educational examples. The two-isotope view runs deterministic
+initialization without sampling or posterior fitting; generating truth is
+unavailable. Peak scans have no fitted shape or width, and their intensity units
+are not inferred. Demos cannot save or export results, change your current work
+product or enter the fraction hand-off. Close their windows to discard the views.
+See [P9 scope and evidence](p9-resources-demos.md).
+
 ## Open a run
 
 Choose **File → Open Files…** for an IonVantage `.xls`, IsoLinx `.TIMSDP`, or legacy

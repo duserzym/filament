@@ -431,6 +431,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.diagnostics_menu = build_menu(self)
         from rawtims_gui.exchange import build_menu as build_exchange_menu
         self.exchange_menu = build_exchange_menu(self)
+        from rawtims_gui.resources import build_menu as build_resources_menu
+        self.resources_menu = build_resources_menu(self)
         help_menu = bar.addMenu("Help")
         help_menu.addAction(self._action("Updates…", lambda: self.version_chip.open_dialog(manual=True)))
         from rawtims_gui.user_guide import show_user_guide
@@ -2202,6 +2204,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.refresh_theme()
 
     def refresh_theme(self) -> None:
+        from rawtims_gui.resources import EducationalSession
+        for dialog in self.findChildren(EducationalSession):
+            dialog.refresh()
         self.plot_wall.apply_theme()
         self.cycle_table.apply_theme()
         self.fraction_list.set_current(self.current)

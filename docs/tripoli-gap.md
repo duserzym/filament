@@ -1,6 +1,6 @@
 # Tripoli feature gaps
 
-Snapshot: **2026-11-25**, P8 first-increment update **2026-11-26**. **Done** means the stated supported-input workflow exists;
+Snapshot: **2026-11-25**, P9 resource/demo update **2026-11-26**. **Done** means the stated supported-input workflow exists;
 **partial** means the limits in the last column still apply; **not done** means
 unimplemented. All incomplete rows are now in scope in the
 [phased roadmap](tripoli-parity-roadmap.md), subject to its data and ownership decisions.
@@ -70,7 +70,7 @@ all detailed subfeatures are in [the inventory](tripoli-inventory.md).
 | F36 Instrument method/detector editor | `OGTripoli/source/RunParameters.cs:23` | `Tripoli/TripoliApp/src/main/resources/org/cirdles/tripoli/gui/AnalysesManager.fxml:233` | partial | E/G/D: P6 immutable versioned method/detector/baseline/sequence model and read-only inspector; no method editor (D14). Existing supported parameter controls unchanged. [P6 evidence](p6-method-configuration.md). |
 | F37 Plot styling and units | `OGTripoli/source/forms/frmRatioGraph.cs:2054` | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/SpeciesIntensityAnalysisPlot.java:234` | partial | G/E: existing styling retained; P6 separate opt-in typed counts/s, V, A display on verified existing raw Faraday columns. Cached/ambiguous/multiplier conversions remain unavailable with reasons (F90). [P6 evidence](p6-method-configuration.md). |
 | F38 Help and demonstrations | `OGTripoli/source/forms/fmrMainTripoli.cs:5831` | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/TripoliGUIController.java:880` | done | G/docs: bundled guide, KD33 walkthrough (ui-panels.md) and numerical site (SITE.md); walkthrough needs read-only examples. Tripoli-specific video links are not parity requirements. [filament evidence](user-guide.md). |
-| F39 Periodic table and nuclide resource | No equivalent established | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/TripoliGUIController.java:748` | not done | G + resource data: low lab priority; isotope/abundance source version must be identified. MCMC demos split to F60. Roadmap P9. [filament evidence](user-guide.md). |
+| F39 Periodic table and nuclide resource | No equivalent established | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/TripoliGUIController.java:748` | done | G/resource: P9 read-only 118-element table reuses all 3,365 versioned P6 nuclides; exact upstream grid, source hash and Apache attribution. Missing values stay unavailable; independent abundance provenance unestablished. [P9 evidence](p9-resources-demos.md). |
 
 ## P5 processed imports (2026-11-26)
 
@@ -222,7 +222,7 @@ P6 completes F89 for the pinned reference catalog/resource scope. F24/F36/F37/F4
 ## P8 first increment: deterministic research model (2026-11-26)
 
 F50 is done for the supported opt-in research model scope. F28/F55 become partial;
-F24/F51/F52 stay partial. Inventory totals: **40 done, 41 partial, 14 not done**.
+F24/F51/F52 stay partial. At P8, inventory totals were **40 done, 41 partial, 14 not done**; current P9 counts are below.
 
 | Row | Status | Supported subset / remaining limit |
 |---|---|---|
@@ -232,7 +232,30 @@ F24/F51/F52 stay partial. Inventory totals: **40 done, 41 partial, 14 not done**
 | F52 | partial | Interior-knot PM/Faraday gain initialization; no joint posterior covariance |
 | F55 | partial | Headless observed/model/residual/variance/inclusion/likelihood vectors; no desktop residual workspace |
 
-No Analysis, session, reader, GUI or export route uses the new model. F22/F56 stay
-partial; F53/F54/F57/F58/F59 stay not done. See [P8 evidence, source quirks,
+At the P8 commit, no Analysis, session, reader, GUI or export route used the new model. F22/F56 stay
+partial; at P8, F53/F54/F57/F58/F59 stayed not done. P9 adds the bounded recorded-scan subset of F59. See [P8 evidence, source quirks,
 validation limits and missing truth](p8-mcmc1-forward-model.md). No sampling or
 posterior-recovery acceptance is implied by deterministic source parity.
+## P9 resources and educational sessions (2026-11-26)
+
+Current inventory totals, recomputed across all 95 unique rows: **41 done,
+43 partial, 11 not done**. F39 is done. F60 and F59 become partial; F55 remains
+partial with synthetic educational desktop views added. F31 stays partial;
+F41 and F94 stay not done.
+
+| Row | Status | Supported scope / remaining boundary |
+|---|---|---|
+| F39 | done | Read-only versioned periodic table with all 118 elements and 3,365 P6 nuclides, including free neutron; attributed upstream bytes and missing-value semantics |
+| F60 | partial | Two upstream synthetic two-isotope examples, linear/cubic deterministic P8 initialization/model/residuals, and two public recorded Pb scans in independent read-only sessions; sampling/posterior/MCMC2 and fitted beam shapes remain P8 decisions/truth gates |
+| F55 | partial | Synthetic educational views of P8 arrays only; general production model/residual workspace remains unavailable |
+| F59 | partial | Bounded raw-column scan reader/viewer for two bundled N resources; no beam inversion, collector overlays, widths or generic acquisition import |
+| F41 | not done | Dormant block sort/trim untouched; D18 |
+| F31 | partial, unchanged | No UPbDB/service/sync/approval/mirror changes; D19 |
+| F94 | not done | Actual C# Excel workfile specimen and reference interpretation needed; review XLSX is different |
+
+[P9 evidence and limits](p9-resources-demos.md), [resource/source tests](../tests/test_p9_resources.py)
+and [synthetic UI/isolation/layout tests](../tests/test_p9_resources_ui.py).
+D20 remains open for broader prioritization; the explicitly authorized resource/demo
+subset does not decide lab-service sequencing. No new lab specimen is needed for
+this bundled educational subset. Existing measured /1 exports and processing
+routes remain unchanged.
