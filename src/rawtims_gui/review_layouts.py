@@ -281,20 +281,28 @@ class RatioCard(QtWidgets.QFrame):
         self.summary.setMinimumWidth(0)
         self.summary.setStyleSheet('font-size: 11px;')
         self.summary.setStyleSheet('font-size: 10px;')
-        header.addWidget(self.summary, 1, 0, 1, 5)
         header.setColumnStretch(0, 1)
         self.log_button = tool('ln', f'Log scale for {plot.key}', self.toggle_log)
+        self.log_button.setToolTip(f'Tripoli: Toggle ratio / logRatio for {plot.key} (display only)')
         self.log_button.setCheckable(True)
         self.fit_button = tool('↕', f'Fit y axis for {plot.key}', plot.fit_y)
-        header.addWidget(self.log_button, 0, 1)
-        header.addWidget(self.fit_button, 0, 2)
+        self.restore_button = tool('↺', f'Restore plot view for {plot.key} (Tripoli: Restore plot; keeps rejections)', plot.reset_view)
+        self.sculpt_button = tool('✎', f'Sculpt cycles for {plot.key} (Tripoli: sculpting; off selects Pan)',
+                                  lambda checked: self.set_navigation_mode('review' if checked else 'pan'))
+        self.sculpt_button.setCheckable(True)
+        self.sculpt_button.setChecked(plot.view_box.navigation_mode == 'review')
+        self.chauvenet_button = tool('Ch', f'Tripoli: Chauvenet evaluated on {plot.key}; rejections stay shared. Preview then Apply in Rules',
+                                     lambda: self.window().review_shell.show_ratio_chauvenet(plot.key))
         self.max_button = tool('⤢', f'Maximise / restore {plot.key}', lambda: maximise(self))
         self.max_button.setFixedSize(22, 22)
         self.max_button.setStyleSheet('QToolButton { padding: 0; font-size: 16px; }')
-        for button in (self.log_button, self.fit_button, self.max_button):
+        self.header_buttons = (self.log_button, self.fit_button, self.restore_button,
+                               self.sculpt_button, self.chauvenet_button, self.max_button)
+        for column, button in enumerate(self.header_buttons, 1):
             button.setFixedSize(20, 20)
             button.setStyleSheet('QToolButton { padding: 0; min-width: 0; min-height: 0; font-size: 11px; }')
-        header.addWidget(self.max_button, 0, 3)
+            header.addWidget(button, 0, column)
+        header.addWidget(self.summary, 1, 0, 1, len(self.header_buttons) + 1)
         self.header.doubleClicked.connect(lambda: maximise(self))
         layout.addWidget(self.header)
         layout.addWidget(plot, 1)
@@ -320,12 +328,13 @@ class RatioCard(QtWidgets.QFrame):
     def set_stacked(self, stacked):
         """Reposition the existing header widgets without rebuilding the plot."""
         header = self.header.layout()
-        for widget in (self.name, self.summary, self.log_button, self.fit_button, self.max_button):
+        for widget in (self.name, self.summary, *self.header_buttons):
             header.removeWidget(widget)
         self.header.setFixedHeight(24 if stacked else 38)
         header.addWidget(self.name, 0, 0)
-        header.addWidget(self.summary, 0 if stacked else 1, 1 if stacked else 0, 1, 1 if stacked else 5)
-        for column, button in enumerate((self.log_button, self.fit_button, self.max_button), 2 if stacked else 1):
+        header.addWidget(self.summary, 0 if stacked else 1, 1 if stacked else 0,
+                         1, 1 if stacked else len(self.header_buttons) + 1)
+        for column, button in enumerate(self.header_buttons, 2 if stacked else 1):
             header.addWidget(button, 0, column)
         header.setColumnStretch(0, 1)
         header.setColumnStretch(1, 3 if stacked else 0)
@@ -345,6 +354,7 @@ class RatioCard(QtWidgets.QFrame):
         self.plot.view_box.navigation_mode = mode
         self.plot.view_box.setMouseMode(pg.ViewBox.RectMode if mode == 'zoom' else pg.ViewBox.PanMode)
         self.tools.buttons[mode].setChecked(True)
+        self.sculpt_button.setChecked(mode == 'review')
 
     def toggle_log(self, checked):
         self.plot.log_override = checked
@@ -361,6 +371,7 @@ class RatioCard(QtWidgets.QFrame):
         self.summary.setToolTip(f'{name}: mean {mean}, {se}% SE (1σ), n {stats.n_used}/{stats.n_total}; MSWD of block means {mswd}')
         self.log_button.setVisible(self.plot._ratio_scale)
         self.log_button.setChecked(self.plot._log)
+        self.chauvenet_button.setVisible(self.plot.key in state.analysis.group_keys)
         self.blocks.refresh(state.analysis)
         if not getattr(self.plot, 'external_title', False):
             self.plot.external_title = True
@@ -440,6 +451,9 @@ class ReviewPlotWall(PlotWall):
         super().set_navigation_mode(mode)
         for card in self.cards:
             card.set_navigation_mode(mode)
+        shell = getattr(self.window(), 'review_shell', None)
+        if shell:
+            shell.navigation_actions[mode].setChecked(True)
 
     def begin_resize_preview(self):
         for card in self.cards:
@@ -648,12 +662,14 @@ class ReviewShell(QtWidgets.QWidget):
         self.options_menu.addSeparator()
         navigation = self.options_menu.addMenu('Mouse mode for all plots')
         group = QtGui.QActionGroup(navigation)
+        self.navigation_actions = {}
         for mode, label in (('review', 'Review / select cycles'), ('pan', 'Pan'), ('zoom', 'Box zoom')):
             action = navigation.addAction(label)
             action.setCheckable(True)
             action.setChecked(mode == 'review')
             group.addAction(action)
             action.triggered.connect(lambda _checked=False, m=mode: window.plot_wall.set_navigation_mode(m))
+            self.navigation_actions[mode] = action
         self.options_menu.addSeparator()
         self.options_menu.addAction('Why shared selection?', window.show_shared_selection_help)
         self.options_button.setMenu(self.options_menu)
@@ -760,8 +776,67 @@ class ReviewShell(QtWidgets.QWidget):
             self.layout_buttons[mode] = button
             self.layout_actions[mode] = action
         window.plot_wall.layoutChanged.connect(self.sync_plot_layout)
-        window.review_page.layout().insertWidget(window.review_page.layout().indexOf(window.view_stack), self.layout_bar,
-                                     0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        self.wall_actions = QtWidgets.QWidget()
+        self.wall_actions.setObjectName('TripoliControls')
+        self.wall_actions.setAccessibleName('Tripoli plot wall controls')
+        controls = QtWidgets.QHBoxLayout(self.wall_actions)
+        controls.setContentsMargins(0, 0, 0, 0)
+        controls.setSpacing(2)
+        controls.addWidget(self.layout_bar)
+        self.control_buttons = {}
+
+        def add_control(key, label, tip, slot=None, action=None, menu=None):
+            button = QtWidgets.QToolButton()
+            if action is not None:
+                button.setDefaultAction(action)
+            elif slot is not None:
+                button.clicked.connect(slot)
+            if menu is not None:
+                button.setMenu(menu)
+                button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+            button.setText(label)
+            button.setToolTip(tip)
+            button.setAccessibleName(tip)
+            if action is not None:
+                # QAction owns enablement/check state; retain the compact label
+                # when its menu text or context-sensitive tooltip changes.
+                def presentation():
+                    button.setText(label)
+                    button.setToolTip(tip + '\n' + action.toolTip())
+                action.changed.connect(presentation)
+                presentation()
+            button.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
+            button.setStyleSheet('QToolButton { padding: 2px 4px; min-width: 0; min-height: 0; font-size: 11px; }')
+            controls.addWidget(button)
+            self.control_buttons[key] = button
+            return button
+
+        add_control('synch', 'SYNCH', 'Tripoli: SYNCH — shared contract cycles are locked; free functions can be synced',
+                    action=window.synch_action)
+        add_control('chauvenet', 'Chauvenet…', 'Tripoli: Chauvenet — open Rules; choose scope, Preview, then Apply',
+                    self.show_chauvenet)
+        add_control('preview', 'Preview', 'Preview the selected rule in Rules (no rejections applied)',
+                    window.rules_panel.preview_button.click)
+        add_control('apply', 'Apply', 'Apply exactly the rule preview (undoable)', window.rules_panel.apply_button.click)
+        add_control('restore', 'Restore', 'Tripoli: Restore plots — reset all plot views; keep rejections',
+                    window.plot_wall.reset_views)
+        add_control('reset', 'Reset data…', 'Tripoli: Reset all data — include every cycle and block of this run (undoable)',
+                    action=window.reset_analysis_action)
+        add_control('log', 'Log', 'Tripoli: Log — plot ln(ratio) for all ratio plots (display only)', action=window.log_action)
+        add_control('fit', 'Fit all', 'Fit all points (Tripoli: Ignore Rejects off); turn off to fit accepted valid cycles (display only)',
+                    action=window.fit_all_action)
+        for mode, label, tip in (
+            ('review', 'Sculpt', 'Tripoli: Toggle ALL Sculpting — Review / select cycles in all plots'),
+            ('pan', 'Pan', 'Pan all plots (leave sculpting)'),
+            ('zoom', 'Zoom', 'Box zoom in all plots'),
+        ):
+            add_control(mode, label, tip, action=self.navigation_actions[mode])
+        add_control('plots', 'Plots', 'Choose plots (Tripoli: plot selection); uses the Functions menu',
+                    menu=window.function_menu)
+        add_control('stats', 'Stats', 'Open Stats to read block means, uncertainties and accepted counts',
+                    lambda: self.show_inspector_tab(0))
+        controls.addStretch(1)
+        window.review_page.layout().insertWidget(window.review_page.layout().indexOf(window.view_stack), self.wall_actions)
         window.plot_wall.settings = window.settings
         window.plot_wall.set_plot_layout(window.settings.value(window.plot_wall.layout_key, 'stacked', type=str))
         self.centre = centre
@@ -773,11 +848,30 @@ class ReviewShell(QtWidgets.QWidget):
             window.view_menu.addAction(action)
         if window.settings.value('review/wall/focus_v1', False, type=bool):
             QtCore.QTimer.singleShot(0, self, lambda: self.set_focus(True))
+        self.sync_wall_controls()
 
     def sync_plot_layout(self, mode):
         self.layout_buttons[mode].setChecked(True)
         self.layout_actions[mode].setChecked(True)
         self.layout_bar.select_checked()
+
+    def show_chauvenet(self):
+        self.show_inspector_tab(1)
+        self.owner.rules_panel.set_rule('chauvenet')
+        self.owner.rules_panel.rule_combo.setFocus()
+
+    def show_ratio_chauvenet(self, key):
+        self.show_chauvenet()
+        panel = self.owner.rules_panel
+        panel.function_combo.setCurrentIndex(panel.function_combo.findData('one'))
+        panel.ratio_combo.setCurrentIndex(panel.ratio_combo.findData(key))
+
+    def sync_wall_controls(self):
+        window = self.owner
+        for key in ('chauvenet', 'restore', 'review', 'pan', 'zoom', 'plots', 'stats'):
+            self.control_buttons[key].setEnabled(window.analysis is not None)
+        self.control_buttons['preview'].setEnabled(window.rules_panel.preview_button.isEnabled())
+        self.control_buttons['apply'].setEnabled(window.rules_panel.apply_button.isEnabled())
 
     def reset_panels(self):
         self.set_focus(False)
@@ -842,6 +936,7 @@ class ReviewShell(QtWidgets.QWidget):
 
     def refresh(self):
         window = self.owner
+        self.sync_wall_controls()
         self.picker.blockSignals(True)
         self.picker.clear()
         for fraction in sorted(window.workspace.fractions, key=lambda f: natural_sort_key(f.fraction_id)):

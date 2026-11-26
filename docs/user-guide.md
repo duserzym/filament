@@ -49,6 +49,25 @@ inspector; click it again to restore it. Use the left menu to unfold fractions.
 
 ![Plot-first review wall](guide/review-wall.png)
 
+### Tripoli controls
+
+The action bar beside **Stacked | Auto-fit** keeps these controls visible. Existing
+menus, shortcuts, Rules controls and hover tools remain available.
+
+| Tripoli name | filament control |
+| --- | --- |
+| SYNCH | **SYNCH**; checked and locked for contract ratios, switchable for free functions. This controls edits, rather than copying one plot's mask to others. |
+| Chauvenet | Wall **Chauvenet…** opens Rules with Java Chauvenet selected; mapped-ratio card **Ch** also chooses that ratio for evaluation. Rejections stay shared. Choose whole-run/per-block scope, then **Preview → Apply**. Other filters remain in Rules. |
+| Restore plot / Replot All | Card **↺** / wall **Restore** resets the view and keeps rejections. |
+| Reset All Data / legacy Restore | **Reset data…** includes every cycle and block of the current run, with confirmation and Undo. |
+| Ignore Rejects | **Fit all** off fits accepted valid cycles; on includes excluded points in fitting. Rejections and statistics stay unchanged. |
+| Log / Toggle ratio-logRatio | Wall **Log** / card **ln** changes the display only. |
+| Toggle ALL Sculpting | Wall **Sculpt** selects Review mode in every plot; **Pan** or **Zoom** leaves it. Card **✎** toggles Review/Pan for that plot. |
+| Tile / Stack | **Auto-fit / Stacked**. |
+| Block include/exclude | Numbered block strip; Shift-click or drag for a range. Also **B**, plot context menu, or double-click a Stats block row. |
+| Toggle block means / Toggle stats | Wall **Stats** opens block statistics; plot overlay toggles are not implemented. |
+| Invert / Select all / Show all / INCLUDE | **Corrections → Mapping** supports inverse mappings; wall **Plots** shares the **Functions** menu. Independent plot inversion, bulk Tripoli selectors and legacy discard-display modes are not implemented. |
+
 ## Reject cycles
 
 Click a point or drag a box to toggle cycles. Use ⌘-click or ⇧-drag to select

@@ -1,2 +1,3 @@
 - Refreshed light and dark presentation with the lab suite's filament styling and verified Tripoli plot colours; processing and exports are unchanged.
 - Added remembered Stacked and Auto-fit review plot layouts with shared cycle navigation.
+- Surfaced existing Tripoli SYNCH, filter preview/apply, restore/reset, log, fit and sculpt controls on the plot wall and card headers; processing is unchanged.
