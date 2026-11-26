@@ -2,3 +2,6 @@
 - Added remembered Stacked and Auto-fit review plot layouts with shared cycle navigation.
 - Surfaced existing Tripoli SYNCH, filter preview/apply, restore/reset, log, fit and sculpt controls on the plot wall and card headers; processing is unchanged.
 - Refined cycle points to smaller haloed filled squares and background-filled hollow squares in both themes, retaining the 10 px click radius.
+- Added P1 review diagnostics: accepted/rejected cycle histograms, any-function x–y and recorded-time views, session recipes with intensity-scaled dots, plain notes, and graph PNG/printing with ordered sheets.
+- Added display-only block means/zoom, remembered statistics bands and INCLUDE/IGNORE/HIDE modes, reciprocal plots, labeled frozen statistics, visibility shortcuts and point styling. Reduction masks/statistics and measured /1 exports retain their existing defaults.
+- Added an opt-in `(272/270)/2` oxygen monitor gated by explicit verified UO2 assignment; it never feeds correction or exports.

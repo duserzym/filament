@@ -140,6 +140,7 @@ class SessionState:
     missing: list[MissingRun] = field(default_factory=list)
     recovery: dict[str, Any] | None = None
     stat_mode: str = "arithmetic"
+    presentation: dict[str, Any] = field(default_factory=dict)
 
     def analyses(self) -> list[Analysis]:
         return [a for fraction in self.fractions for a in (fraction.pb, fraction.u) if a is not None]
@@ -299,6 +300,8 @@ def session_document(state: SessionState, path: str | os.PathLike[str] | None, *
         "fractions": fractions,
         "stat_mode": state.stat_mode,
     }
+    if state.presentation:
+        document["presentation"] = state.presentation
     if extra:
         document.update({key: value for key, value in extra.items() if key not in document})
     return document
@@ -512,6 +515,17 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
             raise SessionError(f"{path.name}: duplicate run_id {record['run_id']!r}")
         runs[record["run_id"]] = record
     state = SessionState(recovery=document.get("recovery") if isinstance(document.get("recovery"), dict) else None)
+    if "presentation" in document:
+        if not isinstance(document["presentation"], dict):
+            raise SessionError(f"{path.name}: presentation must be an object")
+        state.presentation = document["presentation"]
+        for name in ("notes", "recipes"):
+            group = state.presentation.get(name, {})
+            if not isinstance(group, dict) or not all(isinstance(key, str) for key in group):
+                raise SessionError(f"{path.name}: presentation {name} must be an object")
+            expected = str if name == "notes" else dict
+            if not all(isinstance(value, expected) for value in group.values()):
+                raise SessionError(f"{path.name}: invalid presentation {name}")
     if "stat_mode" in document:
         if document["stat_mode"] not in STAT_MODES:
             raise SessionError(f"{path.name}: invalid project stat_mode {document['stat_mode']!r}")

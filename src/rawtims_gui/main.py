@@ -268,6 +268,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_kind = "ratios"  # the plotted set (ratios or intensities) the table and picker follow
         self.log_ratio = False
         self.fit_all_points = self.settings.value(FIT_ALL_KEY, False, type=bool)
+        from rawtims_gui.diagnostics import display_options
+        self.display_options = display_options(self.settings)
         self.skipped: list[tuple[str, str]] = []
         self._plotted: dict[int, dict[str, list[str]]] = {}
         self._workers: set[FunctionWorker] = set()
@@ -425,6 +427,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.theme_actions.get(mode, self.theme_actions["light"]).setChecked(True)
         view.addAction(self.reset_layout_action)
         self.view_menu = view
+        from rawtims_gui.diagnostics import build_menu
+        self.diagnostics_menu = build_menu(self)
         help_menu = bar.addMenu("Help")
         help_menu.addAction(self._action("Updates…", lambda: self.version_chip.open_dialog(manual=True)))
         from rawtims_gui.user_guide import show_user_guide
@@ -646,6 +650,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.function_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
         self.function_menu = QtWidgets.QMenu(self.function_button)
         self.function_list = QtWidgets.QListWidget()
+        self.function_list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.function_list.setObjectName("FunctionPicker")
         self.function_list.setMinimumWidth(280)
         self.function_list.setFixedHeight(300)
@@ -1052,7 +1057,7 @@ class MainWindow(QtWidgets.QMainWindow):
         analysis = self.analysis
         if analysis is None:
             return None
-        return PlotState(analysis, self.mapping, self.log_ratio, frozenset(self.selection), self.preview_rows(), self.fit_all_points)
+        return PlotState(analysis, self.mapping, self.log_ratio, frozenset(self.selection), self.preview_rows(), self.fit_all_points, self.display_options)
 
     def current_proposal(self) -> RuleProposal | None:
         if self.preview is None or self.preview[0] is not self.analysis:
@@ -1811,7 +1816,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def is_modified(self) -> bool:
         """Unsaved changes: an untitled session with something open, or a state other than the saved file holds."""
         if self.session_path is None:
-            return bool(self.workspace.fractions or self.workspace.missing or self.workspace.stat_mode != "arithmetic")
+            return bool(self.workspace.fractions or self.workspace.missing or self.workspace.presentation
+                        or self.workspace.stat_mode != "arithmetic")
         if self._saved_fingerprint is None:
             return True
         return session_io.session_fingerprint(self.workspace.session_state(), self.session_path) != self._saved_fingerprint

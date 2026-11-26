@@ -102,6 +102,7 @@ class Workspace:
         # Runs of a loaded session that could not be opened (kept for the next save).
         self.missing: list[MissingRun] = []
         self.stat_mode = "arithmetic"
+        self.presentation: dict = {}
         self._restoring = False
 
     def set_stat_mode(self, mode: str) -> None:
@@ -369,6 +370,7 @@ class Workspace:
         if other is None:
             old = fraction.fraction_id
             fraction.fraction_id = new_id
+            self._rename_notes(old, new_id)
             return True, f"Renamed fraction {old} to {new_id}.", fraction
         runs = [a for a in (fraction.pb, fraction.u) if a is not None]
         clash = [a for a in runs if getattr(other, _slot(a)) is not None]
@@ -394,7 +396,15 @@ class Workspace:
             # The stored mapping belonged to the old fraction (its Collector): resolve it again for the new one.
             setattr(other, "pb_mapping" if analysis.run.element == "Pb" else "u_mapping", None)
         self.fractions.remove(fraction)
+        self._rename_notes(fraction.fraction_id, new_id)
         return True, f"Merged {fraction.fraction_id} into fraction {new_id}.", other
+
+    def _rename_notes(self, old: str, new: str) -> None:
+        notes = self.presentation.get('notes', {})
+        source = notes.pop('fraction:' + old, '')
+        if source:
+            key = 'fraction:' + new
+            notes[key] = '\n\n'.join(text for text in (notes.get(key, ''), source) if text)
 
 
     def _slot_free(self, fraction: Fraction, element: str | None) -> bool:
@@ -417,7 +427,7 @@ class Workspace:
                 if id(analysis) in self._edits:
                     edits[run_id] = self._edits[id(analysis)]
         return SessionState(fractions=list(self.fractions), mapping_edits=edits, mapping_sources=sources,
-                            missing=list(self.missing), stat_mode=self.stat_mode)
+                            missing=list(self.missing), stat_mode=self.stat_mode, presentation=self.presentation)
 
     def restore(self, state: SessionState) -> list[SessionProblem]:
         """Take the fractions of a loaded session (replacing what is open). Returns the mapping problems found.
@@ -431,6 +441,7 @@ class Workspace:
         self._restoring = True
         self.fractions = list(state.fractions)
         self.stat_mode = state.stat_mode
+        self.presentation = state.presentation
         self.missing = list(state.missing)
         self._edits.clear()
         self._mappings.clear()

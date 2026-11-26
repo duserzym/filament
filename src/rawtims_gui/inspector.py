@@ -140,7 +140,8 @@ class StatsPanel(QtWidgets.QWidget):
         )
         if self.detail_only and analysis is not None:
             self.note.setText(f"{'Geometric' if mode == 'geometric' else 'Arithmetic'} means for ratios. "
-                              "Double-click a block row to toggle inclusion. % SE is 1σ.")
+                              "Double-click a block row to toggle inclusion. % SE is 1σ. "
+                              "Inspector and exports stay current when plot statistics are frozen or inverted.")
         self.table.setRowCount(len(self.rows))
         for index, row in enumerate(self.rows):
             stats = row.stats

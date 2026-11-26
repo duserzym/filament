@@ -362,13 +362,23 @@ class RatioCard(QtWidgets.QFrame):
         self.refresh(self.window().plot_wall.state)
 
     def refresh(self, state):
-        stats = plot_stats(state.analysis, state.mapping, self.plot.key)
+        stats = self.plot.display_stats()
         name = f'ln({self.plot.key})' if self.plot._log else self.plot.key
-        mean, se = format_number(stats.mean), format_number(stats.se_pct, 3)
+        if self.plot._inverted:
+            name = f'1/({self.plot.key}) [display inverse]' + (' · ln' if self.plot._log else '')
+        mean = format_number(stats.mean)
+        se = format_number(stats.se_pct, 3)
         self.name.setText(name)
         mswd = format_number(state.analysis.block_weighted_mean(self.plot.key, convention="standard").mswd, 3)
-        self.summary.setText(f'{mean} ± {se}% SE · n {stats.n_used}/{stats.n_total} · MSWD {mswd}')
-        self.summary.setToolTip(f'{name}: mean {mean}, {se}% SE (1σ), n {stats.n_used}/{stats.n_total}; MSWD of block means {mswd}')
+        mswd_label = 'source MSWD' if self.plot._inverted else 'MSWD'
+        self.summary.setText(f'{mean} ± {se}% SE · n {stats.n_used}/{stats.n_total} · {mswd_label} {mswd}')
+        self.summary.setVisible(state.display.stats)
+        if state.display.frozen:
+            self.name.setText(name + ' · Frozen statistics')
+            self.summary.setText(f'{mean} ± {se}% SE · n {stats.n_used}/{stats.n_total} · Frozen; inspector/export stay current')
+        detail = f'{name}: mean {mean}, {se}% SE (1σ), n {stats.n_used}/{stats.n_total}'
+        self.summary.setToolTip(detail + ('; Frozen statistics; inspector/export stay current' if state.display.frozen
+                                         else f'; {mswd_label} of block means {mswd}'))
         self.log_button.setVisible(self.plot._ratio_scale)
         self.log_button.setChecked(self.plot._log)
         self.chauvenet_button.setVisible(self.plot.key in state.analysis.group_keys)
@@ -660,6 +670,7 @@ class ReviewShell(QtWidgets.QWidget):
         self.options_menu = QtWidgets.QMenu(self.options_button)
         self.options_menu.addActions([window.log_action, window.fit_all_action, window.synch_action])
         self.options_menu.addSeparator()
+        self.options_menu.addMenu(window.diagnostics_menu)
         navigation = self.options_menu.addMenu('Mouse mode for all plots')
         group = QtGui.QActionGroup(navigation)
         self.navigation_actions = {}

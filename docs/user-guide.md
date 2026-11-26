@@ -248,3 +248,61 @@ those image links then have no local image. `--fixtures-only --output /tmp/guide
 checks that fallback without replacing this guide's KD33 screenshots.
 
 For remaining differences from Tripoli, read [the feature gap list](tripoli-gap.md).
+
+## Review diagnostics and display controls
+
+Open **View → Review diagnostics**, also available under the plot wall's options.
+These controls change presentation. Rejections, reduction settings, mapped ratios,
+and fraction-export values keep their existing meanings.
+
+- **Histogram / x–y / time / oxygen** opens a read-only view. Histogram bins share
+  edges for accepted and rejected counts and count every finite cycle, including
+  zero. Tripoli's bin-edge epsilon and rightmost-bin convention are retained.
+  Choose any two existing functions for x–y; hover a dot for its original cycle,
+  block and displayed coordinates. A dot is accepted when both axes accept it.
+  Optional intensity scaling uses minimum/maximum radii in pixels. Time views use
+  recorded elapsed seconds and report missing times without inventing an axis.
+- **Save recipe** remembers axes, intensity, bin count, radii, color and inversion
+  in the session. Load checks that the functions exist; Delete removes a recipe.
+  Recipes are presentation metadata and do not author new reduction functions.
+- **Oxygen monitor** requires a source ratio with masses 272/270 and explicit
+  verification from the method that these are 238U16O18O / 238U16O2 with
+  dimensionless units. Only then is `(272/270)/2` shown. Verification is off on
+  opening and is never carried by a recipe. The monitor never replaces acquisition
+  r18, feeds oxide correction, or enters an export mapping.
+- **Session and work-product notes** edits plain text for the session, selected
+  run, fraction, or named sample. Save the session to retain notes and recipes;
+  Cancel discards edits. Text is never treated as markup or code. Session identity
+  and SHA provenance continue to reflect the saved file, including its notes.
+
+**Block-mean overlay** draws existing block means without changing the estimator.
+Right-click a plot and choose **Zoom to block** for a view of one block; Restore
+returns to the full range. Statistics can be hidden or shown with **2σ, σ, SE**,
+**σ, SE**, or **SE** bands. These settings and rejection-display mode are remembered.
+
+The default **Pinned** view retains hollow excluded points pinned at the edges.
+**INCLUDE** fits all finite values without including rejected values in statistics.
+**IGNORE** retains cycle positions but fits accepted values and leaves outliers
+outside that range. **HIDE** removes rejected positions and closes up the axis;
+original cycle IDs remain attached to clicks and hover, and block separators are
+suppressed as in C# Tripoli. Missing/invalid rows are not treated as outliers.
+Each HIDE plot has its own compressed positions, so its x zoom is independent.
+
+**Invert all displays**, or **Invert display** in a plot's right-click menu, plots
+reciprocals and labels them “display inverse.” Plot readouts and bands use statistics
+of those reciprocal values; this is separate from Mapping inversion. A block overlay
+shows the reciprocal of each stored block mean. **Freeze displayed statistics**
+holds the plot mean, bands and accepted-count readout at a labeled snapshot while
+points continue to update. Inspector and exported statistics always remain current.
+Unfreeze refreshes the snapshot; rebuilding the view takes a new snapshot. Inversion
+and freeze are transient deliberate actions, not saved reduction settings.
+
+Use **Plot all functions in this view** or select rows in the Functions picker and
+choose **Show selected function rows** to change plot visibility. Neither changes
+export membership. Right-click a plot for remembered point color and diameter.
+
+**Save plot pages as PNG** and **Print plot pages** output every plotted function
+in its current order, including plots below the scrolling viewport. Graph sheets
+arrange four plots per page. Diagnostic windows have their own PNG/Print buttons.
+Images retain the current display direction, zoom, titles and frozen labels;
+they are review artifacts rather than replacements for numerical exports.

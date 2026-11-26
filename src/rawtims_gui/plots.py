@@ -36,6 +36,7 @@ from rawtims import stats as _stats
 from rawtims.analysis import Analysis
 from rawtims.mapping import ElementMapping, MappedRatio, ratio_stats
 from rawtims_gui.plot_palette import plot_palette
+from rawtims_gui.diagnostic_data import DisplayOptions, reciprocal
 from rawtims_gui.studio.theme import ThemeSpec, active_theme, theme_color
 from rawtims_gui.studio.widgets import RoundedPlotWidget
 
@@ -157,6 +158,7 @@ class PlotState:
     selection: frozenset[int]
     preview: Mapping[str, frozenset[int]] = field(default_factory=dict)  # function key -> rows a rule would reject
     fit_all: bool = False
+    display: DisplayOptions = field(default_factory=DisplayOptions)
 
 
 class CyclePlot(RoundedPlotWidget):
@@ -185,6 +187,12 @@ class CyclePlot(RoundedPlotWidget):
         self.title_text = ""
         self._log = False
         self.log_override = None
+        self.invert_override = None
+        self.point_color = None
+        self.point_size = CYCLE_POINT_SIZE_PX
+        self._frozen_stats = None
+        self._frozen_inverse_stats = None
+        self._freeze_active = False
         self._ratio_scale = False
         self._decorations: list[QtWidgets.QGraphicsItem] = []
         self._block = np.zeros(0, dtype=int)
@@ -232,9 +240,10 @@ class CyclePlot(RoundedPlotWidget):
 
     def _hover_cycle(self, scene_pos):
         cycle = None
-        if self._cycles.size and self.view_box.sceneBoundingRect().contains(scene_pos):
+        if self.rows_shown.size and self.view_box.sceneBoundingRect().contains(scene_pos):
             x = self.view_box.mapSceneToView(scene_pos).x()
-            cycle = float(self._cycles[np.argmin(abs(self._cycles - x))])
+            row = self.rows_shown[np.argmin(abs(self.x_shown - x))]
+            cycle = float(self._state.analysis.run.cycle[row])
         self.cycleHovered.emit(cycle)
 
     def leaveEvent(self, event):
@@ -244,7 +253,11 @@ class CyclePlot(RoundedPlotWidget):
     def set_hover_cycle(self, cycle):
         self.hover_guide.setVisible(cycle is not None)
         if cycle is not None:
-            self.hover_guide.setValue(cycle)
+            rows = np.flatnonzero(self._state.analysis.run.cycle == cycle)
+            if rows.size and rows[0] not in self.rows_shown:
+                self.hover_guide.hide()
+                return
+            self.hover_guide.setValue(self._cycles[rows[0]] if rows.size else cycle)
 
     # -------------------------------------------------------------- style
     def apply_theme(self, theme: ThemeSpec | None = None) -> None:
@@ -279,9 +292,25 @@ class CyclePlot(RoundedPlotWidget):
         analysis = state.analysis
         column = analysis.index(self.key)
         run = analysis.run
-        values = analysis.values[:, column]
+        self._state = state
+        self._inverted = state.display.inverted if self.invert_override is None else self.invert_override
+        values = reciprocal(analysis.values[:, column]) if self._inverted else analysis.values[:, column]
+        self._inverse_stats = None
+        if self._inverted or state.display.frozen:
+            self._inverse_stats = _stats.function_stats(
+                reciprocal(analysis.values[:, column]), analysis.included_for(self.key),
+                is_ratio=is_ratio_scale(analysis, state.mapping, self.key), ratio_mode=analysis.settings.stat_mode)
+        if not state.display.frozen:
+            self._frozen_stats = None
+            self._frozen_inverse_stats = None
+        if state.display.frozen and not self._freeze_active:
+            self._frozen_stats = plot_stats(analysis, state.mapping, self.key)
+            self._frozen_inverse_stats = self._inverse_stats
+        self._freeze_active = state.display.frozen
         self._block = run.block
-        self._cycles = run.cycle.astype(float)
+        effective_all = analysis.included_for(self.key)
+        visible = effective_all | analysis.invalid[:, column] if state.display.rejected == "HIDE" else np.ones(run.n_cycles, dtype=bool)
+        self._cycles = np.cumsum(visible).astype(float) if state.display.rejected == "HIDE" else run.cycle.astype(float)
         self._ratio_scale = is_ratio_scale(analysis, state.mapping, self.key)
         log = (state.log_ratio if self.log_override is None else self.log_override) and self._ratio_scale
         rebuild = rebuild or log != self._log
@@ -291,32 +320,39 @@ class CyclePlot(RoundedPlotWidget):
                 y = np.where(values > 0, np.log(np.where(values > 0, values, 1.0)), np.nan)
         else:
             y = values.astype(float)
-        shown = np.isfinite(y)
+        shown = np.isfinite(y) & visible
         effective = analysis.included_for(self.key)[shown]
         invalid = analysis.invalid[:, column][shown]
         same_points = (not rebuild and getattr(self, '_point_theme', None) == theme.name
                        and np.array_equal(y[shown], self.y_shown)
-                       and np.array_equal(run.cycle[shown], self.x_shown))
+                       and np.array_equal(self._cycles[shown], self.x_shown))
         changed = np.flatnonzero((effective != self._effective) | (invalid != self._invalid)) if same_points else None
         # Preview, selection and theme redraws must preserve a user's wheel zoom.
-        refit = (rebuild or state.fit_all != self._fit_all
+        fit_all = state.display.rejected == "INCLUDE" or (state.display.rejected == "Pinned" and state.fit_all)
+        refit = (rebuild or fit_all != self._fit_all
                  or not np.array_equal(y[shown], self.y_shown)
-                 or not np.array_equal(run.cycle[shown], self.x_shown)
+                 or not np.array_equal(self._cycles[shown], self.x_shown)
+                 or getattr(self, '_rejected_mode', None) != state.display.rejected
                  or not np.array_equal(effective, self._effective)
                  or not np.array_equal(invalid, self._invalid))
         self.rows_shown = np.flatnonzero(shown)
-        self.x_shown = run.cycle[shown].astype(float)
+        self.x_shown = self._cycles[shown]
         self.y_shown = y[shown]
         self.y_display = self.y_shown.copy()
         self._values = values[shown].copy()
         self._effective = effective.copy()
         self._invalid = invalid.copy()
-        self._fit_all = state.fit_all
-        if getattr(self, '_point_theme', None) != theme.name:
+        self._fit_all = fit_all
+        self._rejected_mode = state.display.rejected
+        style_signature = (theme.name, self.point_color, self.point_size)
+        if getattr(self, '_style_signature', None) != style_signature:
+            same_points = False
+            indices = None
             # Opaque hollow centres hide the bands beneath excluded squares.
-            self._point_styles = (pg.mkBrush(plot.included), pg.mkBrush(plot.background), pg.mkBrush(None),
+            self._point_styles = (pg.mkBrush(self.point_color or plot.included), pg.mkBrush(plot.background), pg.mkBrush(None),
                                   pg.mkPen(plot.excluded, width=1.2), pg.mkPen(plot.invalid, width=1.4),
                                   pg.mkPen(plot.pointHalo, width=1))
+            self._style_signature = style_signature
             self._point_theme = theme.name
         used_brush, hollow_brush, empty_brush, bad_pen, grey, halo_pen = self._point_styles
         brushes, pens, symbols, sizes = [], [], [], []
@@ -332,12 +368,12 @@ class CyclePlot(RoundedPlotWidget):
                 brushes.append(used_brush)
                 pens.append(halo_pen)
                 symbols.append("s")
-                sizes.append(CYCLE_POINT_SIZE_PX)
+                sizes.append(self.point_size)
             else:
                 brushes.append(hollow_brush)
                 pens.append(bad_pen)
                 symbols.append("s")
-                sizes.append(CYCLE_POINT_SIZE_PX)
+                sizes.append(self.point_size)
         if same_points:
             if len(indices):
                 spots = self.points.points()
@@ -355,13 +391,18 @@ class CyclePlot(RoundedPlotWidget):
         self._draw_decorations(state, theme, log)
         self.set_selection(state.selection)
         self.set_preview(state.preview.get(self.key, frozenset()))
-        stats = plot_stats(analysis, state.mapping, self.key)
+        stats = self.display_stats()
         name = analysis.function(self.key).name
+        name = f"1/({name}) [display inverse]" if self._inverted else name
         label = f"ln({name})" if log else name
         if math.isfinite(stats.mean):
             detail = f"{format_number(stats.mean)} ± {format_number(stats.se_pct, 3)} %"
         else:
             detail = "no usable cycles"
+        if not state.display.stats:
+            detail = ""
+        if state.display.frozen:
+            detail = "Frozen statistics · " + detail
         self.title_text = f"{label}   {detail}"
         self.setToolTip(f"{label}: mean {detail} (1σ SE of the mean), {stats.n_used} of {stats.n_total} cycles used")
         if not getattr(self, 'external_title', False):
@@ -378,11 +419,45 @@ class CyclePlot(RoundedPlotWidget):
             self.reset_view()
         self._update_pins()
 
+    def display_stats(self):
+        if self._inverted:
+            return self._frozen_inverse_stats or self._inverse_stats
+        return self._frozen_stats or plot_stats(self._state.analysis, self._state.mapping, self.key)
+
+    def transform_stat(self, value):
+        if self._inverted:
+            value = 1 / value if value else float('nan')
+        return self.stat_position(value)
+
+    def stat_position(self, value):
+        return math.log(value) if self._log and value > 0 else (float('nan') if self._log else value)
+
+    def zoom_block(self, block):
+        rows = np.isin(self.rows_shown, np.flatnonzero(self._block == block))
+        if rows.any():
+            self.setXRange(float(self.x_shown[rows].min()) - 1, float(self.x_shown[rows].max()) + 1, padding=0)
+            values = self.y_shown[rows]
+            values = values[values != 0]
+            if values.size:
+                lo, hi = float(values.min()), float(values.max())
+                margin = (hi-lo)*.05 if hi > lo else max(abs(lo)*.05, .01)
+                self.setYRange(lo-margin, hi+margin, padding=0)
+
+    def toggle_inverse(self):
+        self.invert_override = not self._inverted
+        self.update_state(self._state, rebuild=True)
+        wall = getattr(self.window(), 'plot_wall', None)
+        if wall:
+            for card in getattr(wall, 'cards', []):
+                if card.plot is self:
+                    card.refresh(self._state)
+
     def reset_view(self) -> None:
         item = self.getPlotItem()
         item.disableAutoRange()
-        if self._cycles.size:
-            item.setXRange(float(self._cycles.min()) - 0.5, float(self._cycles.max()) + 0.5, padding=0)
+        positions = self.x_shown if self._state.display.rejected == 'HIDE' else self._cycles
+        if positions.size:
+            item.setXRange(float(positions.min()) - 0.5, float(positions.max()) + 0.5, padding=0)
         self.fit_y()
 
     def fit_y(self) -> None:
@@ -403,6 +478,8 @@ class CyclePlot(RoundedPlotWidget):
         outside = (~self._effective & ~self._invalid
                    & ((self.y_shown < lo) | (self.y_shown > hi)))
         if self._fit_all:
+            outside[:] = False
+        if getattr(self, '_rejected_mode', 'Pinned') != 'Pinned':
             outside[:] = False
         # Leave room for the entire triangle and its click target inside the view.
         inset = min((hi - lo) / 4, abs(self.view_box.viewPixelSize()[1]) * 7)
@@ -426,12 +503,14 @@ class CyclePlot(RoundedPlotWidget):
         run = analysis.run
         transparent = pg.mkPen(None)
         plot = plot_palette(theme)
-        block_signature = (id(run), analysis.block_included.tobytes(), theme.name)
+        block_signature = (id(run), analysis.block_included.tobytes(), theme.name, state.display.rejected)
         if getattr(self, "_block_signature", None) != block_signature:
             for old in getattr(self, "_block_decorations", []):
                 item.removeItem(old)
             self._block_decorations = []
             for position, block in enumerate(analysis.blocks):
+                if state.display.rejected == 'HIDE':
+                    continue  # C# suppresses block separators on the compressed axis.
                 rows = run.block == block
                 lo, hi = float(run.cycle[rows].min()) - 0.5, float(run.cycle[rows].max()) + 0.5
                 if not analysis.block_included[position]:
@@ -462,28 +541,45 @@ class CyclePlot(RoundedPlotWidget):
             _quiet(self._mean_line)
             item.addItem(self._mean_line, ignoreBounds=True)
         self._decorations = [*self._block_decorations, *self._bands, self._mean_line]
-        stats = plot_stats(analysis, state.mapping, self.key)
+        for old in getattr(self, '_block_mean_lines', []):
+            item.removeItem(old)
+        self._block_mean_lines = []
+        if state.display.block_means:
+            for block, block_stats in analysis.block_stats(self.key).items():
+                rows = np.isin(self.rows_shown, np.flatnonzero(run.block == block))
+                mean = self.transform_stat(block_stats.mean)
+                if rows.any() and math.isfinite(mean):
+                    line = pg.PlotCurveItem([self.x_shown[rows].min()-.4, self.x_shown[rows].max()+.4], [mean, mean], pen=pg.mkPen(plot.mean, width=2))
+                    _quiet(line)
+                    item.addItem(line, ignoreBounds=True)
+                    self._block_mean_lines.append(line)
+        stats = self.display_stats()
         for band in self._bands:
-            band.setVisible(math.isfinite(stats.center))
-        self._mean_line.setVisible(math.isfinite(stats.center))
+            band.setVisible(state.display.stats and math.isfinite(stats.center))
+        self._mean_line.setVisible(state.display.stats and math.isfinite(stats.center))
         if not math.isfinite(stats.center):
             return
         center = stats.center
         if stats.mode == "geometric":
             def bound(k: float, s: float) -> tuple[float, float]:
                 lo, hi = center - k * s, center + k * s
-                return (lo, hi) if log else (math.exp(lo), math.exp(hi))
-            mean = center if log else math.exp(center)
+                return tuple(sorted((self.stat_position(math.exp(lo)), self.stat_position(math.exp(hi)))))
+            mean = self.stat_position(stats.mean)
         else:
             def bound(k: float, s: float) -> tuple[float, float]:
-                return center - k * s, center + k * s
-            mean = center
+                return tuple(sorted((self.stat_position(center - k * s), self.stat_position(center + k * s))))
+            mean = self.stat_position(center)
         bands = [(2.0, stats.sd, plot.band2sigma), (1.0, stats.sd, plot.band1sigma), (1.0, stats.se, plot.bandSE)]
-        for band, (k, spread, color) in zip(self._bands, bands):
-            band.setVisible(math.isfinite(spread))
+        count = {'2σ, σ, SE': 3, 'σ, SE': 2, 'SE': 1}[state.display.bands]
+        for index, (band, (k, spread, color)) in enumerate(zip(self._bands, bands)):
             if math.isfinite(spread):
-                band.setRegion(bound(k, spread))
+                limits = bound(k, spread)
+                band.setVisible(state.display.stats and index >= 3-count and all(math.isfinite(v) for v in limits))
+                if all(math.isfinite(v) for v in limits):
+                    band.setRegion(limits)
                 band.setBrush(pg.mkBrush(theme_color(color)))
+            else:
+                band.hide()
         self._mean_line.setValue(mean)
         self._mean_line.setPen(pg.mkPen(plot.mean, width=1))
 
@@ -560,10 +656,32 @@ class CyclePlot(RoundedPlotWidget):
             row = int(self.rows_shown[int(np.argmin(np.abs(self.x_shown - view_point.x())))])
         if row is not None:
             block = int(self._block[row])
+            menu.addAction(f"Zoom to block {block}", lambda: self.zoom_block(block))
             action = menu.addAction(f"Toggle block {block}")
             action.triggered.connect(lambda: self.blockToggleRequested.emit(self.key, row))
         menu.addAction("Reset zoom").triggered.connect(self.reset_view)
+        menu.addAction("Invert display" if not self._inverted else "Restore display direction", self.toggle_inverse)
+        menu.addAction("Point color…", self.choose_point_color)
+        menu.addAction("Point size…", self.choose_point_size)
         menu.popup(screen_point)
+
+    def choose_point_color(self):
+        color = QtWidgets.QColorDialog.getColor(QtGui.QColor(self.point_color or plot_palette().included), self)
+        if color.isValid():
+            self.point_color = color.name()
+            self.remember_style()
+
+    def choose_point_size(self):
+        size, ok = QtWidgets.QInputDialog.getDouble(self, 'Point size', 'Diameter (px)', self.point_size, 1, 20, 1)
+        if ok:
+            self.point_size = size
+            self.remember_style()
+
+    def remember_style(self):
+        settings = getattr(self.window(), 'settings', None)
+        if settings:
+            settings.setValue('plots/style/' + self.key, {'color': self.point_color, 'size': self.point_size})
+        self.update_state(self._state)
 
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         if event.modifiers() & SELECT_MODIFIERS:
@@ -655,12 +773,20 @@ class PlotWall(QtWidgets.QScrollArea):
         if state is not None:
             for key in keys:
                 plot = CyclePlot(key, self.container)
+                settings = getattr(self.window(), 'settings', None)
+                style = settings.value('plots/style/' + key, {}) if settings else {}
+                if isinstance(style, dict):
+                    color = style.get('color')
+                    plot.point_color = color if isinstance(color, str) and QtGui.QColor(color).isValid() else None
+                    size = style.get('size', CYCLE_POINT_SIZE_PX)
+                    if isinstance(size, (float, int)) and 1 <= size <= 20:
+                        plot.point_size = size
                 plot.toggleRequested.connect(self.toggleRequested)
                 plot.selectRequested.connect(self.selectRequested)
                 plot.blockToggleRequested.connect(self.blockToggleRequested)
                 plot.focused.connect(self.focused)
                 plot.cycleHovered.connect(self.set_hover_cycle)
-                if self.plots:
+                if self.plots and state.display.rejected != 'HIDE':
                     plot.setXLink(self.plots[0])
                 plot.update_state(state, rebuild=True)
                 self.plots.append(plot)
@@ -672,7 +798,8 @@ class PlotWall(QtWidgets.QScrollArea):
 
     def refresh(self, state: PlotState, *, rebuild: bool = False) -> None:
         self.state = state
-        for plot in self.plots:
+        for index, plot in enumerate(self.plots):
+            plot.setXLink(None if state.display.rejected == 'HIDE' or index == 0 else self.plots[0])
             plot.update_state(state, rebuild=rebuild)
 
     def set_hover_cycle(self, cycle) -> None:
