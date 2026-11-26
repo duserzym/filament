@@ -11,8 +11,8 @@ from rawtims.model import Function
 def install_synthetic_review(window):
     """Twelve functions, twenty blocks, four hundred cycles, forty 60-char IDs."""
     source = window.analysis.run
-    functions = [replace(source.function(key), index=i) for i, key in enumerate(window.plotted_keys())]
-    functions += [Function(i, f'Synthetic ratio {i}', f'Synthetic ratio {i}', 'ratio') for i in range(6, 12)]
+    functions = [replace(source.function(key), index=i) for i, key in enumerate(window.plotted_keys()[:12])]
+    functions += [Function(i, f'Synthetic ratio {i}', f'Synthetic ratio {i}', 'ratio') for i in range(len(functions), 12)]
     cycle = np.arange(1, 401)
     values = np.column_stack([(i + 1) * (1 + .03 * np.sin(cycle * .37 + i)) for i in range(12)])
     run = replace(source, run_id='synthetic-review-run',

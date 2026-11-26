@@ -42,7 +42,10 @@ def test_default_is_wall_classic_is_explicit():
         gui.parse_arguments(['--layout', 'removed-layout'])
 
 
-def test_block_cells_toggle_group_with_undo_and_keyboard(wall):
+@pytest.mark.parametrize('plot_layout', ['stacked', 'auto-fit'])
+def test_block_cells_toggle_group_with_undo_and_keyboard(wall, plot_layout):
+    wall.plot_wall.set_plot_layout(plot_layout)
+    settle()
     analysis = wall.analysis
     before = analysis.effective.copy()
     wall.request_toggle('206/204 D', [22])
@@ -162,8 +165,9 @@ def test_maximise_header_shortcut_and_esc_restore_one_level(wall):
     assert not wall.selection  # Esc retains its normal role outside maximise.
 
 
-@pytest.mark.parametrize('width,height,columns', [(1024, 640, 2), (1280, 800, 3), (1440, 900, 3), (1512, 982, 3)])
+@pytest.mark.parametrize('width,height,columns', [(1024, 640, 1), (1280, 800, 2), (1440, 900, 2), (1512, 982, 2), (2560, 1440, 4)])
 def test_columns_sizes_and_readable_card_area(wall, width, height, columns):
+    wall.plot_wall.set_plot_layout('auto-fit')
     wall.resize(width, height)
     settle()
     assert wall.size() == QtCore.QSize(width, height)
@@ -175,7 +179,7 @@ def test_columns_sizes_and_readable_card_area(wall, width, height, columns):
     wall.review_shell.inspector.set_collapsed(True, animate=False)
     settle()
     if width == 1280:
-        assert wall.plot_wall.verticalScrollBar().maximum() == 0
+        assert wall.plot_wall.verticalScrollBar().maximum() > 0
         assert all(card.isVisible() for card in wall.plot_wall.cards)
     assert not wall.stats_panel.table.isVisible()
     assert wall.stats_panel.block_table.isVisible() is False  # collapsed inspector
@@ -265,8 +269,10 @@ def test_maximise_uses_hover_when_focus_is_in_inspector(wall, monkeypatch):
 
 
 @pytest.mark.parametrize('count', [6, 7])
-@pytest.mark.parametrize('width,height,minimum_visible', [(1280, 800, None), (1024, 640, 4)])
-def test_collapsed_ratios_fit_and_cycle_axes_align(wall, count, width, height, minimum_visible):
+@pytest.mark.parametrize('width,height', [(1280, 800), (1024, 640)])
+@pytest.mark.parametrize('plot_layout', ['stacked', 'auto-fit'])
+def test_collapsed_ratios_scroll_and_cycle_axes_align(wall, count, width, height, plot_layout):
+    wall.plot_wall.set_plot_layout(plot_layout)
     if count == 7:
         wall.open_paths([str(SYNTHETIC_PB)], synchronous=True)
         wall.select_run(wall.workspace.fractions[-1], 'Pb')
@@ -280,10 +286,9 @@ def test_collapsed_ratios_fit_and_cycle_axes_align(wall, count, width, height, m
     viewport = QtCore.QRect(QtCore.QPoint(0, 0), view.viewport().size())
     complete = [c for c in view.cards if viewport.contains(
         QtCore.QRect(c.mapTo(view.viewport(), QtCore.QPoint()), c.size()))]
-    assert len(complete) >= (count if minimum_visible is None else minimum_visible)
-    if width == 1280:
-        assert view.column_count() == 3
-        assert view.verticalScrollBar().maximum() == 0
+    assert len(complete) >= (2 if plot_layout == 'stacked' else 1)
+    assert view.verticalScrollBar().maximum() > 0
+    assert view.column_count() == (1 if plot_layout == 'stacked' else 2)
     ranges = [p.view_box.viewRange()[0] for p in view.plots]
     np.testing.assert_allclose(ranges, np.tile(ranges[0], (count, 1)))
     for col in range(view.column_count()):
@@ -354,7 +359,10 @@ def test_focus_preserves_collapsed_preference_and_survives_new_viewer(wall):
     assert shell.inspector.collapsed and shell.splitter.sizes() == before
 
 
-def test_block_strip_range_drag_shift_and_axis_zoom(wall, monkeypatch):
+@pytest.mark.parametrize('plot_layout', ['stacked', 'auto-fit'])
+def test_block_strip_range_drag_shift_and_axis_zoom(wall, monkeypatch, plot_layout):
+    wall.plot_wall.set_plot_layout(plot_layout)
+    settle()
     strip = wall.block_header
     a = wall.analysis
     last = strip.cells[4]
@@ -384,7 +392,8 @@ def test_block_strip_range_drag_shift_and_axis_zoom(wall, monkeypatch):
     for b in (2, 3):
         cycles = a.run.cycle[a.run.block == b]
         scene_x = vb.mapViewToScene(QtCore.QPointF(float(cycles.min())-.5, 0)).x()
-        assert abs(strip.cells[b].x() - max(vb.sceneBoundingRect().left(), scene_x)) <= 1
+        offset = strip.mapFromGlobal(plot.viewport().mapToGlobal(QtCore.QPoint())).x()
+        assert abs(strip.cells[b].x() - (offset + max(vb.sceneBoundingRect().left(), scene_x))) <= 1
     assert strip.cells[1].isHidden()
 
 
@@ -423,7 +432,10 @@ def test_content_popovers_and_overflow_keep_controls_and_actions(wall):
     assert shell.picker.isVisibleTo(wall) and wall.function_button.isVisibleTo(wall)
 
 
-def test_local_log_yfit_mswd_and_reset_preserve_shared_cycles(wall):
+@pytest.mark.parametrize('plot_layout', ['stacked', 'auto-fit'])
+def test_local_log_yfit_mswd_and_reset_preserve_shared_cycles(wall, plot_layout):
+    wall.plot_wall.set_plot_layout(plot_layout)
+    settle()
     card, other = wall.plot_wall.cards[:2]
     plot = card.plot
     before = wall.analysis.effective.copy()
@@ -461,8 +473,7 @@ def test_toolbar_and_panels_fit_all_sizes_and_focus(wall, width, height):
             if menu.menuAction().isVisible():
                 continue
             assert shell.toolbar.rect().contains(QtCore.QRect(widget.mapTo(shell.toolbar, QtCore.QPoint()), widget.size()))
-        if width >= 1280:
-            assert wall.plot_wall.verticalScrollBar().maximum() == 0
+        assert wall.plot_wall.verticalScrollBar().maximum() > 0
         for card in wall.plot_wall.cards:
             assert card.plot.view_box.height() >= 128
             assert card.blocks.height() == 18

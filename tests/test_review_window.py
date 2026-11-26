@@ -128,7 +128,7 @@ def test_inline_fraction_id_edit_and_chips(b998):
 def test_plot_wall_shows_the_mapped_functions(b998):
     window = b998
     assert [plot.key for plot in window.plot_wall.plots] == B998_MAPPED
-    assert window.plot_wall.column_count() == (3 if window.layout_name == "wall" else 2)
+    assert window.plot_wall.column_count() == (1 if window.layout_name == "wall" else 2)
     plot = window.plot_wall.plot("206/204 D")
     assert plot.rows_shown.size == 96
     assert "206/204 D" in plot.title_text and "%" in plot.title_text
@@ -384,7 +384,7 @@ def test_review_fits_without_horizontal_scrolling(b998, size):
     assert not wall.horizontalScrollBar().isVisible()
     assert wall.container.width() <= wall.viewport().width()
     if window.layout_name == "wall":
-        assert wall.column_count() == (3 if size[0] >= 1280 else 2)
+        assert wall.column_count() == 1  # First-run Stacked layout.
     else:
         assert 1 <= wall.column_count() <= 2
     for plot in wall.plots:

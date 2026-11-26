@@ -24,6 +24,12 @@ choose what you plot. Each plot shows its mean, 1σ % SE, accepted count and blo
 MSWD. Filled points are used; hollow red points are excluded; crosses are invalid.
 The line is the mean, and the bands show SE, 1σ and 2σ.
 
+The wall’s **Stacked | Auto-fit** switch (also in **View**) remembers your choice.
+Stacked is the default: full-width plots share cycle labels on the bottom plot
+and one block strip below the wall. Auto-fit chooses columns from the available
+width, with a block strip per card. Both scroll vertically when needed; switching
+keeps your selections, masks and plot state.
+
 The light and dark themes use the lab suite's quiet surfaces and filament accent.
 Ratios / Intensities / Table form a segmented view switch; inspector tabs use an
 underline, and the numbered workflow rail connects the existing steps. Undo,

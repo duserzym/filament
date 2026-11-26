@@ -13,7 +13,7 @@ from rawtims_gui.studio.naming import natural_sort_key
 from rawtims_gui.studio.review_toolbar import ReviewToolbar
 from rawtims_gui.studio.splitters import StudioSplitter, _SplitterHandle
 from rawtims_gui.studio.theme import active_theme
-from rawtims_gui.studio.widgets import ElidedLabel, set_style
+from rawtims_gui.studio.widgets import ElidedLabel, SegmentedBar, SegmentButton, set_style
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ class PanelSize:
 
 
 WORK_SIZE = PanelSize(QtCore.QSize(940, 680), QtCore.QSize(420, 180), QtCore.QSize(16777215, 16777215))
-CARD_SIZE = PanelSize(QtCore.QSize(440, 200), QtCore.QSize(160, 212), QtCore.QSize(16777215, 900))
+CARD_SIZE = PanelSize(QtCore.QSize(440, 280), QtCore.QSize(420, 260), QtCore.QSize(16777215, 900))
 INSPECTOR_SIZE = PanelSize(QtCore.QSize(300, 680), QtCore.QSize(240, 180), QtCore.QSize(430, 16777215))
 
 
@@ -140,7 +140,7 @@ class BlockCell(ReviewToolButton):
 
 
 class SharedBlocks(QtWidgets.QWidget):
-    """An 18 px cycle-axis strip, repeated per card and synced by Analysis.
+    """An 18 px cycle-axis strip, shared or per card and synced by Analysis.
 
     Segment edges use the linked ViewBox transform, including while zoomed.
     A drag only updates a border; it never recalculates or replots the data.
@@ -166,12 +166,13 @@ class SharedBlocks(QtWidgets.QWidget):
         if self.analysis is None or self.plot is None:
             return
         vb = self.plot.view_box
-        left = vb.mapViewToScene(QtCore.QPointF(vb.viewRange()[0][0], 0)).x()
+        offset = self.mapFromGlobal(self.plot.viewport().mapToGlobal(QtCore.QPoint())).x()
+        left = offset + vb.mapViewToScene(QtCore.QPointF(vb.viewRange()[0][0], 0)).x()
         right = left + vb.width()
         for block, cell in self.cells.items():
             cycles = self.analysis.run.cycle[self.analysis.run.block == block]
-            x0 = vb.mapViewToScene(QtCore.QPointF(float(cycles.min())-.5, 0)).x()
-            x1 = vb.mapViewToScene(QtCore.QPointF(float(cycles.max())+.5, 0)).x()
+            x0 = offset + vb.mapViewToScene(QtCore.QPointF(float(cycles.min())-.5, 0)).x()
+            x1 = offset + vb.mapViewToScene(QtCore.QPointF(float(cycles.max())+.5, 0)).x()
             start, end = round(max(left, x0)), round(min(right, x1))
             cell.setGeometry(start, 0, max(0, end-start), 18)
             cell.setVisible(end > start)
@@ -316,6 +317,20 @@ class RatioCard(QtWidgets.QFrame):
         self.tools.hide()
         plot.installEventFilter(self)
 
+    def set_stacked(self, stacked):
+        """Reposition the existing header widgets without rebuilding the plot."""
+        header = self.header.layout()
+        for widget in (self.name, self.summary, self.log_button, self.fit_button, self.max_button):
+            header.removeWidget(widget)
+        self.header.setFixedHeight(24 if stacked else 38)
+        header.addWidget(self.name, 0, 0)
+        header.addWidget(self.summary, 0 if stacked else 1, 1 if stacked else 0, 1, 1 if stacked else 5)
+        for column, button in enumerate((self.log_button, self.fit_button, self.max_button), 2 if stacked else 1):
+            header.addWidget(button, 0, column)
+        header.setColumnStretch(0, 1)
+        header.setColumnStretch(1, 3 if stacked else 0)
+        self.blocks.setVisible(not stacked)
+
     def eventFilter(self, watched, event):
         if watched is self.plot:
             if event.type() == QtCore.QEvent.Type.Enter:
@@ -356,15 +371,45 @@ class RatioCard(QtWidgets.QFrame):
 
 class ReviewPlotWall(PlotWall):
     panel_size = WORK_SIZE
+    layoutChanged = QtCore.Signal(str)
+    layout_key = 'review/wall/plot_layout_v1'
 
     def __init__(self, parent=None):
         self.cards = []
+        self.plot_layout = 'stacked'
+        self.shared_blocks = None
         self.maximised = None
         self.maximise_card = self._toggle_card
         super().__init__(parent)
         self.grid.setSpacing(6)
+        self.shared_blocks = SharedBlocks()
+        self.shared_blocks.setParent(self)
+        self.shared_blocks.hide()
+        self.shared_blocks.blockClicked.connect(lambda block: self.window().toggle_block(block))
+        self.shared_blocks.rangeRequested.connect(lambda blocks: self.window().toggle_block_range(blocks))
+
+    def set_plot_layout(self, layout):
+        if layout not in ('stacked', 'auto-fit'):
+            layout = 'stacked'
+        self.plot_layout = layout
+        self.settings.setValue(self.layout_key, layout)
+        for card in self.cards:
+            card.set_stacked(layout == 'stacked')
+        self._relayout()
+        self.layoutChanged.emit(layout)
+
+    def _bind_shared_blocks(self, plot):
+        strip = self.shared_blocks
+        if strip.plot is not None:
+            strip.plot.view_box.sigRangeChanged.disconnect(strip.align_axis)
+            strip.plot.view_box.sigResized.disconnect(strip.align_axis)
+        strip.plot = plot
+        if plot is not None:
+            plot.view_box.sigRangeChanged.connect(strip.align_axis)
+            plot.view_box.sigResized.connect(strip.align_axis)
 
     def set_plots(self, keys, state):
+        self._bind_shared_blocks(None)
         if self.maximised and hasattr(self.window(), 'review_shell'):
             self.window().review_shell.restore_all()
         self.maximised = None
@@ -380,8 +425,9 @@ class ReviewPlotWall(PlotWall):
             card = RatioCard(plot, self.toggle_card)
             self.cards.append(card)
             card.refresh(state)
+            card.set_stacked(self.plot_layout == 'stacked')
         self.tools.hide()
-        self.window().block_header = self.cards[0].blocks if self.cards else None
+        self.shared_blocks.refresh(state.analysis if state else None)
         self._relayout()
         for card in self.cards:
             point = self.window().settings.value(f'plots/tools/{card.plot.key}')
@@ -405,17 +451,21 @@ class ReviewPlotWall(PlotWall):
         super().refresh(state, rebuild=rebuild)
         for card in self.cards:
             card.refresh(state)
+        self.shared_blocks.refresh(state.analysis)
 
     def apply_theme(self):
         super().apply_theme()
         if self.state:
             for card in self.cards:
                 card.refresh(self.state)
+            self.shared_blocks.refresh(self.state.analysis)
 
     def column_count(self):
-        width = self.viewport().width()
-        count = len(self.cards) or len(self.plots)
-        return 3 if width >= 850 and count >= 5 else 2 if width >= 600 else 1
+        if self.plot_layout == 'stacked':
+            return 1
+        return max(1, min(4, len(self.cards) or 1,
+                         (self.viewport().width() - self.grid.contentsMargins().right() + self.grid.spacing()) //
+                         (CARD_SIZE.minimum.width() + self.grid.spacing())))
 
     def toggle_card(self, card):
         self.maximise_card(card)
@@ -425,7 +475,15 @@ class ReviewPlotWall(PlotWall):
         self._relayout()
 
     def _relayout(self):
+        if self.shared_blocks is None:
+            return
+        stacked = self.plot_layout == 'stacked'
+        self.setViewportMargins(0, 0, 0, 18 if stacked and self.cards else 0)
+        self.shared_blocks.setVisible(stacked and bool(self.cards))
+        self.shared_blocks.setGeometry(self.viewport().x(), self.viewport().geometry().bottom() + 1,
+                                       self.viewport().width(), 18)
         if not self.cards:
+            self.window().block_header = None
             return
         columns = self.column_count() if self.maximised is None else 1
         for card in self.cards:
@@ -438,16 +496,25 @@ class ReviewPlotWall(PlotWall):
         rows = max(1, (len(visible) + columns - 1) // columns)
         spacing = self.grid.spacing()
         available = self.viewport().height()
+        minimum_height = 182 if stacked else CARD_SIZE.minimum.height()
+        bottom = visible[-1].plot
+        if self.shared_blocks.plot is not bottom:
+            self._bind_shared_blocks(bottom)
+        self.window().block_header = self.shared_blocks if stacked else visible[0].blocks
+        for card in self.cards:
+            card.setMinimumWidth(160 if stacked else CARD_SIZE.minimum.width())
+            card.plot.getPlotItem().showAxis('bottom', not stacked or card is visible[-1])
         # When scrolling is needed, fill an integral number of complete rows.
-        visible_rows = min(rows, max(1, (available + spacing) // (CARD_SIZE.minimum.height() + spacing)))
-        height = max(CARD_SIZE.minimum.height(), min(CARD_SIZE.maximum.height(),
+        visible_rows = min(rows, max(1, (available + spacing) // (minimum_height + spacing)))
+        height = max(minimum_height, min(CARD_SIZE.maximum.height(),
                      (available - spacing * (visible_rows - 1)) // visible_rows))
         for index, card in enumerate(visible):
             card.setFixedHeight(height)
             self.grid.addWidget(card, index // columns, index % columns)
-        for column in range(3):
+        for column in range(max(self.grid.columnCount(), columns)):
             self.grid.setColumnStretch(column, 1 if column < columns else 0)
         self.grid.setRowStretch(rows, 1)
+        self.shared_blocks.align_axis()
 
 
 def reduced_motion(widget):
@@ -659,6 +726,44 @@ class ReviewShell(QtWidgets.QWidget):
         self.work_row.addWidget(old_rail)
         self.work_row.addWidget(self.splitter, 1)
         box.addLayout(self.work_row, 1)
+        self.layout_bar = SegmentedBar()
+        self.layout_bar.setObjectName('StageSegmentBar')
+        self.layout_bar.setAccessibleName('Plot layout')
+        row = QtWidgets.QHBoxLayout(self.layout_bar)
+        row.setContentsMargins(1, 1, 1, 1)
+        row.setSpacing(1)
+        buttons = QtWidgets.QButtonGroup(self.layout_bar)
+        self.layout_buttons = {}
+        self.layout_actions = {}
+        actions = QtGui.QActionGroup(self)
+        actions.setExclusive(True)
+        window.view_menu.addSeparator()
+        for mode, label, tip in (
+            ('stacked', 'Stacked', 'Full-width plots with one shared cycle axis and block strip'),
+            ('auto-fit', 'Auto-fit', 'Fit plot columns to the available width with a block strip per card'),
+        ):
+            button = SegmentButton()
+            button.setText(label)
+            button.setToolTip(tip)
+            button.setAccessibleName(f'{label} plot layout')
+            button.setCheckable(True)
+            button.setProperty('modeToggle', True)
+            buttons.addButton(button)
+            row.addWidget(button)
+            self.layout_bar.add_segment(button)
+            button.clicked.connect(lambda _checked=False, m=mode: window.plot_wall.set_plot_layout(m))
+            action = window.view_menu.addAction(f'{label} plots')
+            action.setCheckable(True)
+            action.setToolTip(tip)
+            actions.addAction(action)
+            action.triggered.connect(lambda _checked=False, m=mode: window.plot_wall.set_plot_layout(m))
+            self.layout_buttons[mode] = button
+            self.layout_actions[mode] = action
+        window.plot_wall.layoutChanged.connect(self.sync_plot_layout)
+        window.review_page.layout().insertWidget(window.review_page.layout().indexOf(window.view_stack), self.layout_bar,
+                                     0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        window.plot_wall.settings = window.settings
+        window.plot_wall.set_plot_layout(window.settings.value(window.plot_wall.layout_key, 'stacked', type=str))
         self.centre = centre
         window.plot_wall.maximise_card = self.toggle_card
         self.max_action = window._action('Maximise Work Panel', self.maximise_focused, 'Ctrl+Shift+Return')
@@ -668,6 +773,11 @@ class ReviewShell(QtWidgets.QWidget):
             window.view_menu.addAction(action)
         if window.settings.value('review/wall/focus_v1', False, type=bool):
             QtCore.QTimer.singleShot(0, self, lambda: self.set_focus(True))
+
+    def sync_plot_layout(self, mode):
+        self.layout_buttons[mode].setChecked(True)
+        self.layout_actions[mode].setChecked(True)
+        self.layout_bar.select_checked()
 
     def reset_panels(self):
         self.set_focus(False)
