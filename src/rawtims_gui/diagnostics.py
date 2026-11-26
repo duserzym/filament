@@ -31,6 +31,8 @@ def build_menu(window):
     menu = window.view_menu.addMenu('Review diagnostics')
     menu.addAction('Histogram / x–y / time / oxygen…', lambda: show_diagnostics(window))
     menu.addAction('Session and work-product notes…', lambda: edit_notes(window))
+    from rawtims_gui.composition import show_composition
+    menu.addAction('Expressions / concatenation / block diagnostics…', lambda: show_composition(window))
     menu.addSeparator()
     for key, text in (('block_means', 'Block-mean overlay'), ('stats', 'Show plot statistics'),
                       ('frozen', 'Freeze displayed statistics'), ('inverted', 'Invert all displays')):

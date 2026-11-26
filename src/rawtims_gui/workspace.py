@@ -103,6 +103,7 @@ class Workspace:
         self.missing: list[MissingRun] = []
         self.stat_mode = "arithmetic"
         self.presentation: dict = {}
+        self.composition: dict = {}
         self._restoring = False
 
     def set_stat_mode(self, mode: str) -> None:
@@ -427,7 +428,8 @@ class Workspace:
                 if id(analysis) in self._edits:
                     edits[run_id] = self._edits[id(analysis)]
         return SessionState(fractions=list(self.fractions), mapping_edits=edits, mapping_sources=sources,
-                            missing=list(self.missing), stat_mode=self.stat_mode, presentation=self.presentation)
+                            missing=list(self.missing), stat_mode=self.stat_mode, presentation=self.presentation,
+                            composition=self.composition)
 
     def restore(self, state: SessionState) -> list[SessionProblem]:
         """Take the fractions of a loaded session (replacing what is open). Returns the mapping problems found.
@@ -442,6 +444,7 @@ class Workspace:
         self.fractions = list(state.fractions)
         self.stat_mode = state.stat_mode
         self.presentation = state.presentation
+        self.composition = state.composition
         self.missing = list(state.missing)
         self._edits.clear()
         self._mappings.clear()

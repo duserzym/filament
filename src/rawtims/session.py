@@ -87,7 +87,7 @@ FRACTION_FIELDS = (
     "sample_weight_mg", "spike_weight_g", "spike_type", "spike", "collector",
     "pb_collector_detail", "instrument", "timezone", "notes",
 )
-PROBLEM_KINDS = ("missing", "changed", "unreadable", "replay", "mapping")
+PROBLEM_KINDS = ("missing", "changed", "unreadable", "replay", "mapping", "composition")
 # Largest session file read (a session holds no per-cycle values, so real ones are far smaller).
 MAX_SESSION_BYTES = 32 * 1024 * 1024
 
@@ -141,6 +141,7 @@ class SessionState:
     recovery: dict[str, Any] | None = None
     stat_mode: str = "arithmetic"
     presentation: dict[str, Any] = field(default_factory=dict)
+    composition: dict[str, Any] = field(default_factory=dict)
 
     def analyses(self) -> list[Analysis]:
         return [a for fraction in self.fractions for a in (fraction.pb, fraction.u) if a is not None]
@@ -302,6 +303,9 @@ def session_document(state: SessionState, path: str | os.PathLike[str] | None, *
     }
     if state.presentation:
         document["presentation"] = state.presentation
+    if state.composition:
+        from rawtims.composition import CompositionBook
+        document["composition"] = CompositionBook.from_dict(state.composition).to_dict()
     if extra:
         document.update({key: value for key, value in extra.items() if key not in document})
     return document
@@ -324,6 +328,11 @@ def session_fingerprint(state: SessionState, path: str | os.PathLike[str] | None
     del document["saved_at"]
     # Missing-run records belong to the workspace; never mutate them here.
     document["runs"] = [{k: v for k, v in record.items() if k != "redo_history"} for record in document["runs"]]
+    if "composition" in document:
+        history = document["composition"]
+        history["events"] = history["events"][:history["applied"]]
+        if not history["events"]:
+            del document["composition"]
     return hashlib.sha256(json.dumps(document, sort_keys=True, allow_nan=False).encode()).hexdigest()
 
 
@@ -596,6 +605,19 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
                                                           "the mapping is proposed again", fid, element, run_id))
     for analysis in state.analyses():
         analysis.remember_legacy_masks()
+    if "composition" in document:
+        from rawtims.composition import CompositionBook, compose
+        try:
+            book = CompositionBook.from_dict(document["composition"])
+        except (ValueError, TypeError) as error:
+            raise SessionError(f"{path.name}: invalid composition history ({error})") from None
+        state.composition = book.to_dict()
+        sources = {a.run.run_id: a for a in state.analyses()}
+        for recipe in book.objects:
+            try:
+                compose(recipe, sources)
+            except (ValueError, KeyError) as error:
+                problems.append(SessionProblem("composition", f"{recipe.name}: diagnostic unavailable ({error}); recipe retained"))
     if set(runs) != used:
         raise SessionError(f"{path.name}: runs without a fraction: {', '.join(sorted(set(runs) - used))}")
     if "stat_mode" not in document:

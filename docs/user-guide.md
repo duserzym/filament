@@ -384,3 +384,56 @@ in its current order, including plots below the scrolling viewport. Graph sheets
 arrange four plots per page. Diagnostic windows have their own PNG/Print buttons.
 Images retain the current display direction, zoom, titles and frozen labels;
 they are review artifacts rather than replacements for numerical exports.
+
+## Compose diagnostic analyses
+
+Choose **View → Review diagnostics → Expressions / concatenation / block diagnostics…**.
+Use **Current run** to work with the selected acquisition. Saved objects appear in
+the top picker. Their expression library and separate **Undo / Redo** history are
+saved in your native session. Closing this window keeps saved edits; deleting an
+expression or object is undoable here. The main window’s undo controls continue to
+operate on the original acquisition.
+
+In **Expressions**, give a column a name and stable key such as `derived:ratio1`.
+Reference an existing column using its exact key in brackets, for example
+`[206/205 D] / [207/205 D]`. Repeated source names keep their `#2` suffix. Reference
+another diagnostic with `[derived:ratio1]`. Keep its key when editing its formula,
+so dependent expressions retain their identity. Choose the library entry to edit
+or delete it; **New expression** supplies an unused key.
+
+Supported operations are `+ - * / ^`, parentheses, `log(x)` (base ten), `ln(x)`
+(natural log), `exp(x)` and `sqrt(x)`. Powers associate to the right: `2^3^2` is
+512. Multiplication must be explicit. Missing references, dependency cycles and
+unsupported syntax prevent saving. Domain failures, overflow, missing source
+values and nonpositive ratio results are marked invalid per cycle. A diagnostic
+uses the intersection of its input selections, while retaining finite excluded
+values for review. Its uncertainty is not propagated.
+
+The ratio builder fills a numerator/denominator expression from two existing
+columns with matching kinds and units. Choose **Output kind → ratio** for other
+expressions that represent positive ratios. Inspect the selected column in
+**Cycles**; member cycle IDs and elapsed seconds remain unchanged.
+
+Choose **Concatenate…**, select acquisitions and optionally enter original block
+numbers separated by commas. Saved concatenations keep their members, original
+cycle/block/time IDs, source SHA-256 hashes, selection masks and boundaries.
+Members must have matching method, element, function, unit and reduction-setting
+identities. Recorded start dates plus elapsed seconds determine order across
+acquisitions; missing/mixed clocks, overlapping time ranges and duplicate cycles
+are refused. The engine also supports disjoint block selections of one acquisition
+without a recorded start date. There is no unit conversion or guessed time offset.
+Use **Members / provenance** to inspect source identities.
+
+**Block diagnostics** compares two explicitly labelled calculations for the
+selected function: the standard inverse-SE² weighted block mean and MSWD, and the
+Java 00dc941 inverse-SD² weighted mean and its snapshot chi-square expression.
+For geometric ratios the weighting, SD, SE and reported 1σ are on the ln(ratio)
+scale; the mean is transformed back. Blocks with fewer than two included cycles
+or zero/nonfinite spread are omitted with a notice. Dispersion is unavailable
+with fewer than two usable blocks. Repeated block numbers from different
+members remain separate.
+
+These are diagnostic objects. They do not alter acquired columns, cycle masks,
+oxide settings, the cycle estimator or any export, including the measured `/1`
+fraction mapping. If a source cannot be restored on reopening, the session reports
+the diagnostic as unavailable and retains its recipe.
