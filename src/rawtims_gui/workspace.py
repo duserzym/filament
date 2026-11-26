@@ -73,6 +73,7 @@ class ImportResult:
     added: list[Analysis] = field(default_factory=list)
     fractions: list[Fraction] = field(default_factory=list)
     skipped: list[tuple[str, str]] = field(default_factory=list)
+    reviewed: list[Analysis] = field(default_factory=list)
 
 
 def read_paths(paths: Sequence[str | os.PathLike[str]]) -> tuple[list[Analysis], list[tuple[str, str]]]:

@@ -10,6 +10,40 @@ Choose **File → Open Files…** for an IonVantage `.xls`, IsoLinx `.TIMSDP`, o
 acquisition folder or a `.raw` directory; the app finds its cached workbook.
 A `.raw` directory needs that workbook to open.
 
+Processed **Triton EXP**, **Nu TIMS individual-answers TXT**, **Neptune EXP**
+and the **EARTHTIME ID-TIMS cycle CSV template** also open here. Detection uses
+the exact report heading/header, even if the file has another extension. These
+contain instrument-processed functions. They do not enable generic raw reduction.
+
+The cycle CSV template is separate from the fractions CSV hand-off. Fill its
+sample, fraction, date (`mm/dd/yyyy`), cycles per block and function/cycle table.
+Zero cycles per block means a single block. Legacy template semantics number
+rows from one, clamp nonpositive values to zero and pad the final block with
+invalid zeros. Source cycle labels and padding count remain in metadata. The
+unfilled template reports that cycle data must be added.
+
+Triton/Neptune **X** flags are retained without automatic rejection. **D**, blank
+and `Invalid Norm` cells are missing and cannot enter statistics; a D-prefixed
+numeric payload remains visible as invalid. Hover a cycle value to see its source
+token, and check **Run info** for flag counts and time/block interpretation.
+Triton uses the pinned Java fallback of ten cycles per block when the file has
+no declared block size. Neptune report rows form one review block. Nu uses its
+declared measurements per block and has no recorded cycle time. UCDavis clock
+strings are shown as seconds; their original strings remain available.
+
+Cr, Sr, Nd and other runs without Pb/U assignments open an **independent run
+review** window with the existing plot and cycle table. Select any function,
+sculpt points/blocks, choose arithmetic or geometric-ratio statistics, use the
+selected function's **X flags**, and **Undo** edits. **Source and flags** retains
+the source tokens. **Save cycle CSV…** records reviewed values and include masks.
+These windows are temporary and do not enter a saved fraction session. Save their
+cycle CSV before closing. Pb/U runs retain the normal workspace/session workflow.
+
+The `/1` fraction contract still requires its existing Pb/U ratios and valid
+mapping. Other isotope systems have cycle export only; importing a vendor file
+alone does not establish an exportable Pb/U mapping. See
+[processed format coverage and Java comparison limits](p5-processed-parsers.md).
+
 Choose a fraction and **Pb** or **U** in the top picker. Opening a new run does not
 reject cycles. A `.trip` restores its saved, per-ratio rejections as undoable edits.
 If its source is missing, use **Locate…** and choose the named workbook. Do not

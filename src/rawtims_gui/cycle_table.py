@@ -102,6 +102,12 @@ class CycleTableModel(QtCore.QAbstractTableModel):
             return None
         if role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
             return int(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        if column >= len(FIXED_COLUMNS) and role == QtCore.Qt.ItemDataRole.ToolTipRole:
+            cells = run.metadata.extra.get('source_cells')
+            source_col = self._columns[column - len(FIXED_COLUMNS)]
+            if cells is not None and source_col < run.n_functions:
+                token = cells[row][source_col]
+                return f'Source cell: {token or "(blank)"} · X = vendor rejection; D/blank = missing'
         if column < len(FIXED_COLUMNS):
             if role == QtCore.Qt.ItemDataRole.DisplayRole:
                 if column == 1:

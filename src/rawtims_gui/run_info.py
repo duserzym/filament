@@ -32,4 +32,9 @@ class RunInfoPanel(QtWidgets.QWidget):
                  f"Acquisition folder: {raw_folder(Path(run.raw.path)) or 'not available'}",
                  f"Acquisition method: {raw_reason}", f"Current route: {run.reduction_parameters.route}",
                  "Warnings:", *(run.warnings or ('None',))]
+        if 'vendor_rejected' in meta.extra:
+            import numpy as np
+            lines += [f"Vendor X cells: {np.count_nonzero(meta.extra['vendor_rejected'])} (retained, not applied)",
+                      f"Vendor missing cells: {np.count_nonzero(meta.extra['vendor_missing'])}",
+                      f"Time basis: {meta.extra['time_basis']}", f"Blocks: {meta.extra['block_basis']}"]
         self.text.setText('\n\n'.join(str(line) for line in lines))

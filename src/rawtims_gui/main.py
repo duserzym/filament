@@ -904,9 +904,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _import_finished(self, payload) -> None:
         analyses, skipped = payload
-        result = self.workspace.add(analyses, skipped)
+        from rawtims.readers.processed import FORMATS
+        from rawtims.readers.idtims_template import FORMAT as TEMPLATE
+        from rawtims_gui.processed_review import ProcessedReviewDialog
+        independent = [a for a in analyses if a.run.element is None and a.run.raw.format in (*FORMATS, TEMPLATE)]
+        result = self.workspace.add([a for a in analyses if a not in independent], skipped)
+        if not hasattr(self, '_processed_reviews'):
+            self._processed_reviews = []
+        reviewed = []
+        open_hashes = {d.analysis.run.raw.sha256 for d in self._processed_reviews}
+        for analysis in independent:
+            if analysis.run.raw.sha256 in open_hashes:
+                result.skipped.append((analysis.run.raw.path, 'already open in independent review (same content)'))
+                continue
+            open_hashes.add(analysis.run.raw.sha256)
+            reviewed.append(analysis)
+            dialog = ProcessedReviewDialog(analysis, self)
+            self._processed_reviews.append(dialog)
+            dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+            dialog.destroyed.connect(lambda _obj=None, d=dialog: self._processed_reviews.remove(d) if d in self._processed_reviews else None)
+            dialog.show()
+        result.reviewed = reviewed
         from rawtims_gui.recent_inputs import remember
-        for analysis in result.added:
+        for analysis in [*result.added, *result.reviewed]:
             if Path(analysis.run.raw.path).is_file():
                 remember(self.settings, 'files', analysis.run.raw.path)
         self.skipped = result.skipped
@@ -924,10 +944,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self._update_titles()
         runs, fractions = len(result.added), len(result.fractions)
         message = f"Opened {runs} run{'s' if runs != 1 else ''} in {fractions} fraction{'s' if fractions != 1 else ''}"
+        if result.reviewed:
+            message += f'; {len(result.reviewed)} independent run review(s)'
         if result.skipped:
             count = len(result.skipped)
             message += f"; {count} file{'s' if count != 1 else ''} skipped (list in the status bar)"
-        if not runs and not result.skipped:
+        if not runs and not result.skipped and not result.reviewed:
             message = "No run files found"
         self.statusBar().showMessage(message, 8000)
         self.import_summary.setText(message)

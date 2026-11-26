@@ -545,3 +545,1342 @@ source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
 source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/expressions/NBS981_210325b-392_ExpressionEval.txt"
 bytes = 4519
 sha256 = "b8b73fd13fde7bbda5b3e129113c5999a418265c8170d130af3ec4a0c6b1b076"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/15700_Nd_Gain_10_13_301115.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/15700_Nd_Gain_10_13_301115.exp"
+bytes = 33434
+sha256 = "61971edcb1f2d6a3678b31305e4c78336f4e129706b6482f7479363a3cbc0b90"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-15700_Nd_Gain_10_13_301115-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-15700_Nd_Gain_10_13_301115-report.tsv"
+bytes = 26962
+sha256 = "f5387ebaa9d14426e2bd09308f4db8f3675b98f44cf06f5e97c1b3d7b8d9e598"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-15700_Nd_Gain_10_13_301115-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-15700_Nd_Gain_10_13_301115-report.csv"
+bytes = 1407
+sha256 = "71e7c4f32b3139ff6d5f0d631e3a05809bf22ef8829a0cce8bb63cfdf6028f8d"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/15709_Sr_4114.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/15709_Sr_4114.exp"
+bytes = 120230
+sha256 = "59fe1f16832aef2889579cc478ec5a2890020389d21808e4bdbccc608c0e9b82"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-15709_Sr_4114-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-15709_Sr_4114-report.tsv"
+bytes = 107006
+sha256 = "b077290a339f2adc9cec74b314a5ab278a1be54e5689666d2e6ef007dce3ffb0"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-15709_Sr_4114-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-15709_Sr_4114-report.csv"
+bytes = 1019
+sha256 = "3e93164565f527bd9a01f71667d60fcccd5da0e9862c6be5cefb7287169601dd"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/16859_SR73-z41_Pb_SEM.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/16859_SR73-z41_Pb_SEM.exp"
+bytes = 120867
+sha256 = "2da7ec301f095b9441be333adfe33556834d76cb4667d53f2321741698d132a1"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_Pb_SEM-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_Pb_SEM-report.tsv"
+bytes = 100889
+sha256 = "0b6c1a01793e93c2988ed565aec418e02cad57c5e68b6c79f7d9892120c8c915"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_Pb_SEM-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_Pb_SEM-report.csv"
+bytes = 1571
+sha256 = "49cf552e81964e4d8decf68b9c92b3f5ede4738e8df0e7d9227c40423bd12f05"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/16859_SR73-z41_U_stat.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/16859_SR73-z41_U_stat.exp"
+bytes = 15350
+sha256 = "df1613f7e93746e8025dc834cdd66f76875eb2c2ac466115085e6c5a65d2ac22"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_U_stat-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_U_stat-report.tsv"
+bytes = 12276
+sha256 = "194016f158d3d34ecfec19f207acde1dca9fabdcb68a6f7c505fb90b18076441"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_U_stat-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-16859_SR73-z41_U_stat-report.csv"
+bytes = 1277
+sha256 = "aa3b23ccfc3cd52c068b1bff14e399b7fe153769b64a836536393c82a1d78349"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21241_H2O1_208Pb_SEM.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21241_H2O1_208Pb_SEM.exp"
+bytes = 2900
+sha256 = "320c44843051426bc22c3c2f52caca183c2d041a589e6ae4014004b2330bae16"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21241_H2O1_208Pb_SEM-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21241_H2O1_208Pb_SEM-report.tsv"
+bytes = 2151
+sha256 = "541d8fba651e95bea4527fcb12477153b54eb1742227516dd3f42dd78ddfc158"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21241_H2O1_208Pb_SEM-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21241_H2O1_208Pb_SEM-report.csv"
+bytes = 464
+sha256 = "60cdc2076e658afdda09e7504431b92824cb85f7634078f2007ce60141a560d9"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21242_H2O2_208Pb_SEM.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21242_H2O2_208Pb_SEM.exp"
+bytes = 2899
+sha256 = "69584067bc3d9931be52b5baae1e8953d228d8b5b8f7467b8ba4f1713e3b1601"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21242_H2O2_208Pb_SEM-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21242_H2O2_208Pb_SEM-report.tsv"
+bytes = 2140
+sha256 = "6ab04234721a728b9c5c3bffac4716293ee7c13e0b751aa0fe8798e8c4c0098e"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21242_H2O2_208Pb_SEM-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21242_H2O2_208Pb_SEM-report.csv"
+bytes = 467
+sha256 = "0ab487d34c582fcfae069bd877345db760d81f0d1643c97eeb3cedef26d292cb"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21341_ R9_z2_Pb_STAT.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21341_ R9_z2_Pb_STAT.exp"
+bytes = 218562
+sha256 = "bda77b83ae10c5a00c75055e03d593354a6f976ac9f53f897f7e6d180af60f2e"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_Pb_STAT-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_Pb_STAT-report.tsv"
+bytes = 186267
+sha256 = "cf7d21320447fc364ff9df681585f4cfa00afbcd67c11a3d69777c07e0ea4bcc"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_Pb_STAT-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_Pb_STAT-report.csv"
+bytes = 1436
+sha256 = "30acfa007abe34f010871e91f7257ec98182709b8f4259089c216a2f9110f0ce"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21341_ R9_z2_U_STAT.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21341_ R9_z2_U_STAT.exp"
+bytes = 86145
+sha256 = "125fc5e1d08e9e8f9b515d3228b13f8e018a8596c92a4d160aec900ab1446556"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_U_STAT-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_U_STAT-report.tsv"
+bytes = 74403
+sha256 = "da252de39cc9bd640663a2defa9f46d0c51c48a23974993501f0fd203908b6d3"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_U_STAT-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21341_ R9_z2_U_STAT-report.csv"
+bytes = 1249
+sha256 = "64d42fa16b43643f118e2d309c44f43909f1ef0dbc10ce297218b8c61764a71d"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21352_ R9_z9_Pb_STAT.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21352_ R9_z9_Pb_STAT.exp"
+bytes = 201983
+sha256 = "5ef2ae91ebc63fdfc4e7d5175fd461cee95f1ab6744912e9dbb1d936b0e86b23"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_Pb_STAT-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_Pb_STAT-report.tsv"
+bytes = 170522
+sha256 = "78b280cd46907225297770f8fb2d529731b5296e78f99f64bffcb0f53b8b0fb0"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_Pb_STAT-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_Pb_STAT-report.csv"
+bytes = 1445
+sha256 = "6b75abfa3a2565fb705737bcb9969251d601a55d66dc2d133bbd53f9f4311142"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21352_ R9_z9_U_STAT.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21352_ R9_z9_U_STAT.exp"
+bytes = 54370
+sha256 = "fc611d719a032da205e71d708040be9f5adf0db65c9280633054f3fec96d1fbd"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_U_STAT-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_U_STAT-report.tsv"
+bytes = 47125
+sha256 = "ca5a8987323daa9725037314c012d9ae9974389d31739aa278a2be903a7c5244"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_U_STAT-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21352_ R9_z9_U_STAT-report.csv"
+bytes = 1249
+sha256 = "ac1f119e6055c9b877fb301d964e6328b131d7c843b545af5b67aaa39c4193cb"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21431_YJP-01-Z17_U_SEM.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21431_YJP-01-Z17_U_SEM.exp"
+bytes = 51711
+sha256 = "05312446fd3fc7dcc45371a34b26c1f7b00c6fe81db2851797459cec56876313"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21431_YJP-01-Z17_U_SEM-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21431_YJP-01-Z17_U_SEM-report.tsv"
+bytes = 46392
+sha256 = "ce392341f0f61e1b674702386de268ce6cd508308aa8145287192511ce784894"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21431_YJP-01-Z17_U_SEM-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21431_YJP-01-Z17_U_SEM-report.csv"
+bytes = 768
+sha256 = "8c7220648659c515f2fbd574cbb98934484b4d9e6311926da27a193cfd9b9738"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/ETH/21460_newbeaker3_HF_208Pb_STAT.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/ETH/21460_newbeaker3_HF_208Pb_STAT.exp"
+bytes = 4594
+sha256 = "bcee5d8509cf4f9dfa251b31add703b9ab3fb924a521a74826b04261ab24129b"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/ETH/Oracle-21460_newbeaker3_HF_208Pb_STAT-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/ETH/Oracle-21460_newbeaker3_HF_208Pb_STAT-report.tsv"
+bytes = 4116
+sha256 = "46096af0cdd08e300ff7410dad7bebe3741f9227d9645ac209925c24c55c2732"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/ETH/Oracle-21460_newbeaker3_HF_208Pb_STAT-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/ETH/Oracle-21460_newbeaker3_HF_208Pb_STAT-report.csv"
+bytes = 504
+sha256 = "d345284cdb5629721d13290cc8164c43f528861f608793d66cf9f2c07e36657e"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/UCDavis/z11 1.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/UCDavis/z11 1.exp"
+bytes = 201793
+sha256 = "9e013a51e1bc5afa11aeccf56e6a6526553590971a761f9251a5a04dfc307be6"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/UCDavis/Oracle-z11 1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/UCDavis/Oracle-z11 1-report.tsv"
+bytes = 187488
+sha256 = "acdc0e484e7ee4e8add6aa64dbe4332986c1ca671157dbb43972a620a508b760"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/UCDavis/Oracle-z11 1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/UCDavis/Oracle-z11 1-report.csv"
+bytes = 1045
+sha256 = "bbdff844d1b0c45f892b8a0c33e6f09023c6bdd904a92d490a4316c8e8e0db75"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/UCDavis/z13 1.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/UCDavis/z13 1.exp"
+bytes = 284160
+sha256 = "29585a97413eaddf374d4555497af9c2213d4615f82ff231f2565414a6b6b328"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/UCDavis/Oracle-z13 1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/UCDavis/Oracle-z13 1-report.tsv"
+bytes = 264100
+sha256 = "d409f6d46ee3feaf01ef286bd7148fa52345e14bb423b065008a71776a2cf752"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/UCDavis/Oracle-z13 1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/UCDavis/Oracle-z13 1-report.csv"
+bytes = 1043
+sha256 = "db40ab74c4c4ab4689edf9e50a466fed4f05ca850093be2433e2a4c254d3f785"
+
+[[file]]
+path = "tripoli/processed/data/TritonTIMS/UCDavis/z14 1.exp"
+kind = "triton_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/TritonTIMS/UCDavis/z14 1.exp"
+bytes = 284235
+sha256 = "136b3f0f3e10094aef9eb607d4d19d6012a8e4d2a0d5dd13d16996e444e6c9f4"
+
+[[file]]
+path = "tripoli/processed/cycleReports/TritonTIMS/UCDavis/Oracle-z14 1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/TritonTIMS/UCDavis/Oracle-z14 1-report.tsv"
+bytes = 264174
+sha256 = "c0df5b314d2878c87c47ecdbdb6c273011bea6d130fb081cbc5834cd73500a52"
+
+[[file]]
+path = "tripoli/processed/fullReports/TritonTIMS/UCDavis/Oracle-z14 1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/TritonTIMS/UCDavis/Oracle-z14 1-report.csv"
+bytes = 1044
+sha256 = "dae50d64e283fbc566ead4d52a071e520f2dace045227bab2fc04e0cf9e54ecf"
+
+[[file]]
+path = "tripoli/processed/data/NuTIMS/FC1 E PbF (Individual Answers_553).txt"
+kind = "nu_tims_txt"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NuTIMS/FC1 E PbF (Individual Answers_553).txt"
+bytes = 36294
+sha256 = "6a23093ffd47ab4b66da6000d7605830b20b623035283fec6632ce9d08b6e36f"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NuTIMS/Oracle-FC1 E PbF (Individual Answers_553)-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NuTIMS/Oracle-FC1 E PbF (Individual Answers_553)-report.tsv"
+bytes = 55128
+sha256 = "6a04915bb3469cf2090f1d4c70b1604b5f2dd5b53c2c05398615b75754b6577a"
+
+[[file]]
+path = "tripoli/processed/fullReports/NuTIMS/Oracle-FC1 E PbF (Individual Answers_553)-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NuTIMS/Oracle-FC1 E PbF (Individual Answers_553)-report.csv"
+bytes = 733
+sha256 = "7e28063b0b660ee028da644e802db2e986b2b801266d76c193927b5b15dc5b8a"
+
+[[file]]
+path = "tripoli/processed/data/NuTIMS/FC1 E U (Individual Answers_554).txt"
+kind = "nu_tims_txt"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NuTIMS/FC1 E U (Individual Answers_554).txt"
+bytes = 24251
+sha256 = "7f2c852aa7483c635946b326efd1be65bb23271df613b30c882a9a838e1d81c2"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NuTIMS/Oracle-FC1 E U (Individual Answers_554)-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NuTIMS/Oracle-FC1 E U (Individual Answers_554)-report.tsv"
+bytes = 65958
+sha256 = "372ec88b8c7a658ef73dadca95f88bee2e32a7ed93a4d8701f50cb0632fda9ad"
+
+[[file]]
+path = "tripoli/processed/fullReports/NuTIMS/Oracle-FC1 E U (Individual Answers_554)-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NuTIMS/Oracle-FC1 E U (Individual Answers_554)-report.csv"
+bytes = 824
+sha256 = "fb211d8cac2d1d4aa33e44f999e9ef8cf6146d33dfef35f90d8aba289363e579"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/GP-112z1.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/GP-112z1.exp"
+bytes = 10630
+sha256 = "67e6f08c78d19405f7e1b560b5d8957a58a621ed42944b529584b4f584fd7250"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-GP-112z1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-GP-112z1-report.tsv"
+bytes = 4422
+sha256 = "baadab10dddeeb519d09348f8e83b8a26923c0382d2507544ef6fd4b109f3661"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-GP-112z1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-GP-112z1-report.csv"
+bytes = 2846
+sha256 = "7c806fb96f7a1a395fc1de00722c4a9311ba5881e4b5bdb7ebb4661e1a5438d8"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/GP-112z3.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/GP-112z3.exp"
+bytes = 10675
+sha256 = "2f7e1e64dbbf1d6723084e1e8d2d5a8c6cdcc80a921b0d292ce84e622a587f7e"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-GP-112z3-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-GP-112z3-report.tsv"
+bytes = 4433
+sha256 = "c886c4b856f3d7e94491a21b21178c52ab136df440b80c70f2b7f9e7e7a2666c"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-GP-112z3-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-GP-112z3-report.csv"
+bytes = 2842
+sha256 = "a12ea2025504419527e24d603bd63d7eaaba240ebd6a3017c6d815c975f524e2"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/GP-112z4.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/GP-112z4.exp"
+bytes = 10674
+sha256 = "5bf186fc6481ba3b7ca82278fc1eb44d101fb1af124f0d0a3fca9857a6de503a"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-GP-112z4-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-GP-112z4-report.tsv"
+bytes = 4448
+sha256 = "ab3f4434971f738195fb51a0c45f887c55e7bc7d79dcf00f66cdd6b94ab84b39"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-GP-112z4-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-GP-112z4-report.csv"
+bytes = 2846
+sha256 = "016b83bb70a05d197717608e6167da2378bce9a6f11b1340a45af4b5dca7eb4d"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/GP-112z5.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/GP-112z5.exp"
+bytes = 10675
+sha256 = "98877b94cb737886ff740fbb3b338808bed9556bb61b9818a0a6396dc019fcf1"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-GP-112z5-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-GP-112z5-report.tsv"
+bytes = 4448
+sha256 = "2964a350494197437071c8abebcd55cca9309b296ec9c862c3b05dcae20fa886"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-GP-112z5-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-GP-112z5-report.csv"
+bytes = 2843
+sha256 = "93aafba352b20386c8a6fb8a63d3a9c6fb27eef9d74004f96444feadcef0d3f8"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/MK-113z1.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/MK-113z1.exp"
+bytes = 10673
+sha256 = "e39810081870ac064b8716db76ced4244ce0f4248b0dbf05bffdb203da18f91a"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-MK-113z1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-MK-113z1-report.tsv"
+bytes = 4434
+sha256 = "cb093566a4f85252cdd786d69653e25d52139f21d575e140eb690a44ef8bcc53"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-MK-113z1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-MK-113z1-report.csv"
+bytes = 2828
+sha256 = "608df5cae31547edd5c3cbf3e2ec22e99837421af63e95c64e6908bbcad7b51d"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/MK-113z2.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/MK-113z2.exp"
+bytes = 10675
+sha256 = "620293d7cb94da1997041b1574cd2ef1dfe84acb4fcc67d57f451686e68b9d7e"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-MK-113z2-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-MK-113z2-report.tsv"
+bytes = 4439
+sha256 = "be7e142f3775c2aaa74bb16c296a12ef51c8244c35dbb205523cabbe0911e804"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-MK-113z2-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-MK-113z2-report.csv"
+bytes = 2842
+sha256 = "bedb5bb55c793123569e377651363f82b519fc83d0fb6772d84429e4f01a3bb0"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/MK-113z3.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/MK-113z3.exp"
+bytes = 10676
+sha256 = "803c66603aed00c7d6fc0fefe6c9b6a6082311918d8206f15a209d7ae74ac6f9"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-MK-113z3-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-MK-113z3-report.tsv"
+bytes = 4429
+sha256 = "06ab864117e0952fd44c38d4febc56411914a363fa321a4485e9fbd010df9e23"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-MK-113z3-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-MK-113z3-report.csv"
+bytes = 2850
+sha256 = "a1ba2d632b4b2ef04b4a2063edabb3e28a0e3a182e3140d342e2b93075dd7ed2"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/MK-113z6.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/MK-113z6.exp"
+bytes = 10675
+sha256 = "7cf44daf8d43e86d2f8a4227e281e3a90b816213a8aa63f52babd40a0c5b2fb0"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-MK-113z6-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-MK-113z6-report.tsv"
+bytes = 4421
+sha256 = "a4d1f9e98665f158e54635fd55c17e5bf5bc989e3c6da8a95511b78e507dd176"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-MK-113z6-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-MK-113z6-report.csv"
+bytes = 2822
+sha256 = "65a94954076d79d0e6e9999e03e1058afbac793c1febd29080c451458444fcc9"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-GP-112z1.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-GP-112z1.exp"
+bytes = 7505
+sha256 = "a09fc0c5c80a240f3118faa09517d51db8d79e8c1bbc062214c6a39e7a755dc4"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z1-report.tsv"
+bytes = 3304
+sha256 = "6c263fb7d41bd53d58151564ecbd303264602dbaa9e7dfaf53a0c350a445b81d"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z1-report.csv"
+bytes = 2373
+sha256 = "866cf6cb0ec4a05716cfef4a49e507ce45f9096c22eecb3c45903da846f0ba8e"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-GP-112z3.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-GP-112z3.exp"
+bytes = 7507
+sha256 = "563e8f21d3e62bac3f892f19ba864800d8cce937602b19ac490c3bfebc1860ce"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z3-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z3-report.tsv"
+bytes = 3305
+sha256 = "23da36a4fd489a808a0ed2747b8825688e8acf00ee27bc8aa5a8e66e6505e50f"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z3-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z3-report.csv"
+bytes = 2382
+sha256 = "39f303b1820fab5475a4ef832bdc535e08ca69538ea5f41c9a0fffc019635955"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-GP-112z4.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-GP-112z4.exp"
+bytes = 7521
+sha256 = "71690b4d1eb0ede1414f4a601e4fdf6bc1484145a131aaa241215abc27a0c4b6"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z4-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z4-report.tsv"
+bytes = 3339
+sha256 = "939b798d3adb7f362477e1e968e54c325d2c904dc4bc48df88683ec42689952e"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z4-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z4-report.csv"
+bytes = 2364
+sha256 = "fdcae14adfb16526ef75e01450955ee930476bde31c5918ac7ad4038798b1dbf"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-GP-112z5.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-GP-112z5.exp"
+bytes = 7511
+sha256 = "c6cfa1df4c7263b1e256af5fe4afab92f04dfc3209a8a6411699c6493a144a7f"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z5-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-GP-112z5-report.tsv"
+bytes = 3344
+sha256 = "ff006c190493b630e5489e2ded96445582002117060592030b1a722f395f1525"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z5-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-GP-112z5-report.csv"
+bytes = 2388
+sha256 = "f9411fac7d95684b220140700c0c9ce3a129f8e916a3a56f814d416ea575ccbf"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-MK-113z1.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-MK-113z1.exp"
+bytes = 7509
+sha256 = "75a4069c52d3a96d1f3818b965a7736a337b5bac685b53f53faa84360ac1eaee"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z1-report.tsv"
+bytes = 3340
+sha256 = "a94eb1403a82d447c149cd8d2d734903964d47704540cc704ccb4d3c7aae9f97"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z1-report.csv"
+bytes = 2399
+sha256 = "0744e43e1462c4f71c46eab72bafe6dbe6bd2f549ef4e85c168cfc606f7d8728"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-MK-113z2.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-MK-113z2.exp"
+bytes = 7513
+sha256 = "5ae6b40f56f58ecc2f89b5515bb867f4c65645bcd436b73ed4d801bc14e656b3"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z2-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z2-report.tsv"
+bytes = 3357
+sha256 = "0350eedd1f5d1f3c0fc375fecf99e52cf67db27fe0635375cb20e027c39b95f5"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z2-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z2-report.csv"
+bytes = 2393
+sha256 = "219a1998e8ec78f72b10b7b1268f1c3a36a2bc4dd4baf9b18e3c76cd77f89b0b"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-MK-113z3.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-MK-113z3.exp"
+bytes = 7519
+sha256 = "fd8013d3d3e9359554333ad6149f8b43a663f17f8945e9cf1870b4a9a1fc6152"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z3-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z3-report.tsv"
+bytes = 3359
+sha256 = "c57e3d3d274d0c399183f6fb67ddf7ba59f58fc43cbce0ee4e71c4291d2649f4"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z3-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z3-report.csv"
+bytes = 2392
+sha256 = "65b6419618d5ed27e99a7f27be741fef5b020868329c0c309ea416121a4a5e8a"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-MK-113z6.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-MK-113z6.exp"
+bytes = 7513
+sha256 = "edce07e4e1bb2e16bfe89c07758898a530add3eec0c0b5b8d7518f176ea88fe1"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z6-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-MK-113z6-report.tsv"
+bytes = 3361
+sha256 = "9d79a0d860074e925e02c27c279bfa7a8f017b3e83cd25eed3dfa414b620fe9c"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z6-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-MK-113z6-report.csv"
+bytes = 2390
+sha256 = "68532ac24ec4e5c3264b59b2a5226cf6d583f7fac362b1696d46421890b86bd4"
+
+[[file]]
+path = "tripoli/processed/data/NeptuneMCICPMS/Tail-SCH-D-1.exp"
+kind = "neptune_exp"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/dataFiles/NeptuneMCICPMS/Tail-SCH-D-1.exp"
+bytes = 7502
+sha256 = "771cacf15cb6cb00bd599b307f523ba98a2dbe398cd9a46d3cef35c302436fa8"
+
+[[file]]
+path = "tripoli/processed/cycleReports/NeptuneMCICPMS/Oracle-Tail-SCH-D-1-report.tsv"
+kind = "oracle_cycle"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/cycleReports/NeptuneMCICPMS/Oracle-Tail-SCH-D-1-report.tsv"
+bytes = 3303
+sha256 = "9b5f858bd989923752fd24ba4f9e2a7da897278ce377724fbfc8b696fb0455cd"
+
+[[file]]
+path = "tripoli/processed/fullReports/NeptuneMCICPMS/Oracle-Tail-SCH-D-1-report.csv"
+kind = "oracle_full"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/Tripoli"
+source_commit = "00dc94109f572c22bb3f357c0f7b1bb5347f62f5"
+source_path = "TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/fullReports/NeptuneMCICPMS/Oracle-Tail-SCH-D-1-report.csv"
+bytes = 2363
+sha256 = "75485d718ba09c6567036256ee329fb409660a1c1effb0e6c849425392bd9ef8"
+
+[[file]]
+path = "tripoli/processed/ID_TIMS_DataImportTemplate.csv"
+kind = "idtims_template"
+element = "unspecified"
+lab = "public Tripoli"
+synthetic = false
+license = "Apache-2.0"
+source_repo = "https://github.com/CIRDLES/OGTripoli"
+source_commit = "d906f7071f17a9a1a71ae962817147b7ee7df0b5"
+source_path = "docs/ID_TIMS_DataImportTemplate.csv"
+bytes = 707
+sha256 = "4badb93269417f19ae9f1e0894ab184fddd4cb08964959720e93f94c3e3e789c"

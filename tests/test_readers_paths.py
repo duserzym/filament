@@ -31,17 +31,19 @@ def _writer():
 
 
 def _run_files() -> list[Path]:
-    return sorted([*TRIPOLI.rglob("*.xls"), *TRIPOLI.rglob("*.TIMSDP"), *SYNTHETIC.glob("*.xls")])
+    return sorted([*TRIPOLI.rglob("*.xls"), *TRIPOLI.rglob("*.TIMSDP"), *SYNTHETIC.glob("*.xls"), *(TRIPOLI/"processed/data").rglob("*.exp"), *(TRIPOLI/"processed/data").rglob("*.txt")])
 
 
 def test_open_paths_on_the_fixtures_folder():
     runs, skipped = open_paths([FIXTURES])
     assert sorted(Path(run.raw.path).resolve() for run in runs) == [p.resolve() for p in _run_files()]
-    assert len(runs) == 14
+    assert len(runs) == 48
     for run in runs:
         ratio = np.array([function.is_ratio for function in run.functions])
         with np.errstate(invalid="ignore"):
             expected = ~np.isfinite(run.values) | (ratio[None, :] & ~(run.values > 0))
+        if 'vendor_missing' in run.metadata.extra:
+            expected |= np.asarray(run.metadata.extra['vendor_missing'])
         assert np.array_equal(run.invalid, expected), run.raw.name
     reasons = {path.name: reason for path, reason in skipped}
     oracles = sorted(p.name for p in (TRIPOLI / "oracle").rglob("*") if p.is_file())
@@ -53,7 +55,9 @@ def test_open_paths_on_the_fixtures_folder():
             assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[name]
     # A synthetic fractions CSV in the legacy layout is not a run file either.
     assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[SYNTHETIC_FRACTIONS.name]
-    assert set(reasons) == set(oracles) | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", SYNTHETIC_FRACTIONS.name}
+    processed_reports = {p.name for folder in ('cycleReports', 'fullReports') for p in (TRIPOLI/'processed'/folder).rglob('*') if p.is_file()}
+    assert set(reasons) == set(oracles) | processed_reports | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", SYNTHETIC_FRACTIONS.name, 'ID_TIMS_DataImportTemplate.csv'}
+    assert reasons['ID_TIMS_DataImportTemplate.csv'] == 'could not be read (ValueError: Empty import template: add cycle data below the captions)'
 
 
 def test_open_paths_ignores_hidden_and_temporary_files(tmp_path):

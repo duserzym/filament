@@ -161,6 +161,8 @@ class Pairing:
 def suggested_fraction_id(analysis: Analysis) -> str:
     """The fraction ID suggested for a run: its sample ID without the element tag, else the file stem."""
     run = analysis.run
+    if run.raw.format == 'idtims_template_csv' and run.metadata.extra.get('fraction_id'):
+        return run.metadata.extra['fraction_id']
     stem = run.raw.name.rsplit(".", 1)[0]
     return suggest_fraction_id(run.metadata.sample_id) or stem
 

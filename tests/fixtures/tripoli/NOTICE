@@ -4,7 +4,7 @@ Test fixtures copied from CIRDLES repositories
 The files under this folder are copied unmodified, byte for byte, from two
 public CIRDLES repositories. tests/fixtures/MANIFEST.toml lists every file
 with its source repository, source commit, source path, licence and SHA-256.
-They were copied on 2026-11-14; the expression oracle was added on 2026-11-26.
+They were copied on 2026-11-14; the expression and processed-file oracles were added on 2026-11-26.
 
 1. CIRDLES/Tripoli  https://github.com/CIRDLES/Tripoli
    Commit 00dc94109f572c22bb3f357c0f7b1bb5347f62f5 (00dc941, 2026-10-09)
@@ -38,3 +38,15 @@ They were copied on 2026-11-14; the expression oracle was added on 2026-11-26.
 
 Tripoli is CIRDLES's name. This project is not Tripoli and is not endorsed by
 CIRDLES; it uses these files only as test inputs and expected outputs.
+
+P5 processed-file additions (2026-11-26)
+--------------------------------------
+CIRDLES/Tripoli, commit 00dc94109f572c22bb3f357c0f7b1bb5347f62f5:
+TripoliCore/src/test/resources/org/cirdles/tripoli/core/reporting/
+  dataFiles, cycleReports, fullReports: TritonTIMS, NuTIMS, NeptuneMCICPMS
+  -> processed/data, processed/cycleReports, processed/fullReports.
+Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org.
+CIRDLES/OGTripoli, commit recorded per file in MANIFEST.toml:
+  docs/ID_TIMS_DataImportTemplate.csv -> processed/ID_TIMS_DataImportTemplate.csv
+Copyright 2004-2017 James F. Bowring and www.Earth-Time.org.
+All P5 copies are unmodified public Apache-2.0 files; see LICENSE-APACHE-2.0.

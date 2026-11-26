@@ -1,4 +1,4 @@
-"""Read IsotopX run files into :class:`~rawtims.model.Run` objects.
+"""Read supported processed run files into :class:`~rawtims.model.Run` objects.
 
 Formats are recognised by content, never by extension alone:
 
@@ -6,6 +6,10 @@ Formats are recognised by content, never by extension alone:
   and ``MethodName`` keys and a ``#CYCLES`` table (:mod:`rawtims.readers.timsdp`);
 * IonVantage ``.xls``: an OLE2 (Excel 97-2003) workbook with a ``CYCLE`` sheet
   whose A1 is ``CYCLE Data`` (:mod:`rawtims.readers.ionvantage`).
+
+* Triton/Neptune EXP: exact ``<instrument> Analysis Data Report`` first line;
+* Nu TIMS TXT: the seven-field individual-answers header signature;
+* OGTripoli ID-TIMS cycle CSV: the exact EARTHTIME template heading.
 
 ``open_run(path)`` reads one file; ``open_paths(paths)`` reads files and
 folders (recursively, skipping hidden and temporary files) and returns the
@@ -80,6 +84,13 @@ def _sniff_bytes(data: bytes) -> Sniff:
     if head.startswith('{') and 'rawtims completed cycle snapshot' in text[:4096]:
         from rawtims.completed_folder import FORMAT
         return Sniff(FORMAT)
+    from rawtims.readers.processed import signature as processed_signature
+    from rawtims.readers.idtims_template import FORMAT as TEMPLATE, signature as template_signature
+    processed = processed_signature(text)
+    if processed:
+        return Sniff(processed)
+    if template_signature(text):
+        return Sniff(TEMPLATE)
     ok, reason = looks_like_timsdp(text)
     return Sniff(FORMAT_ISOLINX_TIMSDP) if ok else Sniff(None, reason)
 
@@ -123,6 +134,12 @@ def open_run(path: str | os.PathLike[str]) -> Run:
         return read_ionvantage(path, data)
     if detected.format == FORMAT_ISOLINX_TIMSDP:
         return read_timsdp(path, data)
+    from rawtims.readers.processed import FORMATS, read_processed
+    from rawtims.readers.idtims_template import FORMAT as TEMPLATE, read_template
+    if detected.format in FORMATS:
+        return read_processed(path, data)
+    if detected.format == TEMPLATE:
+        return read_template(path, data)
     from rawtims.completed_folder import FORMAT, read_snapshot
     if detected.format == FORMAT:
         return read_snapshot(path, data)
