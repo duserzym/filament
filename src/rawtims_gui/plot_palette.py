@@ -16,6 +16,7 @@ class PlotPalette:
     mean: str
     meanFrozen: str
     included: str
+    pointHalo: str
     excluded: str
     selection: str
     blockSeparator: str
@@ -35,7 +36,7 @@ class PlotPalette:
 PALETTES = {
     'light': PlotPalette(
         band2sigma='#FFC0CB', band1sigma='#FFFACD', bandSE='#90EE90',
-        mean='#0000FF', meanFrozen='#FF0000', included='#000000',
+        mean='#0000FF', meanFrozen='#FF0000', included='#000000', pointHalo='#FFFFFF',
         excluded='#FF0000', selection='#FF0000', blockSeparator='#808080',
         blockOff='rgba(255,228,225,0.60)', blockSelecting='rgba(255,228,225,0.60)',
         hoverGuide='rgba(125,136,153,0.30)', frame='#000000', preview='#a96800',
@@ -45,7 +46,7 @@ PALETTES = {
     'dark': PlotPalette(
         band2sigma='rgba(166,65,100,0.30)', band1sigma='rgba(177,153,42,0.34)',
         bandSE='rgba(48,157,83,0.42)', mean='#7AA7FF', meanFrozen='#FF7B72',
-        included='#E7ECF4', excluded='#FF7B72', selection='#FF7B72',
+        included='#E7ECF4', pointHalo='#121926', excluded='#FF7B72', selection='#FF7B72',
         blockSeparator='#7A879B', blockOff='rgba(153,79,87,0.25)',
         blockSelecting='rgba(153,79,87,0.25)', hoverGuide='rgba(163,174,192,0.28)',
         frame='#A3AEC0', preview='#e3b341',

@@ -9,7 +9,7 @@ import json
 import numpy as np
 
 from rawtims_gui.plot_palette import PALETTES
-from rawtims_gui.studio.theme import THEMES, theme_color
+from rawtims_gui.studio.theme import theme_color
 
 MATRICES = {
     'protanopia': np.array([[.152286, 1.052583, -.204868],
@@ -37,12 +37,14 @@ def audit():
     for theme, plot in PALETTES.items():
         result[theme] = {}
         for name, matrix in MATRICES.items():
-            included, excluded, background = [np.clip(matrix @ linear_rgb(value), 0, 1)
-                for value in (plot.included, plot.excluded, THEMES[theme].plot_background)]
+            included, excluded, background, halo = [np.clip(matrix @ linear_rgb(value), 0, 1)
+                for value in (plot.included, plot.excluded, plot.background, plot.pointHalo)]
             result[theme][name] = {
                 'included_vs_excluded': round(contrast(included, excluded), 3),
                 'included_vs_background': round(contrast(included, background), 3),
                 'excluded_vs_background': round(contrast(excluded, background), 3),
+                'included_vs_halo': round(contrast(included, halo), 3),
+                'excluded_vs_hollow_center': round(contrast(excluded, background), 3),
             }
     return result
 

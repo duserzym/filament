@@ -208,3 +208,78 @@ def test_synthetic_cycle_mouse_and_block_keyboard_drag_shift(viewer, mode):
     QtTest.QTest.keyClick(strip.cells[3], QtCore.Qt.Key.Key_Space)
     assert not viewer.analysis.effective[viewer.analysis.run.block == 3].any()
     assert viewer.analysis.group_consistent()
+
+
+@pytest.mark.parametrize('layout', ['stacked', 'auto-fit'])
+@pytest.mark.parametrize('theme', ['light', 'dark'])
+@pytest.mark.parametrize('content', ['ratios', 'intensities'])
+def test_refined_cycle_symbols_and_full_click_target(viewer, layout, theme, content):
+    from dataclasses import replace
+
+    from rawtims.analysis import Analysis
+    from rawtims_gui.plot_palette import plot_palette
+    from rawtims_gui.plots import CLICK_RADIUS_PX, PlotState
+    from rawtims_gui.studio.theme import theme_color
+
+    viewer.set_theme(theme)
+    viewer.set_plot_mode(content)
+    wall = viewer.plot_wall
+    wall.set_plot_layout(layout)
+    viewer.request_toggle(wall.plots[0].key, [20])
+    settle()
+    palette = plot_palette()
+
+    def assert_square(plot, row, included):
+        index = int(np.flatnonzero(plot.rows_shown == row)[0])
+        spot = plot.points.data[index]
+        assert spot['symbol'] == 's' and spot['size'] == 4.5
+        assert spot['brush'].style() == QtCore.Qt.BrushStyle.SolidPattern
+        assert spot['brush'].color() == theme_color(palette.included if included else palette.background)
+        assert spot['pen'].color() == theme_color(palette.pointHalo if included else palette.excluded)
+        assert spot['pen'].widthF() == (1 if included else 1.2)
+        assert spot['pen'].isCosmetic()
+        assert spot['brush'].color().alpha() == 255
+
+    for plot in wall.plots:
+        assert_square(plot, 10, True)
+        assert_square(plot, 20, False)
+        assert plot.points.opts['pxMode']
+    plot = wall.plots[0]
+    assert CLICK_RADIUS_PX >= 10
+    # Zoom to isolate the target, then click the square and 8 px outside it.
+    # Both must toggle through the real viewport, including the incremental redraw.
+    for offset, included in ((0, False), (8, True)):
+        cycle = float(viewer.analysis.run.cycle[70])
+        plot.getPlotItem().setXRange(cycle - 2, cycle + 2, padding=0)
+        settle()
+        point = plot.mapFromScene(plot.view_box.mapViewToScene(plot.point_of(70)))
+        point += QtCore.QPoint(offset, 0)
+        view_point = plot.view_box.mapSceneToView(plot.mapToScene(point))
+        assert plot.row_near(view_point) == 70
+        QtTest.QTest.mouseClick(plot.viewport(), QtCore.Qt.MouseButton.LeftButton, pos=point)
+        assert bool(viewer.analysis.included_for(plot.key)[70]) == included
+        assert_square(plot, 70, included)
+
+    # Finite invalid crosses and both off-scale directions keep their state cues.
+    run = viewer.analysis.run
+    values, invalid = run.values.copy(), run.invalid.copy()
+    column = viewer.analysis.index(plot.key)
+    values[[5, 6], column] = [-1e6, 1e6]
+    invalid[8, column] = True
+    analysis = Analysis(replace(run, values=values, invalid=invalid))
+    analysis.toggle_cycles([5, 6], [plot.key], False)
+    plot.update_state(PlotState(analysis, None, False, frozenset({10})), rebuild=True)
+    cross = plot.points.data[int(np.flatnonzero(plot.rows_shown == 8)[0])]
+    assert cross['symbol'] == 'x' and cross['size'] == 7
+    assert cross['brush'].style() == QtCore.Qt.BrushStyle.NoBrush
+    assert cross['pen'].color() == theme_color(palette.invalid)
+    assert cross['pen'].widthF() == 1.4
+    assert set(plot.pinned_points.data['symbol']) == {'t', 't1'}
+    assert plot.pinned_points.opts['size'] == 7.5
+    assert plot.pinned_points.opts['pen'].color() == theme_color(palette.excluded)
+    assert plot.pinned_points.opts['pen'].widthF() == 1.2
+    assert plot.pinned_points.opts['brush'].style() == QtCore.Qt.BrushStyle.NoBrush
+    assert plot.pinned_points.opts['hoverable'] and plot.pinned_points.opts['tip']
+    assert plot.ring.opts['size'] == 13 and plot.ring.opts['pen'].widthF() == 2
+    assert plot.ring.opts['pen'].color() == theme_color(palette.selection)
+    assert len(plot.ring.data) == 1

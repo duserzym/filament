@@ -21,7 +21,7 @@ audit = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/check_
 
 @pytest.mark.parametrize('theme', ['light', 'dark'])
 def test_tokens_complete_and_valid(theme):
-    required = ('band2sigma', 'band1sigma', 'bandSE', 'mean', 'meanFrozen', 'included',
+    required = ('band2sigma', 'band1sigma', 'bandSE', 'mean', 'meanFrozen', 'included', 'pointHalo',
                 'excluded', 'selection', 'blockSeparator', 'blockOff', 'blockSelecting', 'hoverGuide',
                 'frame', 'preview', 'background', 'axisLine', 'axisText', 'invalid', 'text', 'muted')
     assert all(theme_color(getattr(PALETTES[theme], key)).isValid() for key in required)
@@ -42,11 +42,19 @@ def test_plot_sources_have_no_colour_literals():
 
 def test_colour_blind_contrast_and_fill_cue():
     result = audit()
-    for theme in result.values():
-        for vision in theme.values():
-            assert vision['included_vs_excluded'] >= 1.8
-            assert vision['included_vs_background'] >= 14
-            assert vision['excluded_vs_background'] >= 3
+    # Preserve each pre-refinement simulated contrast, not just a shared floor.
+    baseline = {
+        'light': {'protanopia': (3.285, 21, 6.392), 'deuteranopia': (6.568, 21, 3.197)},
+        'dark': {'protanopia': (2.649, 14.777, 5.579), 'deuteranopia': (1.879, 14.880, 7.917)},
+    }
+    for name, theme in result.items():
+        for simulation, vision in theme.items():
+            state, included, excluded = baseline[name][simulation]
+            assert vision['included_vs_excluded'] >= state
+            assert vision['included_vs_background'] >= included
+            assert vision['excluded_vs_background'] >= excluded
+            assert vision['included_vs_halo'] == vision['included_vs_background']
+            assert vision['excluded_vs_hollow_center'] == vision['excluded_vs_background']
     # The modest dark-mode state contrast is why hollow/filled is mandatory.
     assert result['dark']['deuteranopia']['included_vs_excluded'] < 3
 
@@ -79,7 +87,8 @@ def test_plot_semantics_on_both_layouts(window, theme):
             assert axis.textPen().color() == theme_color(palette.axisText)
         for row in rejected + off_rows.tolist():
             assert p.points.data['symbol'][row] == 's'
-            assert p.points.data['brush'][row].style() == QtCore.Qt.BrushStyle.NoBrush
+            assert p.points.data['brush'][row].style() == QtCore.Qt.BrushStyle.SolidPattern
+            assert p.points.data['brush'][row].color() == theme_color(palette.background)
             assert p.points.data['pen'][row].color() == theme_color(palette.excluded)
         assert p.points.data['symbol'][0] == 's'
         assert p.points.data['brush'][0].color() == theme_color(palette.included)

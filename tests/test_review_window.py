@@ -161,7 +161,9 @@ def test_click_rejects_through_the_history_with_undo_and_redo(b998):
     assert window.stats_panel.table.item(0, 3).text() == "95/96"
     assert window.cycles_label.text() == "Cycles 95/96"
     assert window.history_label.text() == "History 1"
-    assert plot.points.data["symbol"][20] == "s" and plot.points.data["brush"][20].style() == QtCore.Qt.BrushStyle.NoBrush
+    assert plot.points.data["symbol"][20] == "s"
+    assert plot.points.data["brush"][20].style() == QtCore.Qt.BrushStyle.SolidPattern
+    assert plot.points.data["brush"][20].color() == plot.backgroundBrush().color()
 
     window.undo_action.trigger()
     assert analysis.history == [] and analysis.stats("206/204 D").n_used == 96

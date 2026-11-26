@@ -43,6 +43,8 @@ PLOT_MIN_HEIGHT = 168
 PLOT_MAX_HEIGHT = 340
 COLUMN_MIN_WIDTH = 290
 CLICK_RADIUS_PX = 10
+# Visual size is independent of the sculpting click target.
+CYCLE_POINT_SIZE_PX = 4.5
 SELECT_MODIFIERS = QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.MetaModifier
 
 
@@ -197,7 +199,7 @@ class CyclePlot(RoundedPlotWidget):
         item.getAxis("left").setWidth(62)
         self.points = pg.ScatterPlotItem(pxMode=True)
         self.points.setZValue(10)
-        self.pinned_points = pg.ScatterPlotItem(pxMode=True, size=10, hoverable=True,
+        self.pinned_points = pg.ScatterPlotItem(pxMode=True, size=CYCLE_POINT_SIZE_PX * (10 / 6), hoverable=True,
                                                tip=lambda x, y, data: data)
         self.pinned_points.setZValue(13)
         self.ring = pg.ScatterPlotItem(pxMode=True, symbol="s", size=13)
@@ -266,7 +268,7 @@ class CyclePlot(RoundedPlotWidget):
         self.ring.setBrush(pg.mkBrush(None))
         self.preview_points.setPen(pg.mkPen(preview_color(theme), width=2))
         self.preview_points.setBrush(pg.mkBrush(None))
-        self.pinned_points.setPen(pg.mkPen(plot.excluded, width=1.6))
+        self.pinned_points.setPen(pg.mkPen(plot.excluded, width=1.2))
         self.pinned_points.setBrush(pg.mkBrush(None))
 
     # --------------------------------------------------------------- data
@@ -311,10 +313,12 @@ class CyclePlot(RoundedPlotWidget):
         self._invalid = invalid.copy()
         self._fit_all = state.fit_all
         if getattr(self, '_point_theme', None) != theme.name:
-            self._point_styles = (pg.mkBrush(plot.included), pg.mkBrush(None),
-                                  pg.mkPen(plot.excluded, width=1.6), pg.mkPen(plot.invalid, width=1.4), pg.mkPen(None))
+            # Opaque hollow centres hide the bands beneath excluded squares.
+            self._point_styles = (pg.mkBrush(plot.included), pg.mkBrush(plot.background), pg.mkBrush(None),
+                                  pg.mkPen(plot.excluded, width=1.2), pg.mkPen(plot.invalid, width=1.4),
+                                  pg.mkPen(plot.pointHalo, width=1))
             self._point_theme = theme.name
-        used_brush, empty_brush, bad_pen, grey, no_pen = self._point_styles
+        used_brush, hollow_brush, empty_brush, bad_pen, grey, halo_pen = self._point_styles
         brushes, pens, symbols, sizes = [], [], [], []
         indices = changed if same_points else range(len(effective))
         for index in indices:
@@ -326,14 +330,14 @@ class CyclePlot(RoundedPlotWidget):
                 sizes.append(7)
             elif used:
                 brushes.append(used_brush)
-                pens.append(no_pen)
+                pens.append(halo_pen)
                 symbols.append("s")
-                sizes.append(6)
+                sizes.append(CYCLE_POINT_SIZE_PX)
             else:
-                brushes.append(empty_brush)
+                brushes.append(hollow_brush)
                 pens.append(bad_pen)
                 symbols.append("s")
-                sizes.append(7)
+                sizes.append(CYCLE_POINT_SIZE_PX)
         if same_points:
             if len(indices):
                 spots = self.points.points()
