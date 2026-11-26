@@ -1828,7 +1828,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def is_modified(self) -> bool:
         """Unsaved changes: an untitled session with something open, or a state other than the saved file holds."""
         if self.session_path is None:
-            return bool(self.workspace.fractions or self.workspace.missing or self.workspace.presentation or self.workspace.composition
+            return bool(self.workspace.fractions or self.workspace.missing or self.workspace.presentation or self.workspace.composition or self.workspace.calibration_history
                         or self.workspace.stat_mode != "arithmetic")
         if self._saved_fingerprint is None:
             return True

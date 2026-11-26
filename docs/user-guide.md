@@ -437,3 +437,51 @@ These are diagnostic objects. They do not alter acquired columns, cycle masks,
 oxide settings, the cycle estimator or any export, including the measured `/1`
 fraction mapping. If a source cannot be restored on reopening, the session reports
 the diagnostic as unavailable and retains its recipe.
+
+## Calibration history and completed cycle folders
+
+Open **View → Review diagnostics → Calibration history / completed folders…**.
+Select an open run and use **Capture gains** or **Capture standard**. Standard
+status is your explicit choice. Each record freezes its source SHA-256, source
+format/version, calibration parameter version, settings and masks. Gains show
+as-acquired collector metadata and acquired gain columns; standard diagnostics
+show arithmetic means within accepted blocks, then an equal-block mean/SE.
+These summaries never replace measured columns or feed a correction.
+
+Choose a series for the acquisition-date plot. Dates are the instrument's
+recorded wall times, independent of the computer's timezone. Missing dates stay
+unavailable and are omitted from the plot. Select a record, enter a reason and
+use **Exclude / restore** to change its history use. **Undo** and **Redo** apply
+only to history exclusions. Excluded records remain visible as hollow squares;
+source masks and fraction exports stay unchanged. Save the session to preserve
+all captured revisions, reasons and the undo/redo stack. Capturing after a run
+edit adds a distinct revision; capturing the same content again does nothing.
+
+**Import legacy…** accepts the source-specified subset of C# gains BIFF8 `.xls`
+(named CTRL/Gains ranges and unambiguous text dates) and complete rectangular
+standard `.trip` blocks. Unknown layouts, aborted gains and nonnumeric gains are
+refused. Imported standards have no acquisition date when it requires reopening
+an external workbook; save/file dates are never substituted. These parsers have
+synthetic source-schema tests, not validation against real calibration captures.
+Aggregate `.triphis` remains available through inert saved-work inspection only.
+
+On **Completed cycle folder**, choose a C# IonVantage `*-B*-C*.txt` folder and
+press **Refresh** twice, at least one second apart. Refresh checks unchanged
+size/mtime, validates each row and rechecks files at snapshot creation. Identical
+duplicate cycle identities collapse; conflicting duplicates, mixed acquisitions,
+gaps and truncated rows are refused. Changing folders restarts settling.
+
+After acquisition has finished, choose **Open completed snapshot…**, confirm
+completion and save the portable JSON outside the source folder. The snapshot
+opens as a new run and can be saved/reopened in a normal session without the
+original cycle folder. It never appends to an existing reviewed run. There is no
+background watcher, provisional sculpting or automatic rule application.
+
+This C# text dialect has no completion flag, elapsed times, units or true method
+name. A settled prefix cannot prove completion, and a uniformly shortened folder
+cannot reveal the planned terminal cycle. Only full rectangular blocks are
+supported. Elapsed times and unknown metadata remain unavailable; the acquisition
+path called `Method` is preserved as evidence. Synthetic replay checks all
+representable cycle values, identities, masks and statistics against opening a
+committed synthetic workbook; it cannot establish equality of metadata absent
+from the text dialect. [P4 evidence and remaining specimens](p4-calibration-history.md).

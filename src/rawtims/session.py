@@ -142,6 +142,7 @@ class SessionState:
     stat_mode: str = "arithmetic"
     presentation: dict[str, Any] = field(default_factory=dict)
     composition: dict[str, Any] = field(default_factory=dict)
+    calibration_history: dict[str, Any] = field(default_factory=dict)
 
     def analyses(self) -> list[Analysis]:
         return [a for fraction in self.fractions for a in (fraction.pb, fraction.u) if a is not None]
@@ -303,6 +304,9 @@ def session_document(state: SessionState, path: str | os.PathLike[str] | None, *
     }
     if state.presentation:
         document["presentation"] = state.presentation
+    if state.calibration_history:
+        from rawtims.history import HistoryBook
+        document['calibration_history'] = HistoryBook.from_dict(state.calibration_history).to_dict()
     if state.composition:
         from rawtims.composition import CompositionBook
         document["composition"] = CompositionBook.from_dict(state.composition).to_dict()
@@ -333,6 +337,9 @@ def session_fingerprint(state: SessionState, path: str | os.PathLike[str] | None
         history["events"] = history["events"][:history["applied"]]
         if not history["events"]:
             del document["composition"]
+    if 'calibration_history' in document:
+        history = document['calibration_history']
+        history['events'] = history['events'][:history['applied']]
     return hashlib.sha256(json.dumps(document, sort_keys=True, allow_nan=False).encode()).hexdigest()
 
 
@@ -605,6 +612,12 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
                                                           "the mapping is proposed again", fid, element, run_id))
     for analysis in state.analyses():
         analysis.remember_legacy_masks()
+    if 'calibration_history' in document:
+        from rawtims.history import HistoryBook
+        try:
+            state.calibration_history = HistoryBook.from_dict(document['calibration_history']).to_dict()
+        except (ValueError, TypeError, KeyError) as error:
+            raise SessionError(f'{path.name}: invalid calibration history ({error})') from None
     if "composition" in document:
         from rawtims.composition import CompositionBook, compose
         try:

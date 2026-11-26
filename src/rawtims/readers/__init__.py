@@ -77,6 +77,9 @@ def _sniff_bytes(data: bytes) -> Sniff:
         return Sniff(None, "Tripoli report, not a raw run file")
     if head.startswith("{") and SESSION_FORMAT in text[:4096]:
         return Sniff(None, "saved session, not a run file (open it on its own, or with File > Open Session…)")
+    if head.startswith('{') and 'rawtims completed cycle snapshot' in text[:4096]:
+        from rawtims.completed_folder import FORMAT
+        return Sniff(FORMAT)
     ok, reason = looks_like_timsdp(text)
     return Sniff(FORMAT_ISOLINX_TIMSDP) if ok else Sniff(None, reason)
 
@@ -120,6 +123,9 @@ def open_run(path: str | os.PathLike[str]) -> Run:
         return read_ionvantage(path, data)
     if detected.format == FORMAT_ISOLINX_TIMSDP:
         return read_timsdp(path, data)
+    from rawtims.completed_folder import FORMAT, read_snapshot
+    if detected.format == FORMAT:
+        return read_snapshot(path, data)
     raise UnsupportedFile(f"{path_obj.name}: {detected.reason}")
 
 
