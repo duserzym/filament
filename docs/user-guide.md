@@ -160,6 +160,84 @@ digit format unless you choose full precision.
 
 ![Export controls](guide/export-send.png)
 
+## Exchange with Tripoli and ET_Redux
+
+The **Exchange** menu has separate compatibility files for the selected analysis.
+The existing contract CSV, clipboard, cycles CSV and review XLSX keep their formats.
+
+- **Save Tripoli cycle TSV…** writes the Java `00dc941` padded tab-delimited
+  layout, source/derived function order and `&value&` rejection markers. It keeps
+  the source's `NaN`/`&NaN&` behavior for missing values, despite the upstream
+  header's promise of blank entries. Cycle/time fields precede the functions.
+- **Save OGTripoli ratio text…** writes ratio columns with signed rejections,
+  block separators, E9 precision and Windows CRLF/en-US dates. Its header uses
+  OGTripoli's arithmetic statistics, regardless of the current report mode;
+  this does not change the analysis. Regular blocks are required. Three-row
+  correction labels follow the source splitting/padding, while malformed
+  labels and negative measured values are refused.
+- **Save ET_Redux measured XML…** writes one Pb or U analysis in the pinned
+  `ETReduxFraction` / `MeasuredUserFunction` schema (XML names
+  `UPbReduxFraction` / `MeasuredUserFunctionModel`). Supply Sample and Fraction ID,
+  a complete measured-ratio mapping, shared cycles and at least two accepted
+  cycles per exported function. A completed end marker or complete planned
+  cycle count is required; aborted and unknown-completion runs are refused.
+  Instrument-corrected U functions must have known r18. Values use the current
+  statistic and oxide settings; no fractionation correction is added. Unmapped
+  ratio slots remain zero as in Tripoli; uniquely named additional measured
+  ratios are included without deriving ratios from means.
+
+Choose the destination file explicitly. Replacing an existing exchange file
+requires a separate **Replace export?** confirmation, with **No** selected by
+default. This is manual file export; folder watching and ET_Redux services are
+not configured.
+
+## Choose report columns and defaults
+
+Open **Exchange → Report columns and templates…** for a processed-analysis
+summary. Check columns, edit their category labels, and use **Move up/down** to
+order them. **Preview** shows the selected fields; **Save report CSV…** writes
+category and column header rows followed by one row per function. SE is always
+1σ; geometric absolute SE is the smaller absolute side corresponding to the
+displayed percent SE. Available fields include function/unit, mean, SE, counts,
+statistic, method and source. No units are inferred when the source lacks them.
+
+**Save template…**, **Load** and **Delete** manage named templates for the
+selected method, with global templates available as fallbacks. Choose
+**All methods (fallback)** to manage global templates. Select the scope before
+**Apply preference**: the effective choice is analysis, then session, then
+method, then global, then the built-in Cycle summary. The top line identifies
+the effective source. **Restore inherited** removes only the selected override.
+Session/analysis choices travel in native session presentation metadata;
+method/global choices remain local user preferences. These preferences affect
+report display/export only and never set numerical defaults or masks.
+
+Java's **Template 1** renderer is scaffolded, but its GUI export remains
+unavailable: processed cycle files do not contain its Phoenix Full species,
+weighted-ratio and gain results. Cycle means are not substituted for those fields.
+
+## Inspect legacy saved work
+
+**Exchange → Inspect OGTripoli text…** reads processed OG text into a read-only
+cycle table. It retains signed per-function masks, missing cycles, blocks and
+all six function-header/statistics rows. **Save inspection JSON…** preserves
+the original bytes, SHA-256 and inert data graph. The original-data CSV import
+template is a different format and is not accepted by this action.
+
+**Inspect legacy saved work…** accepts `.trip`, `.triphis` and Java `.tripoli`.
+The existing `.trip` acquisition replay remains available through Open; this
+inspector applies no settings, corrections or paths. History roots are parsed
+as bounded .NET record data. Java support is a bounded scaffold for the pinned
+Session UID, scalar fields, strings, nulls and primitive arrays. Non-null
+analysis maps, custom serialized classes, other versions and unknown tokens
+are refused. No Java objects are executed. Unknown fields and original bytes
+are preserved in the inspection JSON. No binary file is written back.
+Representative saved sessions/history and reference-app reopens are still
+needed before claiming complete binary migration.
+
+**File → Open Recent** also contains **Run files** and **Folders**, each with
+eight deduplicated entries and a clear action. Missing paths are omitted;
+reopening is explicit. Native session recents remain separate.
+
 ## Send to IDTIMS_UPbRPy
 
 Choose **Send to IDTIMS_UPbRPy…** and a destination folder. The app saves a contract

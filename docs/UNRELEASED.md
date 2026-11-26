@@ -5,3 +5,6 @@
 - Added P1 review diagnostics: accepted/rejected cycle histograms, any-function x–y and recorded-time views, session recipes with intensity-scaled dots, plain notes, and graph PNG/printing with ordered sheets.
 - Added display-only block means/zoom, remembered statistics bands and INCLUDE/IGNORE/HIDE modes, reciprocal plots, labeled frozen statistics, visibility shortcuts and point styling. Reduction masks/statistics and measured /1 exports retain their existing defaults.
 - Added an opt-in `(272/270)/2` oxygen monitor gated by explicit verified UO2 assignment; it never feeds correction or exports.
+- Added separate P2 Tripoli cycle TSV, Windows/en-US OG ratio text and completed-analysis ET_Redux measured XML exports, with chosen-file replacement confirmation. Existing writers and /1 measured ratios are unchanged; folder/service integration remains deferred.
+- Added configurable processed-analysis report columns/categories/order, custom CSV, named method/global templates and an explicit report-only preference cascade with restore inherited.
+- Added inert OG text and legacy saved-work inspection with original-byte/unknown-field preservation, bounded Java Session scaffolding, and recent data-file/directory lists. Full binary migration/write-back and Phoenix Full Template 1 GUI export remain gated on specimens/model results.

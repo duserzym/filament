@@ -429,6 +429,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view_menu = view
         from rawtims_gui.diagnostics import build_menu
         self.diagnostics_menu = build_menu(self)
+        from rawtims_gui.exchange import build_menu as build_exchange_menu
+        self.exchange_menu = build_exchange_menu(self)
         help_menu = bar.addMenu("Help")
         help_menu.addAction(self._action("Updates…", lambda: self.version_chip.open_dialog(manual=True)))
         from rawtims_gui.user_guide import show_user_guide
@@ -859,7 +861,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ------------------------------------------------------------ import
     def choose_files(self) -> None:
-        paths, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Open run files", "", RUN_FILTER)
+        from rawtims_gui.recent_inputs import recent
+        folders = recent(self.settings, 'folders')
+        paths, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Open run files", folders[0] if folders else "", RUN_FILTER)
         if paths:
             self.open_paths(paths)
 
@@ -877,6 +881,10 @@ class MainWindow(QtWidgets.QMainWindow):
         paths = [str(path) for path in paths]
         if not paths:
             return
+        from rawtims_gui.recent_inputs import remember
+        for path in paths:
+            if Path(path).is_dir():
+                remember(self.settings, 'folders', path)
         sessions = [path for path in paths if Path(path).is_file() and session_io.looks_like_session(path)]
         if sessions:
             others = [path for path in paths if path not in sessions]
@@ -897,6 +905,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def _import_finished(self, payload) -> None:
         analyses, skipped = payload
         result = self.workspace.add(analyses, skipped)
+        from rawtims_gui.recent_inputs import remember
+        for analysis in result.added:
+            if Path(analysis.run.raw.path).is_file():
+                remember(self.settings, 'files', analysis.run.raw.path)
         self.skipped = result.skipped
         self._missing_projects = [(p, reason) for p, reason in result.skipped
                                   if Path(p).suffix.lower() == ".trip" and ("Source workbook missing:" in reason or "Ambiguous source workbook:" in reason)]
@@ -2098,6 +2110,8 @@ class MainWindow(QtWidgets.QMainWindow):
         remove = menu.addAction("Remove Missing", self.remove_missing_recent)
         remove.setEnabled(missing)
         menu.addAction("Clear Menu", self.clear_recent).setEnabled(bool(recent))
+        from rawtims_gui.recent_inputs import populate
+        populate(self, menu)
 
     def open_recent(self, path: str, *, synchronous: bool = False) -> bool:
         if not Path(path).is_file():
