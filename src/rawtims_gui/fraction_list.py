@@ -38,25 +38,19 @@ class RunChip(ChipButton):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         rect = QtCore.QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5)
-        if self.tile_active:
-            background = QtGui.QColor(self.tile_color)
-            background = background.lighter(112) if self.hovered else background
-        else:
-            background = QtGui.QColor("#242a34" if self.dark_theme else "#edf0f4")
-        if self.tile_selected:
-            border = QtGui.QColor("#ffffff" if self.dark_theme else "#111827")
-        else:
-            border = self.tile_color.darker(145) if self.tile_active else QtGui.QColor("#667085" if self.dark_theme else "#98a2b3")
-        pen = QtGui.QPen(border, 2.6 if self.tile_selected else 1.2)
+        theme = active_theme()
+        background = theme_color(theme.accent_soft if self.tile_selected else theme.input_bg)
+        if self.hovered:
+            background = theme_color(theme.row_hover)
+        border = theme_color(theme.accent if self.tile_selected else theme.input_border)
+        pen = QtGui.QPen(border, 1.6 if self.tile_selected else 1)
         if not self.tile_active:
             pen.setStyle(QtCore.Qt.PenStyle.DashLine)
         painter.setPen(pen)
         painter.setBrush(background)
-        painter.drawRoundedRect(rect, 8, 8)
-        luminance = 0.2126 * background.redF() + 0.7152 * background.greenF() + 0.0722 * background.blueF()
-        foreground = QtGui.QColor("#111318" if luminance > 0.58 else "#ffffff")
-        if not self.tile_active:
-            foreground = QtGui.QColor("#98a2b3" if self.dark_theme else "#667085")
+        painter.drawRoundedRect(rect, 7, 7)
+        foreground = QtGui.QColor(theme.accent if self.tile_selected else
+                                  theme.text if self.tile_active else theme.faint)
         painter.setPen(foreground)
         font = QtGui.QFont(self.font())
         font.setPointSizeF(max(10.0, self.height() * 0.36))

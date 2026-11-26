@@ -1,78 +1,70 @@
 # Tripoli plot colours
 
-`rawtims_gui/plot_palette.py` defines the `plot.*` tokens for the resolved active
-application theme. Both the default wall and classic fallback use the same
-`CyclePlot`; the shared block header reads the same palette. Existing theme
-tokens provide the white light background (`plot_background=#FFFFFF`) and dark
-background (`#121926`). No colour literals belong in `plots.py` or
-`review_layouts.py`; a ripgrep test enforces this.
+`src/rawtims_gui/plot_palette.py` is the single source for every scientific-plot colour in both layouts and both themes. Application accent colours never stand in for scientific states.
 
-The legacy references below are **CIRDLES/OGTripoli 4.10.0.3**,
-`source/forms/frmRatioGraph.cs` (abbreviated `frmRatioGraph.cs` in the table),
-as established by the supervising source audit. Java values are the comparison
-palette in `TripoliConstants.java:26–31`; a dash means no counterpart was
-supplied by that audit. Filament follows the legacy convention.
+## Verified source roots
 
-| Token | Legacy colour and file:line | Java colour | Filament light | Filament dark |
-| --- | --- | --- | --- | --- |
-| `plot.band2sigma` | Pink `#FFC0CB`, `frmRatioGraph.cs:466,473,540` | `#FFBFCB` | `#FFC0CB` | `rgba(166,65,100,0.30)` |
-| `plot.band1sigma` | LemonChiffon `#FFFACD`, `frmRatioGraph.cs:470,552` (printer: Yellow) | `#FFEA00` | `#FFFACD` | `rgba(177,153,42,0.34)` |
-| `plot.bandSE` | LightGreen `#90EE90`, `frmRatioGraph.cs:472,564`, ±1 SE | `#90EE8F`, ±2 SE | `#90EE90`, ±1 SE | `rgba(48,157,83,0.42)`, ±1 SE |
-| `plot.mean` | Blue `#0000FF`, `frmRatioGraph.cs:718–721`, 1 px auto mean | `#FF0000` | `#0000FF` | `#7AA7FF` |
-| `plot.meanFrozen` | Red `#FF0000`, `frmRatioGraph.cs:727`, 4 px frozen mean | — | `#FF0000` (reserved) | `#FF7B72` (reserved) |
-| `plot.included` | Black `#000000`, filled square, `frmRatioGraph.cs:774` | `#0000FF` | `#000000`, filled square | `#E7ECF4`, filled square |
-| `plot.excluded` | Red `#FF0000`, filled square, `frmRatioGraph.cs:791` | `#FF0000` | `#FF0000`, hollow square | `#FF7B72`, hollow square |
-| `plot.selection` | Red `#FF0000`, open square, `frmRatioGraph.cs:802` | — | `#FF0000` | `#FF7B72` |
-| `plot.blockSeparator` | Grey `#808080`, dash-dot, `frmRatioGraph.cs:437–438,822` | — | `#808080` | `#7A879B` |
-| `plot.blockOff` | Reuses MistyRose `#FFE4E1` selection hue, `frmRatioGraph.cs:1833` | — | `rgba(255,228,225,0.60)` | `rgba(153,79,87,0.25)` |
-| `plot.blockSelecting` | MistyRose `#FFE4E1`, `frmRatioGraph.cs:1833` | — | `rgba(255,228,225,0.60)` | `rgba(153,79,87,0.25)` |
-| `plot.hoverGuide` | — (shared cross-ratio guide) | — | `rgba(70,80,100,0.30)` | `rgba(190,205,230,0.28)` |
-| `plot.frame` | Black rectangle `#000000`, `frmRatioGraph.cs:574` | — | `#000000` | `#A3AEC0` |
-| `plot.preview` | — (Filament rule preview) | — | `#D97706` | `#F0B429` |
+Local read-only clones: `/private/tmp/claude-501/-Users-yimingzhang-Github-LAICPMS-UPbR-database/1b34317a-d9ab-4754-9148-09f05ae4fc11/scratchpad/tripoli-src/OGTripoli` and `/private/tmp/claude-501/-Users-yimingzhang-Github-LAICPMS-UPbR-database/1b34317a-d9ab-4754-9148-09f05ae4fc11/scratchpad/tripoli-src/Tripoli`. The repository-relative `path:line` labels below resolve under those roots and link to the identical pinned GitHub files. All original citations were checked directly against the clones on 2026-11-25; no network lookup or guessed RGB values were used.
 
-## Rendering and deviations
+OGTripoli: `d906f7071f17a9a1a71ae962817147b7ee7df0b5`. Tripoli Java: `00dc94109f572c22bb3f357c0f7b1bb5347f62f5`.
 
-Light bands, mean, data and frame use the exact legacy RGB values, without
-contrast tuning. The only light legacy-colour tuning is MistyRose at 60%
-opacity: this lets the block-off tint cover the **entire** block, including the
-bands, while leaving their three statistical meanings visible. Header cells
-use the same token. This adapts legacy's in-progress selection tint to disabled
-blocks; the disabled header also says `0/n` and has an unchecked state.
-The drag-selection rectangle uses `plot.blockSelecting` with a selection-colour
-outline.
+## Palette and provenance
 
-Excluded squares are deliberately hollow rather than legacy's filled red, so
-inclusion is communicated by fill as well as hue. Existing edge-pinned hollow
-triangles retain `plot.excluded`, with a tooltip reporting the true value.
-The selected-cycle outline is red and square. Invalid cycles retain the theme's
-faint crosses; this task does not introduce legacy's missing-value axis ticks.
-The frozen-mean token is reserved: Filament does not currently offer frozen means.
+| Token (`plot.*`) | Quantity | Tripoli colour | Clone path:line + pinned URL | What it colours there | Filament light | Filament dark | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `band2sigma` | ±2 SD band | Pink #FFC0CB | [OGTripoli/source/forms/frmRatioGraph.cs:466](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L466), [OGTripoli/source/forms/frmRatioGraph.cs:473](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L473), [OGTripoli/source/forms/frmRatioGraph.cs:540](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L540) | Pink brush; ±2 SD rectangle. | `#FFC0CB` | `rgba(166,65,100,0.30)` | Exact legacy light RGB; existing dark adaptation. |
+| `band1sigma` | ±1 SD band | LemonChiffon #FFFACD | [OGTripoli/source/forms/frmRatioGraph.cs:470](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L470), [OGTripoli/source/forms/frmRatioGraph.cs:552](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L552) | LemonChiffon brush; ±1 SD rectangle. | `#FFFACD` | `rgba(177,153,42,0.34)` | Printer branch uses Yellow at [OGTripoli/source/forms/frmRatioGraph.cs:463](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L463). |
+| `bandSE` | ±1 SE band | LightGreen #90EE90 | [OGTripoli/source/forms/frmRatioGraph.cs:472](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L472), [OGTripoli/source/forms/frmRatioGraph.cs:564](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L564) | LightGreen brush; ±1 standard error rectangle. | `#90EE90` | `rgba(48,157,83,0.42)` | Already ±1 SE at baseline; no statistical change. |
+| `mean` | Automatic mean | Blue #0000FF | [OGTripoli/source/forms/frmRatioGraph.cs:441](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L441), [OGTripoli/source/forms/frmRatioGraph.cs:720](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L720) | 1 px blue pen; automatic-mean line. | `#0000FF` | `#7AA7FF` | Exact legacy light RGB; dark blue lifted for contrast. |
+| `meanFrozen` | Reserved frozen mean | Red #FF0000 | [OGTripoli/source/forms/frmRatioGraph.cs:433](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L433), [OGTripoli/source/forms/frmRatioGraph.cs:726](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L726) | 4 px red pen; frozen-mean line. | `#FF0000` | `#FF7B72` | Reserved; no frozen-mean control added. |
+| `included` | Accepted ratio OR intensity cycles | Black #000000 | [OGTripoli/source/forms/frmRatioGraph.cs:443](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L443), [OGTripoli/source/forms/frmRatioGraph.cs:774](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L774) | Black brush; accepted filled square. | `#000000` | `#E7ECF4` | No per-isotope colour: separate cards identify functions by their existing titles. |
+| `excluded` | Rejected ratio OR intensity cycles | Red #FF0000 | [OGTripoli/source/forms/frmRatioGraph.cs:444](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L444), [OGTripoli/source/forms/frmRatioGraph.cs:791](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L791) | Red brush; discarded filled square. | `#FF0000` | `#FF7B72` | Filament retains hollow squares and edge triangles for redundant state cues. |
+| `selection` | Selected-cycle outline | Red #FF0000 | [OGTripoli/source/forms/frmRatioGraph.cs:432](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L432), [OGTripoli/source/forms/frmRatioGraph.cs:802](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L802) | Red pen; outline around selected discarded outlier. | `#FF0000` | `#FF7B72` | Adapts outlier selection to Filament selected cycles; square outline retained. |
+| `blockSeparator` | Block boundary | Gray #808080 | [OGTripoli/source/forms/frmRatioGraph.cs:437](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L437), [OGTripoli/source/forms/frmRatioGraph.cs:438](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L438), [OGTripoli/source/forms/frmRatioGraph.cs:822](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L822) | 1 px grey dash-dot pen; vertical cycle-block line. | `#808080` | `#7A879B` | Dash-dot retained. |
+| `blockOff` | Excluded-block overlay/header | MistyRose #FFE4E1 | [OGTripoli/source/forms/frmRatioGraph.cs:1833](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L1833) | Background of in-progress block-selection panel. | `rgba(255,228,225,0.60)` | `rgba(153,79,87,0.25)` | Adapted to disabled blocks at existing 60% light opacity; not a native OG disabled-block colour. |
+| `blockSelecting` | Drag/block selection fill | MistyRose #FFE4E1 | [OGTripoli/source/forms/frmRatioGraph.cs:1833](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L1833) | Background of in-progress block-selection panel. | `rgba(255,228,225,0.60)` | `rgba(153,79,87,0.25)` | Existing translucent adaptation retained. |
+| `hoverGuide` | Shared hover guide | No equivalent | Suite #language: --faint / --muted | No matching plotted quantity in the audited Tripoli view. | `rgba(125,136,153,0.30)` | `rgba(163,174,192,0.28)` | Suite faint/muted at 30% / 28% opacity. |
+| `frame` | Plot frame | Black #000000 | [OGTripoli/source/forms/frmRatioGraph.cs:431](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L431), [OGTripoli/source/forms/frmRatioGraph.cs:574](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L574) | 1 px black pen; graph bounding rectangle. | `#000000` | `#A3AEC0` | Existing lifted dark frame retained. |
+| `preview` | Proposed rule rejection | No equivalent | Suite #language: --warn | Filament previews are staged proposals; not yet Tripoli rejected points. | `#a96800` | `#e3b341` | Suite warning colour; hollow square retained. |
+| `background` | Plot canvas/header background | No adopted equivalent | Suite #language: --white; baseline dark plot canvas | Application surface, not a plotted quantity. | `#FFFFFF` | `#121926` | White and existing #121926 dark canvas retained for colour-vision parity. |
+| `axisLine` | Axes and card/header borders | No adopted equivalent | Suite #language: quiet hairline family; baseline plot tokens | Plot furniture, not a plotted quantity. | `#e6e9ef` | `#263043` | Existing #e6e9ef / #263043 retained. |
+| `axisText` | Axis/header labels | No adopted equivalent | Suite #language: --muted | Plot furniture, not a plotted quantity. | `#556172` | `#a3aec0` | Suite muted text. |
+| `invalid` | Invalid-cycle cross | No adopted equivalent | Suite #language: --faint | OG missing values use red axis ticks at [OGTripoli/source/forms/frmRatioGraph.cs:810](https://github.com/CIRDLES/OGTripoli/blob/d906f7071f17a9a1a71ae962817147b7ee7df0b5/source/forms/frmRatioGraph.cs#L810). | `#7d8899` | `#7a879b` | Keep baseline faint crosses; changing missing-value treatment is outside this style round. |
+| `text` | Plot title | No adopted equivalent | Suite #language: --text | Plot furniture, not a plotted quantity. | `#17202e` | `#e7ecf4` | Suite primary text. |
+| `muted` | Plot summary | No adopted equivalent | Suite #language: --muted | Plot furniture, not a plotted quantity. | `#556172` | `#a3aec0` | Suite secondary text. |
 
-Dark fills use the explicit darker RGB and lower alpha values above, retaining
-pink, yellow/ochre and green hue meanings over the dark background. The nested
-translucent fills composite in order: ±2σ, ±1σ, then ±1 SE. Blue is lifted for
-the auto mean, included squares become light, and excluded/selected outlines
-use a lighter red for visibility. The dark frame and separators are also lifted.
-All lines remain cosmetic screen widths; the mean is 1 px.
+## Java comparison (not silently substituted)
 
-Grey dash-dot separators replace alternating block shading. This makes block
-boundaries readable without adding a fourth broad fill that competes with the
-three uncertainty bands. Disabled-block tint overlays the bands, under points
-and the mean, across every group plot.
+The Java defaults differ from the legacy C# graph. Filament retains the established legacy convention so the meaning of existing plots does not flip between data and mean colours.
 
-The green band is now **±1 SE**, labelled **SE** in the legend (formerly ±2 SE).
-For geometric statistics, the existing log-space bounds and exponentiation
-are preserved. The sigma bands remain ±1σ and ±2σ.
+| Java constant | Value | Definition | Rendering |
+| --- | --- | --- | --- |
+| `OGTRIPOLI_TWOSIGMA_HEX` | `#FFBFCB` | [Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java:26](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java#L26) | [Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java:946](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java#L946) |
+| `OGTRIPOLI_ONESIGMA_HEX` | `#FFEA00` | [Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java:27](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java#L27) | [Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java:951](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java#L951) |
+| `OGTRIPOLI_TWOSTDERR_HEX` | `#90EE8F` | [Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java:28](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java#L28) | [Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java:956](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java#L956) |
+| `OGTRIPOLI_MEAN_HEX` | `#FF0000` | [Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java:29](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java#L29) | [Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java:962](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java#L962) |
+| `OGTRIPOLI_DATA_HEX` | `#0000FF` | [Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java:30](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java#L30) | [Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java:827](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java#L827) |
+| `OGTRIPOLI_ANTI_DATA_HEX` | `#FF0000` | [Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java:31](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java#L31) | [Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java:833](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java#L833) |
 
-## Colour-vision check
+Java defaults are assigned to the analysis in [Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/Analysis.java:157](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/Analysis.java#L157). Its green band is ±2 SE (the bounds are visible at [Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java:954](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/AnalysisBlockCyclesPlotOG.java#L954)); the C# graph and baseline Filament use ±1 SE. This round changes no band bounds or statistics.
 
-Run `env -u PYTHONPATH .venv/bin/python scripts/check_plot_colours.py`.
-The script decodes sRGB to linear light, applies the severity-1 matrices from
-[Machado, Oliveira and Fernandes (2009)](https://profs.ic.uff.br/~laffernandes/content/publications/journal/2009_tvcg_15%286%29/machado_oliveira_fernandes-tvcg-15%286%29-2009-corrected.pdf),
-clips channels, and measures relative-luminance contrast. Matrix provenance:
-[authors' simulation data](https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html).
-These numbers compare token colours, not anti-aliased screenshot pixels or
-individual vision; they are not a claim of colour-only accessibility.
+## Complete drawing inventory
+
+- `plots.py`: the sole scientific renderer, `CyclePlot`, used for ratio and intensity cards, including logarithmic/geometric views. Background, axes, titles, invalid crosses, included/rejected markers, selection, preview, hover, blocks, frame, means and bands resolve through this module. There is no matplotlib renderer.
+- `review_layouts.py`: `SharedBlocks` and `RatioCard` use the same palette for cycle/block states and plot furniture. Focus/pressed styling remains application chrome.
+- `inspector.py`: statistical tables only; its excluded-block text is an application danger state, with an explicit “(excluded)” label. No painter or plot.
+- `legacy_comparison.py`: a read-only table and clipboard preview, no plot.
+- `age_app.py`: discovery/handoff launcher, no plot or age computation.
+- `cycle_table.py`, `export_panel.py`, `fraction_list.py`: tables, readiness, chips and icons. Table data models and export code are untouched. Existing italic/strikeout/check-state cues remain.
+- `studio/widgets.py`: generic plot canvas clipping, plus chrome painters (workflow, segmented control, isotope tiles); `studio/plot_tools.py`: floating navigation chrome; `studio/theme.py`, `studio/splitters.py`, `labupdate/qt.py`: UI painting only. No additional plotted quantities.
+
+The Java species-intensity renderer uses configurable species colours ([Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/SpeciesIntensityAnalysisPlot.java:403](https://github.com/CIRDLES/Tripoli/blob/00dc94109f572c22bb3f357c0f7b1bb5347f62f5/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/SpeciesIntensityAnalysisPlot.java#L403)). It does not establish a fixed isotope-to-RGB convention to transplant. Filament displays each function in its own named card and retains the C# accepted/rejected convention for both ratios and intensities.
+
+## Rendering and accessibility
+
+Exact legacy light scientific RGBs and every baseline dark scientific token are retained. Excluded points remain hollow red squares, selected cycles square outlines, preview cycles hollow amber squares, invalid cycles crosses, and out-of-range rejected points hollow edge triangles. Block boundaries remain grey dash-dot lines. No changes to values, masks, plot ranges, band extents, legend wording, shortcuts or gestures.
+
+Run `env -u PYTHONPATH .venv/bin/python scripts/check_plot_colours.py` for the existing severity-1 Machado colour-vision audit. The included/rejected colours and backgrounds are unchanged, so baseline contrast is preserved:
 
 | Theme / simulation | Included vs excluded | Included vs background | Excluded vs background |
 | --- | ---: | ---: | ---: |
@@ -81,25 +73,8 @@ individual vision; they are not a claim of colour-only accessibility.
 | Dark / protanopia | 2.649:1 | 14.777:1 | 5.579:1 |
 | Dark / deuteranopia | 1.879:1 | 14.880:1 | 7.917:1 |
 
-The lower dark included/excluded contrast reinforces the need for filled versus
-hollow markers. Tests enforce both the contrast bounds and actual marker fill.
+These are token-level simulated luminance contrasts, not a claim of colour-only accessibility. The baseline filled/hollow redundancy remains required and tested.
 
-## Fit and screenshot evidence
+## Synthetic screenshot evidence
 
-The wall chooses columns from available plot width and ratio count: three at
-960 px or more with at least five ratios, two at 700 px or more, otherwise one.
-At 1280×800 with the inspector collapsed, six ratios use two rows and seven use
-three; all fit without scrolling. At 1024×640, two complete rows (four cards)
-fit. Card heights adapt to an integral number of complete visible rows.
-Maximising one card still hides the inspector and uses the full work area.
-
-Cycle axes share the full run's x range, even if a function lacks an endpoint.
-The fixed 62 px y-axis width aligns cycle positions within each card column;
-x zooms are linked. Hovering a cycle displays `plot.hoverGuide` on every card,
-clearing when the pointer leaves the plot.
-
-Reproduce with `QT_QPA_PLATFORM=offscreen env -u PYTHONPATH .venv/bin/python
-scripts/capture_plot_colours.py OUTPUT`. The capture uses B998, rejects cycles
-22–24 through the normal shared-mask operation, and disables block 4. It saves
-all eight requested PNGs and a geometry report, with isolated settings/recovery
-under OUTPUT. Captures use logical pixel dimensions, normalizing Retina output.
+The 2026-11-25 audit uses an external reusable `style-filament/shoot.py` with `QT_QPA_PLATFORM=offscreen`, `widget.grab()`, isolated settings/recovery, the repository synthetic workbooks and `tests/synthetic_review.py`. It captures both wall/classic layouts, light/dark, ratio/intensity/geometric views, tables, inspector/rules/preview, mapping/reduction/run information/export panels, legacy comparison, workflow rail, and a 12-function stress view at 1440×900 and 1024×640. See the accompanying external style report for filenames and commands. No private lab inputs are used.

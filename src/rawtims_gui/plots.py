@@ -248,7 +248,7 @@ class CyclePlot(RoundedPlotWidget):
     def apply_theme(self, theme: ThemeSpec | None = None) -> None:
         theme = theme or active_theme()
         plot = plot_palette(theme)
-        self.setBackground(theme.plot_background)
+        self.setBackground(plot.background)
         self.view_box.setBorder(pg.mkPen(plot.frame, width=1))
         self.view_box.rbScaleBox.setBrush(pg.mkBrush(theme_color(plot.blockSelecting)))
         self.view_box.rbScaleBox.setPen(pg.mkPen(plot.selection))
@@ -258,8 +258,8 @@ class CyclePlot(RoundedPlotWidget):
         font.setPointSizeF(8.5)
         for name in ("left", "bottom"):
             axis = item.getAxis(name)
-            axis.setPen(pg.mkPen(theme.axis_line))
-            axis.setTextPen(pg.mkPen(theme.axis_text))
+            axis.setPen(pg.mkPen(plot.axisLine))
+            axis.setTextPen(pg.mkPen(plot.axisText))
             axis.setTickFont(font)
         item.showGrid(x=False, y=True, alpha=0.25)
         self.ring.setPen(pg.mkPen(plot.selection, width=2))
@@ -312,7 +312,7 @@ class CyclePlot(RoundedPlotWidget):
         self._fit_all = state.fit_all
         if getattr(self, '_point_theme', None) != theme.name:
             self._point_styles = (pg.mkBrush(plot.included), pg.mkBrush(None),
-                                  pg.mkPen(plot.excluded, width=1.6), pg.mkPen(theme.faint, width=1.4), pg.mkPen(None))
+                                  pg.mkPen(plot.excluded, width=1.6), pg.mkPen(plot.invalid, width=1.4), pg.mkPen(None))
             self._point_theme = theme.name
         used_brush, empty_brush, bad_pen, grey, no_pen = self._point_styles
         brushes, pens, symbols, sizes = [], [], [], []
@@ -362,8 +362,8 @@ class CyclePlot(RoundedPlotWidget):
         self.setToolTip(f"{label}: mean {detail} (1σ SE of the mean), {stats.n_used} of {stats.n_total} cycles used")
         if not getattr(self, 'external_title', False):
             self.getPlotItem().setTitle(
-                f"<span style='color:{theme.text}; font-weight:600'>{_html(label)}</span>"
-                f"<span style='color:{theme.muted}'>&nbsp;&nbsp;&nbsp;{_html(detail)}</span>",
+                f"<span style='color:{plot.text}; font-weight:600'>{_html(label)}</span>"
+                f"<span style='color:{plot.muted}'>&nbsp;&nbsp;&nbsp;{_html(detail)}</span>",
                 size="9pt",
             )
         # A long title must not widen the plot past its widget: let it clip at the right.

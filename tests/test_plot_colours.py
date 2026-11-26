@@ -22,7 +22,8 @@ audit = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/check_
 @pytest.mark.parametrize('theme', ['light', 'dark'])
 def test_tokens_complete_and_valid(theme):
     required = ('band2sigma', 'band1sigma', 'bandSE', 'mean', 'meanFrozen', 'included',
-                'excluded', 'selection', 'blockSeparator', 'blockOff', 'blockSelecting', 'hoverGuide')
+                'excluded', 'selection', 'blockSeparator', 'blockOff', 'blockSelecting', 'hoverGuide',
+                'frame', 'preview', 'background', 'axisLine', 'axisText', 'invalid', 'text', 'muted')
     assert all(theme_color(getattr(PALETTES[theme], key)).isValid() for key in required)
 
 
@@ -35,6 +36,8 @@ def test_plot_sources_have_no_colour_literals():
     assert result.returncode == 1, result.stdout + result.stderr
     for path in paths:
         assert 'plot_palette(' in Path(path).read_text()
+    source = Path(paths[0]).read_text()
+    assert not re.search(r'theme\.(plot_background|axis_line|axis_text|faint|text|muted)\b', source)
 
 
 def test_colour_blind_contrast_and_fill_cue():
@@ -48,6 +51,16 @@ def test_colour_blind_contrast_and_fill_cue():
     assert result['dark']['deuteranopia']['included_vs_excluded'] < 3
 
 
+def test_rare_actions_keep_text_and_full_names(window):
+    for button, action in ((window.undo_button, window.undo_action),
+                           (window.redo_button, window.redo_action),
+                           (window.reset_button, window.reset_analysis_action)):
+        assert button.toolButtonStyle() == QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly
+        assert button.accessibleName() == action.text().replace('&', '')
+        assert button.toolTip() == action.toolTip()
+    assert [b.accessibleName() for b in window.mode_buttons.values()] == ['Ratios', 'Intensities', 'Table']
+
+
 @pytest.mark.parametrize('theme', ['light', 'dark'])
 def test_plot_semantics_on_both_layouts(window, theme):
     window.set_theme(theme)
@@ -59,6 +72,11 @@ def test_plot_semantics_on_both_layouts(window, theme):
     window.request_block_toggle('206/204 D', int(off_rows[0]))
     palette = plot_palette()
     for p in window.plot_wall.plots:
+        assert p.backgroundBrush().color() == theme_color(palette.background)
+        for name in ('left', 'bottom'):
+            axis = p.getPlotItem().getAxis(name)
+            assert axis.pen().color() == theme_color(palette.axisLine)
+            assert axis.textPen().color() == theme_color(palette.axisText)
         for row in rejected + off_rows.tolist():
             assert p.points.data['symbol'][row] == 's'
             assert p.points.data['brush'][row].style() == QtCore.Qt.BrushStyle.NoBrush

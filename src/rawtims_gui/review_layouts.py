@@ -245,9 +245,9 @@ class SharedBlocks(QtWidgets.QWidget):
             cell.setToolTip(f'Block {block} · cycles {cycles}\n{used}/{total} used across shared ratios. '
                             'Click / Space: toggle · Shift-click / drag: block range · ← →: move')
             set_style(cell, f'QToolButton {{ padding: 0; min-width: 0; min-height: 0; font-size: 9px; '
-                      f'color: {theme.muted if included else palette.excluded}; '
-                      f'background: {theme.surface if included else palette.blockOff}; '
-                      f'border: 1px solid {theme.axis_line}; border-radius: 2px; }} '
+                      f'color: {palette.axisText if included else palette.excluded}; '
+                      f'background: {palette.background if included else palette.blockOff}; '
+                      f'border: 1px solid {palette.axisLine}; border-radius: 2px; }} '
                       f'QToolButton:pressed, QToolButton:focus {{ background: {theme.accent_soft}; border-color: {theme.accent}; }}')
         self.align_axis()
 
@@ -350,8 +350,8 @@ class RatioCard(QtWidgets.QFrame):
         if not getattr(self.plot, 'external_title', False):
             self.plot.external_title = True
             self.plot.getPlotItem().setTitle(None)
-        theme = active_theme()
-        set_style(self, f'#RatioCard {{ background: {theme.plot_background}; border: 1px solid {theme.axis_line}; border-radius: 8px; }}')
+        palette = plot_palette()
+        set_style(self, f'#RatioCard {{ background: {palette.background}; border: 1px solid {palette.axisLine}; border-radius: 8px; }}')
 
 
 class ReviewPlotWall(PlotWall):

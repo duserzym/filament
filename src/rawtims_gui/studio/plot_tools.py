@@ -24,7 +24,7 @@ class PlotTools(QtWidgets.QFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.setObjectName('FloatingPlotTools')
-        self.setStyleSheet('#FloatingPlotTools { background: palette(base); border: 1px solid #aab4c4; border-radius: 6px; } QToolButton { padding: 2px 5px; font-size: 11px; }')
+        self.setStyleSheet('QToolButton { padding: 2px 5px; font-size: 11px; }')
         row = QtWidgets.QHBoxLayout(self)
         row.setContentsMargins(3, 2, 3, 2)
         row.setSpacing(1)

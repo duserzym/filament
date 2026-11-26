@@ -24,6 +24,19 @@ choose what you plot. Each plot shows its mean, 1σ % SE, accepted count and blo
 MSWD. Filled points are used; hollow red points are excluded; crosses are invalid.
 The line is the mean, and the bands show SE, 1σ and 2σ.
 
+The light and dark themes use the lab suite's quiet surfaces and filament accent.
+Ratios / Intensities / Table form a segmented view switch; inspector tabs use an
+underline, and the numbered workflow rail connects the existing steps. Undo,
+Redo and Reset keep their short text labels, with the full action as tooltip and
+accessible name. **Save contract CSV…** is the filled primary action in Export.
+
+Plot colours follow legacy Tripoli independently of the interface accent: black
+filled accepted squares, red hollow excluded squares, a blue automatic mean,
+pink 2σ, pale yellow 1σ and green SE bands in light mode. Dark mode retains those
+hue meanings with contrast adaptations. Ratio and intensity cards use the same
+inclusion convention. See [plot colour provenance](plot-colours.md) for the
+verified sources and accessibility details.
+
 Use **ln** for a plot's log scale, **↕** to fit its vertical range, and **⤢** to
 maximise it. Drag the inspector splitter to resize it. **Focus** (⌘⇧F) folds the
 inspector; click it again to restore it. Use the left menu to unfold fractions.

@@ -34,6 +34,8 @@ class ReviewToolbar(QtWidgets.QWidget):
     @staticmethod
     def _style_button(button):
         button.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
+        if not button.accessibleName():
+            button.setAccessibleName(button.toolTip() or button.text())
         button.setProperty("hasToolbarMenu", button.menu() is not None)
         button.setStyleSheet(
             "QToolButton { padding: 2px 3px; min-width: 0px; min-height: 0px; } "

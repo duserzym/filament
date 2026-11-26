@@ -51,11 +51,14 @@ class SegmentButton(QtWidgets.QToolButton):
 
 
 class _WorkflowRailDelegate(QtWidgets.QStyledItemDelegate):
-    """Keep stage icons and number badges readable in the compact rail."""
+    """Paint the existing workflow items as a connected vertical stepper."""
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setHeight(max(30, size.height()))
+        return size
 
     def paint(self, painter, option, index):
-        if not self.parent().property("compactRail"):
-            return super().paint(painter, option, index)
         theme = active_theme()
         painter.save()
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
@@ -64,14 +67,30 @@ class _WorkflowRailDelegate(QtWidgets.QStyledItemDelegate):
         if selected or option.state & QtWidgets.QStyle.StateFlag.State_MouseOver:
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.setBrush(theme_color(theme.accent_soft if selected else theme.row_hover))
-            painter.drawRoundedRect(QtCore.QRectF(rect), 9, 9)
-        icon = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
-        icon.paint(painter, QtCore.QRect(rect.left()+5, rect.center().y()-10, 20, 20))
-        font = option.font
-        font.setPixelSize(9)
+            painter.drawRoundedRect(QtCore.QRectF(rect), 7, 7)
+        center = QtCore.QPointF(rect.left() + 13, rect.center().y())
+        painter.setPen(QtGui.QPen(theme_color(theme.input_border), 1))
+        if index.row() > 0:
+            painter.drawLine(QtCore.QPointF(center.x(), option.rect.top()), center)
+        if index.row() < index.model().rowCount() - 1:
+            painter.drawLine(center, QtCore.QPointF(center.x(), option.rect.bottom() + 1))
+        painter.setBrush(theme_color(theme.input_bg))
+        painter.setPen(QtGui.QPen(QtGui.QColor(theme.accent if selected else theme.muted), 1))
+        painter.drawEllipse(center, 9, 9)
+        font = QtGui.QFont(option.font)
+        font.setPixelSize(11)
         painter.setFont(font)
         painter.setPen(QtGui.QColor(theme.accent if selected else theme.muted))
-        painter.drawText(rect.adjusted(27, 0, -2, 0), QtCore.Qt.AlignmentFlag.AlignCenter, str(index.row()+1))
+        painter.drawText(QtCore.QRectF(center.x()-9, center.y()-9, 18, 18),
+                         QtCore.Qt.AlignmentFlag.AlignCenter, str(index.row()+1))
+        if not self.parent().property("compactRail"):
+            painter.setFont(option.font)
+            label = str(index.data(QtCore.Qt.ItemDataRole.DisplayRole)).split(maxsplit=1)[-1]
+            painter.drawText(rect.adjusted(30, 0, -2, 0), QtCore.Qt.AlignmentFlag.AlignVCenter, label)
+        if option.state & QtWidgets.QStyle.StateFlag.State_HasFocus:
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            painter.setPen(QtGui.QPen(QtGui.QColor(theme.accent), 1, QtCore.Qt.PenStyle.DotLine))
+            painter.drawRoundedRect(QtCore.QRectF(rect), 7, 7)
         painter.restore()
 
 
@@ -127,7 +146,12 @@ class SegmentedBar(QtWidgets.QFrame):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.setBrush(theme_color(active_theme().accent_soft))
-        painter.drawRoundedRect(self._pill, 9, 9)
+        painter.drawRoundedRect(self._pill, 4, 4)
+        painter.setPen(QtGui.QPen(theme_color(active_theme().input_border), 1))
+        buttons = self.findChildren(SegmentButton)
+        for button in buttons[1:]:
+            x = button.geometry().left() - 1
+            painter.drawLine(x, 4, x, self.height() - 5)
 
 
 

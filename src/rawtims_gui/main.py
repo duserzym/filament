@@ -205,6 +205,8 @@ def _tool(action: QtGui.QAction, text: str) -> QtWidgets.QToolButton:
     button.setDefaultAction(action)
     button.setProperty("modeToggle", True)
     button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
+    button.setToolTip(action.toolTip())
+    button.setAccessibleName(action.text().replace("&", ""))
     return button
 
 
@@ -602,6 +604,7 @@ class MainWindow(QtWidgets.QMainWindow):
             button.setText(label)
             shortcut = self.mode_actions[mode].shortcut().toString(QtGui.QKeySequence.SequenceFormat.NativeText)
             button.setToolTip(f"{label} ({shortcut})")
+            button.setAccessibleName(label)
             button.setCheckable(True)
             button.setProperty("modeToggle", True)
             button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)

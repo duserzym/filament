@@ -5,8 +5,8 @@
 #   "UPbRPy" (import added).
 # The control icons it references were copied from the same commit
 # (GUI/assets/icons/control-*.svg) into rawtims_gui/studio/assets/icons/.
-# Everything else is unchanged, including the "upbrpy.*" application
-# property names, so the file stays diffable against its source.
+# - Suite presentation: application accent, quiet surfaces and distinct control shapes.
+# The "upbrpy.*" application property names remain compatible with the source.
 from __future__ import annotations
 
 import sys
@@ -63,30 +63,30 @@ THEMES: dict[str, ThemeSpec] = {
         name="light", window="#eef2f8", window_alt="#eef2f8",
         surface="#ffffff", surface_soft="#ffffff", input_bg="#f8fafd",
         input_border="rgba(23,32,46,0.10)", text="#17202e", muted="#556172",
-        accent="#2f6fde", accent_soft="rgba(47,111,222,0.12)",
-        accent_hover="rgba(47,111,222,0.18)", accent_strong="#255fc4",
+        accent="#a35746", accent_soft="rgba(163,87,70,0.12)",
+        accent_hover="rgba(163,87,70,0.18)", accent_strong="#8b493b",
         success="#1d8a5b", success_soft="rgba(29,138,91,0.12)",
         plot_background="#ffffff", axis_text="#556172", axis_line="#e6e9ef",
         grid_alpha=0.55, shadow_light="#ffffff", shadow_dark="#1f2d50",
-        on_accent="#ffffff", glass="rgba(255,255,255,0.55)",
+        on_accent="#ffffff", glass="rgba(255,255,255,0.72)",
         glass_strong="rgba(255,255,255,0.72)", glass_border="rgba(255,255,255,0.75)",
         glass_edge="rgba(23,32,46,0.08)", faint="#7d8899", danger="#c2413b",
-        row_hover="rgba(47,111,222,0.07)", plot_grid="#e6e9ef",
+        row_hover="rgba(163,87,70,0.07)", plot_grid="#e6e9ef",
         wallpaper=("#c9dbff", "#c7f0e6", "#f3d9f7"),
     ),
     "dark": ThemeSpec(
         name="dark", window="#0c111b", window_alt="#0c111b",
         surface="#161d2b", surface_soft="#1c2638", input_bg="#121926",
         input_border="rgba(255,255,255,0.10)", text="#e7ecf4", muted="#a3aec0",
-        accent="#7aa7ff", accent_soft="rgba(122,167,255,0.16)",
-        accent_hover="rgba(122,167,255,0.24)", accent_strong="#a5c3ff",
+        accent="#e6a392", accent_soft="rgba(230,163,146,0.16)",
+        accent_hover="rgba(230,163,146,0.24)", accent_strong="#efbcaf",
         success="#56d364", success_soft="rgba(86,211,100,0.12)",
         plot_background="#121926", axis_text="#a3aec0", axis_line="#263043",
         grid_alpha=0.55, shadow_light="#ffffff", shadow_dark="#000000",
-        on_accent="#0c111b", glass="rgba(255,255,255,0.08)",
-        glass_strong="rgba(22,29,43,0.78)", glass_border="rgba(255,255,255,0.14)",
+        on_accent="#0c111b", glass="rgba(22,29,43,0.82)",
+        glass_strong="rgba(22,29,43,0.94)", glass_border="rgba(255,255,255,0.14)",
         glass_edge="rgba(0,0,0,0.40)", faint="#7a879b", danger="#ff7b72",
-        row_hover="rgba(122,167,255,0.10)", plot_grid="#263043",
+        row_hover="rgba(230,163,146,0.10)", plot_grid="#263043",
         wallpaper=("#1d3263", "#0f4a45", "#3d1f4a"),
     ),
 }
@@ -101,21 +101,9 @@ def theme_color(value: str) -> QtGui.QColor:
 
 
 def paint_wallpaper(widget: QtWidgets.QWidget) -> None:
-    """Paint the three family gradients over the window base colour."""
-    theme = active_theme()
+    """Paint the suite's quiet window canvas behind the scientific plots."""
     painter = QtGui.QPainter(widget)
-    painter.fillRect(widget.rect(), QtGui.QColor(theme.window))
-    width, height = widget.width(), widget.height()
-    for (x, y, radius), color in zip(
-        ((0.10, -0.10, 0.85), (1.0, 0.0, 0.75), (0.60, 1.10, 0.65)),
-        theme.wallpaper,
-    ):
-        gradient = QtGui.QRadialGradient(QtCore.QPointF(width*x, height*y), max(width, height)*radius)
-        gradient.setColorAt(0, QtGui.QColor(color))
-        transparent = QtGui.QColor(color)
-        transparent.setAlpha(0)
-        gradient.setColorAt(1, transparent)
-        painter.fillRect(widget.rect(), gradient)
+    painter.fillRect(widget.rect(), QtGui.QColor(active_theme().window))
 
 
 class WallpaperWidget(QtWidgets.QWidget):
@@ -150,11 +138,7 @@ class _PopupCorners(QtCore.QObject):
 
 
 class NeumorphicFrame(QtWidgets.QFrame):
-    """Paint a glass surface and soft shadow without capturing child plots.
-
-    Shadows stay inside the frame's bounds. No graphics effect, animation,
-    offscreen plot copy, or global paint event filter is needed.
-    """
+    """Paint a quiet suite panel; retain the existing content geometry."""
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -168,24 +152,9 @@ class NeumorphicFrame(QtWidgets.QFrame):
         body = QtCore.QRectF(self.rect()).adjusted(7, 7, -7, -7)
         if body.width() <= 0 or body.height() <= 0:
             return
-        radius = 16.0
-        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-        # Paint the shadow inside the frame, without capturing its children.
-        for width, alpha in ((12, 2), (9, 3), (6, 5), (3, 7)):
-            shade = QtGui.QColor(theme.shadow_dark)
-            shade.setAlpha(alpha if theme.name == "light" else alpha * 2)
-            painter.setPen(QtGui.QPen(shade, width))
-            painter.drawRoundedRect(body.translated(0, 3), radius, radius)
-        if self.property("floatingPanel"):
-            painter.setPen(QtCore.Qt.PenStyle.NoPen)
-            painter.setBrush(theme_color(theme.surface))
-            painter.drawRoundedRect(body, radius, radius)
-        painter.setBrush(theme_color(theme.glass))
-        painter.setPen(QtGui.QPen(theme_color(theme.glass_edge), 1))
-        painter.drawRoundedRect(body, radius, radius)
-        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-        painter.setPen(QtGui.QPen(theme_color(theme.glass_border), 1))
-        painter.drawRoundedRect(body.adjusted(0.7, 0.7, -0.7, -0.7), radius, radius)
+        painter.setBrush(theme_color(theme.surface if self.property("floatingPanel") else theme.glass))
+        painter.setPen(QtGui.QPen(theme_color(theme.input_border), 1))
+        painter.drawRoundedRect(body, 10, 10)
 
 
 
@@ -372,11 +341,11 @@ def _stylesheet(theme: ThemeSpec) -> str:
     #ControlBarDivider {{ background: {theme.input_border}; border: none; }}
     #SecondaryText, #PanelBody, #ControlBarLabel {{ color: {theme.muted}; font-size: 11px; }}
     #InspectorHint, #WorkflowStatusCompact {{ color: {theme.muted}; font-size: 9px; }}
-    #Pill, #StatusPill {{ padding: 4px 10px; border-radius: 10px; background: {theme.accent_soft}; }}
+    #Pill, #StatusPill {{ padding: 4px 10px; border-radius: 10px; background: {theme.input_bg}; color: {theme.muted}; }}
     #StatusPill {{ background: {theme.success_soft}; color: {theme.success}; }}
     QPushButton, QToolButton {{
         background: {theme.glass_strong}; border: 1px solid {theme.input_border};
-        border-radius: 11px; padding: 7px 11px; font-weight: 600;
+        border-radius: 7px; padding: 7px 11px; font-weight: 600;
     }}
     QPushButton:hover, QToolButton:hover {{ background: {theme.row_hover}; border-color: {theme.accent}; }}
     QPushButton:pressed, QToolButton:pressed {{ background: {theme.accent_soft}; }}
@@ -394,9 +363,9 @@ def _stylesheet(theme: ThemeSpec) -> str:
     QToolButton[segmentChild="true"], QToolButton[segmentChild="true"]:checked, QToolButton[segmentChild="true"]:disabled {{ background: transparent; border: none; padding: 5px 4px; }}
     QPushButton:focus, QToolButton:focus {{ border: 1px solid {theme.accent}; }}
     QTabWidget::pane {{ border: none; }}
-    QTabBar {{ background: {theme.glass}; border-radius: 12px; }}
-    QTabBar::tab {{ background: transparent; color: {theme.muted}; border: none; border-radius: 10px; padding: 7px 8px; margin: 3px; }}
-    QTabBar::tab:selected {{ background: {theme.accent_soft}; color: {theme.accent}; font-weight: 600; }}
+    QTabBar {{ background: transparent; border-bottom: 1px solid {theme.input_border}; }}
+    QTabBar::tab {{ background: transparent; color: {theme.muted}; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 7px 8px; margin: 0; }}
+    QTabBar::tab:selected {{ background: transparent; border-bottom: 2px solid {theme.accent}; color: {theme.accent}; font-weight: 600; }}
     QTabBar::tab:hover {{ background: {theme.row_hover}; }}
     QTabBar::close-button {{ width: 18px; height: 18px; border-radius: 9px; background: transparent; }}
     QTabBar QToolButton {{ padding: 2px; border-radius: 8px; background: {theme.surface}; }}
@@ -404,7 +373,7 @@ def _stylesheet(theme: ThemeSpec) -> str:
     QTabBar QToolButton::right-arrow {{ image: {icon("right")}; width: 12px; height: 12px; }}
     QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit, QTextBrowser {{
         background: {theme.glass_strong}; border: 1px solid {theme.input_border};
-        border-radius: 10px; padding: 6px 9px; selection-background-color: {theme.accent_soft}; selection-color: {theme.accent};
+        border-radius: 7px; padding: 6px 9px; selection-background-color: {theme.accent_soft}; selection-color: {theme.accent};
     }}
     QComboBox {{ combobox-popup: 0; padding-right: 28px; min-height: 22px; }}
     QSpinBox, QDoubleSpinBox {{ padding-right: 26px; min-height: 22px; }}
@@ -458,12 +427,18 @@ def _stylesheet(theme: ThemeSpec) -> str:
     QSlider::handle:horizontal {{ width: 16px; margin: -6px 0; border-radius: 8px; background: {theme.surface}; border: 1px solid {theme.accent}; }}
     QSlider::groove:vertical {{ width: 5px; border-radius: 2px; background: {theme.input_border}; }}
     QSlider::handle:vertical {{ height: 16px; margin: 0 -6px; border-radius: 8px; background: {theme.surface}; border: 1px solid {theme.accent}; }}
-    QProgressBar {{ background: {theme.accent_soft}; border: none; border-radius: 6px; text-align: center; min-height: 12px; }}
-    QProgressBar::chunk {{ background: {theme.accent}; border-radius: 6px; }}
+    QProgressBar {{ background: {theme.input_border}; border: none; border-radius: 2px; text-align: center; min-height: 4px; }}
+    QProgressBar::chunk {{ background: {theme.accent}; border-radius: 2px; }}
     QGroupBox {{ background: {theme.glass}; border: 1px solid {theme.input_border}; border-radius: 16px; margin-top: 16px; padding: 12px; }}
     QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 5px; color: {theme.muted}; }}
     QSplitter::handle {{ background: transparent; border: none; border-radius: 3px; }}
     QSplitter::handle:hover {{ background: {theme.accent_soft}; }}
+    #StageSegmentBar {{ background: {theme.input_bg}; border: 1px solid {theme.input_border}; border-radius: 7px; }}
+    QToolButton[segmentChild="true"]:checked {{ color: {theme.accent}; }}
+    #SaveContract {{ background: {theme.accent}; color: {theme.on_accent}; border-color: {theme.accent}; }}
+    #SaveContract:hover {{ background: {theme.accent_strong}; }}
+    #SaveContract:disabled {{ background: {theme.surface_soft}; color: {theme.faint}; border-color: {theme.input_border}; }}
+    #FloatingPlotTools {{ background: {theme.surface}; border: 1px solid {theme.input_border}; border-radius: 7px; }}
     QScrollBar:vertical {{ background: transparent; width: 8px; margin: 4px 1px; }}
     QScrollBar:horizontal {{ background: transparent; height: 8px; margin: 1px 4px; }}
     QScrollBar::handle {{ background: {theme.accent_hover}; border: none; border-radius: 3px; }}
