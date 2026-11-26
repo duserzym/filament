@@ -35,6 +35,8 @@ def build_menu(window):
     menu.addAction('Expressions / concatenation / block diagnostics…', lambda: show_composition(window))
     from rawtims_gui.history import show_history
     menu.addAction('Calibration history / completed folders…', lambda: show_history(window))
+    from rawtims_gui.fractionation_preview import show_fractionation_preview
+    menu.addAction('Fractionation preview (not exported)…', lambda: show_fractionation_preview(window))
     from rawtims_gui.method_inspector import show_method_inspector
     menu.addAction('Method / instrument references / intensity units…', lambda: show_method_inspector(window))
     menu.addSeparator()

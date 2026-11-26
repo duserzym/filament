@@ -1,6 +1,6 @@
 # Tripoli feature gaps
 
-Snapshot: **2026-11-25**, P6 update **2026-11-26**. **Done** means the stated supported-input workflow exists;
+Snapshot: **2026-11-25**, P7 update **2026-11-26**. **Done** means the stated supported-input workflow exists;
 **partial** means the limits in the last column still apply; **not done** means
 unimplemented. All incomplete rows are now in scope in the
 [phased roadmap](tripoli-parity-roadmap.md), subject to its data and ownership decisions.
@@ -48,8 +48,8 @@ not a claim that every subsequent upstream release is identical. Upstream projec
 | SPEC | Feature | Legacy C# 4.10.0.3 | Java Tripoli | filament | Remaining limit or difference |
 |---|---|---|---|---|---|
 | F24 | Raw acquisition reduction | Receives instrument-processed ratios; `OGTripoli/source/vendors_data/MassLynxDataFile.cs:129` | Phoenix Full baseline/gain/intensity models; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/massSpectrometerModels/dataModels/mcmc/SingleBlockModelDriver.java:72` | partial | E/P/D: P6 isolated Java synthetic structural parsing and spline/linear matrix prerequisites added; existing deterministic IsoprobeT routes unchanged. No Phoenix Full/TIMSAD reader, new raw calibration or BSU two-sequence enablement (D13). [P6 evidence](p6-method-configuration.md). |
-| F25 | Pb/U tracer fractionation | Linear law, Pb 202/205 and U 233/235 double spike; `OGTripoli/source/TripoliWorkProduct.cs:1074` | Not applied by the researched export path; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/outputs/etRedux/MeasuredUserFunction.java:63` | not done | E/D: age app currently owns it; Java measured-export path is not evidence of tracer correction. Decision prominently in roadmap; no corrected ratios may silently enter /1. [P7](tripoli-parity-roadmap.md#phase-p7-tracer-fractionation-and-interference-capability-l-d1-gate). [filament evidence](contract-idtims-fractions-v1.md#purpose). |
-| F26 | BaPO2/Tl correction | Combined interference/fractionation solution; `OGTripoli/source/TripoliWorkProduct.cs:2038` | No implementation in researched path | not done | E/D: validated IC/tracer inputs and applied-correction provenance needed; no Java equivalent established. [P7](tripoli-parity-roadmap.md#phase-p7-tracer-fractionation-and-interference-capability-l-d1-gate). [filament evidence](raw-reduction.md). |
+| F25 | Pb/U tracer fractionation | Linear law, Pb 202/205 and U 233/235 double spike; `OGTripoli/source/TripoliWorkProduct.cs:1074` | Not applied by the researched export path; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/outputs/etRedux/MeasuredUserFunction.java:63` | partial | E/G: D1 opt-in C# linear Pb and 233/235 U mean-level calibration preview with first-order uncertainty propagation; age app authoritative, /1 unchanged. Per-cycle/calibrated-chain validation remains open. [P7 evidence](p7-fractionation-preview.md). |
+| F26 | BaPO2/Tl correction | Combined interference/fractionation solution; `OGTripoli/source/TripoliWorkProduct.cs:2038` | No implementation in researched path | not done | E/D: deferred under D11; no BaPO2, Tl or coupled interference correction or /2 contract. Independent validated specimens/provenance required. [P7 evidence](p7-fractionation-preview.md). |
 | F27 | Live acquisition watching | Live newest-file and cycle-folder workflows; `OGTripoli/source/forms/fmrMainTripoli.cs:6371` | IsoLinx LiveData ingestion; `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/TripoliGUIController.java:884` | partial | E/P/G/D: P4 manual completed-folder Refresh and explicit completion attestation only. No watcher/newest-file workflow, provisional sculpting or automatic new-cycle rules; D10 and lifecycle captures remain open. [P4 evidence](p4-calibration-history.md). |
 | F28 | MCMC, Bayesian ensembles, peak shapes | No equivalent | MCMC1/MCMC2 and demonstrations; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/massSpectrometerModels/dataModels/mcmc/MCMCProcess.java:254` | not done | E/D: production-style MCMC1 plus exploratory MCMC2 and peak tools are distinct F50-F60; deterministic reduction is not Bayesian parity. [P8](tripoli-parity-roadmap.md#phase-p8-bayesian-model-fitting-ensembles-and-peak-shapes-l-several-releases). [filament evidence](raw-reduction.md). |
 | F29 | Other instrument formats | Several instrument imports; `OGTripoli/source/forms/fmrMainTripoli.cs:838` | Triton, Neptune, Nu TIMS; Sector54 not registered; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/constants/MassSpectrometerContextEnum.java:46` | partial | E/P/D: P5 template CSV and processed Triton/Nu TIMS/Neptune, validated against all 34 public input/cycle/full-report sets. Sector54, MAT261/262, legacy Nu Plasma and Element2 remain specimen-gated (D12). [P5 scope and limits](p5-processed-parsers.md). |
@@ -160,10 +160,9 @@ experimental code is tracked separately from validated lab workflows.
 
 **F25 ownership is a decision, not a silent change in scope:** see the prominent
 [three-option contract discussion](tripoli-parity-roadmap.md#priority-decision-f25-ownership-and-the-fraction-contract).
-The age app currently owns fractionation/calibration; existing
+D1 selects an opt-in diagnostic preview; the age app owns final fractionation/calibration. Existing
 [idtims-fractions/1](contract-idtims-fractions-v1.md) ratios remain uncorrected for
-mass fractionation. Planning now includes this functionality, but that does not
-change the implemented export contract.
+mass fractionation. P7 adds isolated preview revisions and never changes this export contract.
 
 ## Evidence and interpretation
 
@@ -205,3 +204,17 @@ P6 completes F89 for the pinned reference catalog/resource scope. F24/F36/F37/F4
 | F78 | partial | Synthetic Version 1.00 structural parsing and isolated oracle K matrices; real Phoenix Full/TIMSAD readers remain D13/specimen-gated. |
 | F89 | done | Pinned Java Phoenix/UNKNOWN instrument geometry, synthetic detector setup and 3,365 nuclide/abundance records; reference provenance and limits disclosed. |
 | F90 | partial | Typed transient display on verified existing raw Faraday columns; cached, ambiguous and multiplier conversions unavailable with reasons. |
+
+## P7 fractionation preview (D1)
+
+[Scope, formulas, convention differences and validation specimens](p7-fractionation-preview.md).
+
+| Row | Status | Result and remaining boundary |
+|---|---|---|
+| F25 | partial | E/G: D1 opt-in C# linear Pb and 233/235 U mean-level calibration preview with first-order uncertainty propagation; age app authoritative, /1 unchanged. Per-cycle/calibrated-chain validation remains open. |
+| F26 | not done | E/D: deferred under D11; no BaPO2, Tl or coupled interference correction or /2 contract. Independent validated specimens/provenance required. |
+| F61 | partial | E/P/G: strict offline C# Tracer/TracerUPbModel XML, PCT/ABS uncertainty, versioned session library and active/applied identities. Web/editor absent; Java 00dc941 supplies no concrete tracer XML dialect or shipped XML. |
+| F62 | partial | E: new pure opt-in C# 233/236 oxide diagnostic and propagated uncertainty, separate from the default core/mapping. No GUI molecular-assignment path or 233/236 fractionation (explicitly unsupported in C#); calibrated specimens needed. |
+| F63 | done | E/G: explicit U blank pg, tracer g, sample/blank 238/235 and isotope molar masses, each with absolute 1σ, frozen with preview revisions. C# isotope-specific moles; zero-blank limit tested. Supported 233/235 preview only, never metadata-driven automatic calibration. |
+| F64 | partial | E/G: frozen preview report with alpha, measured/corrected ratios and absolute 1σ, source/mask/settings/mapping/XML hashes, active/applied identity and separate persistent preview undo/redo. IC reports remain D11. |
+| F65 | done | E/G: D1 batch preview over opened runs (including reopened saved sessions) appends new derived revisions with applied tracer/components; preserves all originals and prior revisions. Invalid runs are reported individually. No saved work-product overwrites. |

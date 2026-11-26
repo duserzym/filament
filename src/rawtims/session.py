@@ -1,6 +1,8 @@
 """Saved sessions: fractions, runs, settings, histories and mappings as JSON (SPEC F18, section 3 "Session").
 
-A session file holds no raw values and no results. It names each raw file
+Authoritative run records hold no raw arrays or reduction results. Optional
+presentation metadata can hold frozen diagnostic previews; these are never
+replayed as Analysis values. A session names each raw file
 (path relative to the session file, absolute path, size, SHA-256), and keeps
 what is needed to rebuild the review exactly: the run's element, the
 analysis settings before and after its history, the history itself
@@ -303,6 +305,9 @@ def session_document(state: SessionState, path: str | os.PathLike[str] | None, *
         "stat_mode": state.stat_mode,
     }
     if state.presentation:
+        if "fractionation_preview" in state.presentation:
+            from rawtims.fractionation_preview import PreviewBook
+            PreviewBook(state.presentation["fractionation_preview"])
         document["presentation"] = state.presentation
     if state.calibration_history:
         from rawtims.history import HistoryBook
@@ -542,6 +547,12 @@ def load_session(path: str | os.PathLike[str]) -> tuple[SessionState, list[Sessi
             expected = str if name == "notes" else dict
             if not all(isinstance(value, expected) for value in group.values()):
                 raise SessionError(f"{path.name}: invalid presentation {name}")
+        if "fractionation_preview" in state.presentation:
+            from rawtims.fractionation_preview import PreviewBook
+            try:
+                PreviewBook(state.presentation["fractionation_preview"])
+            except ValueError as error:
+                raise SessionError(f"{path.name}: invalid fractionation preview: {error}") from error
     if "stat_mode" in document:
         if document["stat_mode"] not in STAT_MODES:
             raise SessionError(f"{path.name}: invalid project stat_mode {document['stat_mode']!r}")

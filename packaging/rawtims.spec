@@ -35,6 +35,7 @@ data_files = [
     (str(PROJECT_ROOT / "docs" / "user-guide.md"), "guide"),
     (str(PROJECT_ROOT / "docs" / "recalculation-demo.md"), "guide"),
     (str(PROJECT_ROOT / "docs" / "tripoli-gap.md"), "guide"),
+    (str(PROJECT_ROOT / "docs" / "p7-fractionation-preview.md"), "guide"),
     (str(SOURCE_ROOT / "rawtims_gui" / "assets" / "*.png"), "rawtims_gui/assets"),
     (str(PROJECT_ROOT / "docs" / "guide"), "guide/guide"),
     (str(PROJECT_ROOT / "packaging" / branding.ICON_FILENAME), "rawtims_gui/assets"),

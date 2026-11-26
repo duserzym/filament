@@ -520,6 +520,43 @@ representable cycle values, identities, masks and statistics against opening a
 committed synthetic workbook; it cannot establish equality of metadata absent
 from the text dialect. [P4 evidence and remaining specimens](p4-calibration-history.md).
 
+## Fractionation preview (not exported)
+
+Open **View → Review diagnostics → Fractionation preview (not exported)** to
+compare measured ratios with an opt-in linear-law diagnostic. IDTIMS_UPbRPy
+remains authoritative for fractionation, tracer stripping and ages. Clipboard,
+cycle files and `/1` fractions always retain the measured values.
+
+1. Choose **Read local tracer XML…** for a C# `Tracer` or `TracerUPbModel` file.
+   Its name/version, lab, certified date, uncertainty values and XML hash appear
+   in the view. The library is saved with this session. A changed XML needs a
+   new version; no web fetch or automatic tracer selection occurs. **No tracer**
+   gives an unchanged comparison with alpha zero.
+2. Choose the measured run. Pb requires 202/205 and a 202–205 tracer. U requires
+   mapped oxide-corrected 233/235 and 238/235 and the six explicit component
+   values, each with absolute 1σ: blank pg, blank/sample 238/235, tracer g and
+   235U/238U molar masses in g/mol. Zero 1σ means that component is held fixed.
+3. Select **Create preview revision**. The correction report places measured
+   and preview ratios/absolute 1σ side by side with alpha, applied tracer,
+   algorithm, uncertainty assumption and source/mask/model hashes. These are
+   frozen summaries, not per-cycle corrected means. The GUI treats inputs as
+   independent for this diagnostic; it does not claim full age-engine uncertainty.
+4. Re-run after changing the review or active tracer to append another revision.
+   **Batch preview all runs** uses the active tracer and the same U components
+   for all opened runs; use individual previews for different tracer masses or
+   blanks. Reopen a saved session first to batch its fractions. Invalid runs are
+   named in the correction report, with a refusal count in the notice. Previous revisions and original work products stay intact.
+5. Use **Undo preview / Redo preview** in the report tab. Revisions, applied XML
+   and visible history survive session save/reopen. Changing the active tracer
+   never rewrites the model applied to an earlier revision.
+
+There is no BaPO₂/Tl correction, spike stripping or 233/236 fractionation in this
+view. The isolated 233/236 oxide API has no automatic GUI molecular assignment.
+Java tracer XML import awaits an actual source schema/specimen. See
+[P7 evidence and validation specimens](p7-fractionation-preview.md) for the
+mean-versus-cycle and C#-versus-age-app convention differences and remaining
+calibrated-chain validation.
+
 ## Method references and physical intensity display
 
 Choose **View → Review diagnostics → Method / instrument references / intensity
