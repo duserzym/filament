@@ -1,6 +1,7 @@
 """P6 read-only desktop acceptance; no Tripoli screenshot oracle exists."""
 
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -73,10 +74,12 @@ def test_read_only_import_refusal_and_outputs(window, tmp_path):
     dialog.close()
 
 
-def test_synthetic_verified_intensity_display(window):
+def test_synthetic_verified_intensity_display(window, monkeypatch):
     """TripoliCore/src/main/java/org/cirdles/tripoli/constants/TripoliConstants.java:155-173 and TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/SpeciesIntensityAnalysisPlot.java:219-245.
     New display uses an existing synthetic provenance-bearing Run without reprocessing.
     """
+    exceptions = []
+    monkeypatch.setattr(sys, "excepthook", lambda *args: exceptions.append(args))
     dialog = MethodInspector(window)
     dialog.run = display_run()
     dialog.function.clear()
@@ -84,6 +87,7 @@ def test_synthetic_verified_intensity_display(window):
     before = dialog.run.values.copy()
     dialog.refresh_units()
     assert dialog.unit.isEnabled()
+    assert dialog.unit.count() - 1 == len(IntensityUnit)
     for unit, factor in (
         (IntensityUnit.AMPS, 1e-11),
         (
@@ -93,6 +97,10 @@ def test_synthetic_verified_intensity_display(window):
         (IntensityUnit.VOLTS, 1.0),
     ):
         dialog.unit.setCurrentIndex(dialog.unit.findData(unit))
+        QtWidgets.QApplication.processEvents()
+        assert not exceptions
+        assert dialog.plot.getAxis("left").labelText == unit.value
+        assert dialog.displayed_values is not None
         np.testing.assert_allclose(
             dialog.displayed_values, dialog.run.column("265") * factor, equal_nan=True
         )

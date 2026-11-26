@@ -266,7 +266,8 @@ class MethodInspector(QtWidgets.QDialog):
             return
         availability = display_availability(self.run, key)
         self.unit.setEnabled(availability.available)
-        target = self.unit.currentData()
+        data = self.unit.currentData()
+        target = None if data is None else IntensityUnit(data)
         self.unit_notice.setText(availability.reason)
         if target is not None and not availability.available:
             return

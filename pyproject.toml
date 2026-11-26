@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rawtims"
-version = "0.2.0"
+version = "0.3.0"
 description = "Raw ID-TIMS data review: IsotopX IsoprobeT runs to cycle-filtered ratios for ID-TIMS reduction."
 readme = "README.md"
 requires-python = ">=3.12"

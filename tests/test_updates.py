@@ -226,7 +226,7 @@ def test_whats_new_once_after_version_change(app, tmp_path, previous, show):
         updater.deleteLater()
 
 
-@pytest.mark.parametrize("pending,expected", [(True, "Saved manifest notes"), (False, "Updated to v0.2.0.")])
+@pytest.mark.parametrize("pending,expected", [(True, "Saved manifest notes"), (False, f"Updated to v{branding.VERSION}.")])
 def test_whats_new_notes_fallback(app, tmp_path, pending, expected):
     prefs = QtCore.QSettings(str(tmp_path / "notes.ini"), QtCore.QSettings.Format.IniFormat)
     prefs.setValue("updates/pending_version", branding.VERSION if pending else "0.1.0")
