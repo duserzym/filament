@@ -56,7 +56,13 @@ def test_open_paths_on_the_fixtures_folder():
     # A synthetic fractions CSV in the legacy layout is not a run file either.
     assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[SYNTHETIC_FRACTIONS.name]
     processed_reports = {p.name for folder in ('cycleReports', 'fullReports') for p in (TRIPOLI/'processed'/folder).rglob('*') if p.is_file()}
-    assert set(reasons) == set(oracles) | processed_reports | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", SYNTHETIC_FRACTIONS.name, 'ID_TIMS_DataImportTemplate.csv'}
+    # P6 adds inspection-only fixtures. Preserve the exact run/skipped inventory,
+    # and additionally require every new fixture to refuse the Run reader route.
+    p6_inspection = {"JavaDataset_01.txt", "JavaDataset_02.txt", "bspline_matrix_A.txt",
+                     "bspline_matrix_B.txt", "bspline_answers.txt", "synthetic_phoenix_method.xml"}
+    for name in p6_inspection:
+        assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[name]
+    assert set(reasons) == set(oracles) | processed_reports | p6_inspection | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", SYNTHETIC_FRACTIONS.name, 'ID_TIMS_DataImportTemplate.csv'}
     assert reasons['ID_TIMS_DataImportTemplate.csv'] == 'could not be read (ValueError: Empty import template: add cycle data below the captions)'
 
 

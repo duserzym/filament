@@ -50,3 +50,14 @@ CIRDLES/OGTripoli, commit recorded per file in MANIFEST.toml:
   docs/ID_TIMS_DataImportTemplate.csv -> processed/ID_TIMS_DataImportTemplate.csv
 Copyright 2004-2017 James F. Bowring and www.Earth-Time.org.
 All P5 copies are unmodified public Apache-2.0 files; see LICENSE-APACHE-2.0.
+
+P6 synthetic/matrix additions (2026-11-26)
+----------------------------------------
+CIRDLES/Tripoli 00dc94109f572c22bb3f357c0f7b1bb5347f62f5:
+TripoliCore/src/main/resources/org/cirdles/tripoli/dataSourceProcessors/
+  dataSources/synthetic/twoIsotopeSyntheticData/SyntheticDataset_01.txt, _02.txt
+  -> p6/JavaDataset_01.txt, JavaDataset_02.txt (upstream synthetic data).
+TripoliCore/src/test/resources/org/cirdles/tripoli/core/matLab/bspline/
+  bspline_matrix_A.txt, bspline_matrix_B.txt, bspline_answers.txt -> p6/.
+Unmodified public Apache-2.0 copies; original paths/digests in MANIFEST.toml.
+Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org.

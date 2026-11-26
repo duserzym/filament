@@ -12,6 +12,8 @@ They cover cases no real fixture has, until real Boise State files arrive:
 * ``synthetic_ET2535_Pb_202.xls``: a BSU-style Pb run with ``202/205 D`` and
   the other ``D`` functions, beam interpolation on (16 rows per block), and a
   repeated ``Daly/Faraday Gain`` column as in the real BSU workbook.
+* ``synthetic_phoenix_method.xml``: P6 read-only Phoenix method schema specimen,
+  with invented isotope/collector/baseline assignments; never vendor-exported.
 * ``synthetic_MA1_zircon_CA-ID-TIMS.csv``: twelve invented fractions in the
   legacy 24-column layout, including both Daly and Faraday collectors, a UTF-8
   BOM and CRLF line endings. Ratios are derived from shared invented isotope
@@ -343,10 +345,160 @@ def write_all(out: Path) -> list[Path]:
         path = out / name
         write_xls(path, build())
         written.append(path)
+    method_path = out / "synthetic_phoenix_method.xml"
+    method_path.write_bytes(phoenix_method_xml())
+    written.append(method_path)
     path = out / "synthetic_MA1_zircon_CA-ID-TIMS.csv"
     path.write_bytes(legacy_fractions_csv())
     written.append(path)
     return written
+
+
+# P6 source-schema specimen, not a vendor method. Field order transcribed from
+# TripoliCore/.../machineMethods/phoenixMassSpec/PhoenixAnalysisMethod.java:
+# HEADER 910-918, SETTINGS 1628-1690, BASELINE 418-440, ONPEAK 1165-1197,
+# EQUILIBRATION 721-733 (Java 00dc941).
+P6_METHOD_FIELDS = {
+    "HEADER": ("Filename", "DateModified", "DateCreated", "CreatedBy", "ModifiedBy"),
+    "SETTINGS": (
+        "IntersperseBaselines",
+        "BaselineFrequency",
+        "PKCCycleInterval",
+        "TotalBlocks",
+        "TotalCycles",
+        "CalculateRatios",
+        "InitialBLMagnetDelay",
+        "DeflectBeamProtection",
+        "PerformBeamInterpCycles",
+        "PerformInterBlocks",
+        "AxialColl",
+        "ActiveSEMCollectors",
+        "MagnetFlybackSettleTime",
+        "CorrectForBaselines",
+        "CorrectForDeadtimes",
+        "IsoWorks_Method",
+        "Rejection_Sigma",
+        "Rejection_Percentage",
+        "ActiveSubChannel",
+        "ProcessingUnits",
+        "TFE_Enabled",
+        "TFE_MonitorPeak",
+        "TFE_IntensityThreshold",
+        "TFE_IntervalPeakCentring",
+        "TFE_PeakCentringInterval",
+        "TFE_PeakCentringMonitorThreshold",
+        "Export_IsotopePoints",
+        "Export_ASCFile",
+        "Export_ASCOptions",
+        "Export_ASCActiveColl",
+        "Export_TXTEveryCYCLE",
+        "Export_TripoliLiveData",
+    ),
+    "BASELINE": (
+        "Sequence",
+        "Enabled",
+        "MassID",
+        "AxMass",
+        "IntegPeriod",
+        "IntegTime",
+        "PKCParentID",
+        "BLReferences",
+        "MagnetSettleTime",
+        "AxMassOffset",
+        "CurveFit",
+        "TraceColour",
+    ),
+    "ONPEAK": (
+        "Sequence",
+        "Enabled",
+        "MassID",
+        "MassIDCollector",
+        "AxMass",
+        "IntegPeriod",
+        "IntegTime",
+        "PeakCentre",
+        "PKCCollector",
+        "PKCMethod",
+        "PKCParentID",
+        "BLReferences",
+        "CollectorArray",
+        "MagnetSettleTime",
+        "AxMassOffset",
+        "CurveFit",
+        "TraceColour",
+    ),
+    "EQUILIBRATION": (
+        "Enabled",
+        "Collector",
+        "AxMass",
+        "MassID",
+        "Duration",
+        "IntegPeriod",
+        "StoreToDB",
+    ),
+}
+
+
+def phoenix_method_xml() -> bytes:
+    """SYNTHETIC source-schema XML with independently hand-checkable mass cells."""
+    import xml.etree.ElementTree as ET
+
+    root = ET.Element("ANALYSIS_METHOD")
+    definitions = [
+        (
+            "HEADER",
+            {
+                "Filename": "SYNTHETIC Phoenix Pb",
+                "CreatedBy": "SYNTHETIC test specimen",
+            },
+        ),
+        ("SETTINGS", {"AxialColl": "Axial"}),
+        (
+            "BASELINE",
+            {
+                "Sequence": "1",
+                "Enabled": "True",
+                "AxMass": "205.5",
+                "AxMassOffset": "0.25",
+                "BLReferences": "MASS",
+            },
+        ),
+        (
+            "BASELINE",
+            {
+                "Sequence": "2",
+                "Enabled": "False",
+                "AxMass": "999",
+                "AxMassOffset": "-0.5",
+                "BLReferences": "208Pb",
+            },
+        ),
+        (
+            "ONPEAK",
+            {
+                "Sequence": "1",
+                "Enabled": "True",
+                "BLReferences": "BL1, BL2",
+                "CollectorArray": "206Pb:AxS1,Pb208:H2S1",
+            },
+        ),
+        (
+            "ONPEAK",
+            {
+                "Sequence": "2",
+                "Enabled": "False",
+                "BLReferences": "BL1",
+                "CollectorArray": "207Pb:AxS2",
+            },
+        ),
+        ("EQUILIBRATION", {}),
+    ]
+    for tag, values in definitions:
+        section = ET.SubElement(root, tag)
+        for field in P6_METHOD_FIELDS[tag]:
+            ET.SubElement(section, field).text = values.get(field, "")
+    ET.indent(root)
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -519,3 +519,23 @@ path called `Method` is preserved as evidence. Synthetic replay checks all
 representable cycle values, identities, masks and statistics against opening a
 committed synthetic workbook; it cannot establish equality of metadata absent
 from the text dialect. [P4 evidence and remaining specimens](p4-calibration-history.md).
+
+## Method references and physical intensity display
+
+Choose **View → Review diagnostics → Method / instrument references / intensity
+units…** to inspect Phoenix method XML without applying it. Baseline and on-peak
+cells, original string fields, instrument geometry and isotope/abundance resources
+are read-only. The pinned detector setup is a Java synthetic reference, not your
+instrument calibration. Unknown/malformed XML is refused. Import is tested with a
+synthetic specimen written to Java's schema; real vendor method validation is pending.
+
+On **Intensity display**, select an intensity and then counts/s, V or A. The default
+is **Acquired values**. Conversion is available only for existing verified raw
+Faraday columns carrying resistor/gain and source/parameter provenance. The recorded
+gain is not applied again. Cached workbook values, ratios, ambiguous columns and
+multipliers show why conversion is unavailable. Counts denotes a rate, not integrated
+counts. The view preserves negative/missing samples and original cycle numbers;
+its transient choices do not change data, masks, statistics, sessions or exports.
+
+There is no method editor, Phoenix Full raw reader or TIMSAD decoder. See
+[P6 evidence, numerical conventions and required specimens](p6-method-configuration.md).

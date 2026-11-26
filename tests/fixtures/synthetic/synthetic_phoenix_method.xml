@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ANALYSIS_METHOD>
+  <HEADER>
+    <Filename>SYNTHETIC Phoenix Pb</Filename>
+    <DateModified />
+    <DateCreated />
+    <CreatedBy>SYNTHETIC test specimen</CreatedBy>
+    <ModifiedBy />
+  </HEADER>
+  <SETTINGS>
+    <IntersperseBaselines />
+    <BaselineFrequency />
+    <PKCCycleInterval />
+    <TotalBlocks />
+    <TotalCycles />
+    <CalculateRatios />
+    <InitialBLMagnetDelay />
+    <DeflectBeamProtection />
+    <PerformBeamInterpCycles />
+    <PerformInterBlocks />
+    <AxialColl>Axial</AxialColl>
+    <ActiveSEMCollectors />
+    <MagnetFlybackSettleTime />
+    <CorrectForBaselines />
+    <CorrectForDeadtimes />
+    <IsoWorks_Method />
+    <Rejection_Sigma />
+    <Rejection_Percentage />
+    <ActiveSubChannel />
+    <ProcessingUnits />
+    <TFE_Enabled />
+    <TFE_MonitorPeak />
+    <TFE_IntensityThreshold />
+    <TFE_IntervalPeakCentring />
+    <TFE_PeakCentringInterval />
+    <TFE_PeakCentringMonitorThreshold />
+    <Export_IsotopePoints />
+    <Export_ASCFile />
+    <Export_ASCOptions />
+    <Export_ASCActiveColl />
+    <Export_TXTEveryCYCLE />
+    <Export_TripoliLiveData />
+  </SETTINGS>
+  <BASELINE>
+    <Sequence>1</Sequence>
+    <Enabled>True</Enabled>
+    <MassID />
+    <AxMass>205.5</AxMass>
+    <IntegPeriod />
+    <IntegTime />
+    <PKCParentID />
+    <BLReferences>MASS</BLReferences>
+    <MagnetSettleTime />
+    <AxMassOffset>0.25</AxMassOffset>
+    <CurveFit />
+    <TraceColour />
+  </BASELINE>
+  <BASELINE>
+    <Sequence>2</Sequence>
+    <Enabled>False</Enabled>
+    <MassID />
+    <AxMass>999</AxMass>
+    <IntegPeriod />
+    <IntegTime />
+    <PKCParentID />
+    <BLReferences>208Pb</BLReferences>
+    <MagnetSettleTime />
+    <AxMassOffset>-0.5</AxMassOffset>
+    <CurveFit />
+    <TraceColour />
+  </BASELINE>
+  <ONPEAK>
+    <Sequence>1</Sequence>
+    <Enabled>True</Enabled>
+    <MassID />
+    <MassIDCollector />
+    <AxMass />
+    <IntegPeriod />
+    <IntegTime />
+    <PeakCentre />
+    <PKCCollector />
+    <PKCMethod />
+    <PKCParentID />
+    <BLReferences>BL1, BL2</BLReferences>
+    <CollectorArray>206Pb:AxS1,Pb208:H2S1</CollectorArray>
+    <MagnetSettleTime />
+    <AxMassOffset />
+    <CurveFit />
+    <TraceColour />
+  </ONPEAK>
+  <ONPEAK>
+    <Sequence>2</Sequence>
+    <Enabled>False</Enabled>
+    <MassID />
+    <MassIDCollector />
+    <AxMass />
+    <IntegPeriod />
+    <IntegTime />
+    <PeakCentre />
+    <PKCCollector />
+    <PKCMethod />
+    <PKCParentID />
+    <BLReferences>BL1</BLReferences>
+    <CollectorArray>207Pb:AxS2</CollectorArray>
+    <MagnetSettleTime />
+    <AxMassOffset />
+    <CurveFit />
+    <TraceColour />
+  </ONPEAK>
+  <EQUILIBRATION>
+    <Enabled />
+    <Collector />
+    <AxMass />
+    <MassID />
+    <Duration />
+    <IntegPeriod />
+    <StoreToDB />
+  </EQUILIBRATION>
+</ANALYSIS_METHOD>

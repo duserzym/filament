@@ -1,6 +1,6 @@
 # Tripoli feature gaps
 
-Snapshot: **2026-11-25**. **Done** means the stated supported-input workflow exists;
+Snapshot: **2026-11-25**, P6 update **2026-11-26**. **Done** means the stated supported-input workflow exists;
 **partial** means the limits in the last column still apply; **not done** means
 unimplemented. All incomplete rows are now in scope in the
 [phased roadmap](tripoli-parity-roadmap.md), subject to its data and ownership decisions.
@@ -47,7 +47,7 @@ not a claim that every subsequent upstream release is identical. Upstream projec
 
 | SPEC | Feature | Legacy C# 4.10.0.3 | Java Tripoli | filament | Remaining limit or difference |
 |---|---|---|---|---|---|
-| F24 | Raw acquisition reduction | Receives instrument-processed ratios; `OGTripoli/source/vendors_data/MassLynxDataFile.cs:129` | Phoenix Full baseline/gain/intensity models; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/massSpectrometerModels/dataModels/mcmc/SingleBlockModelDriver.java:72` | partial | E/P/D: EXCEEDS C#: deterministic IsoprobeT four-sequence Pb/static U decoding and parameter replay. Non-1s, two-sequence, unmatched tails, generic raw formats remain restricted; Java raw path differs. [P6](tripoli-parity-roadmap.md#phase-p6-method-driven-raw-processing-and-instrument-configuration-l). [filament evidence](raw-reduction.md). |
+| F24 | Raw acquisition reduction | Receives instrument-processed ratios; `OGTripoli/source/vendors_data/MassLynxDataFile.cs:129` | Phoenix Full baseline/gain/intensity models; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/massSpectrometerModels/dataModels/mcmc/SingleBlockModelDriver.java:72` | partial | E/P/D: P6 isolated Java synthetic structural parsing and spline/linear matrix prerequisites added; existing deterministic IsoprobeT routes unchanged. No Phoenix Full/TIMSAD reader, new raw calibration or BSU two-sequence enablement (D13). [P6 evidence](p6-method-configuration.md). |
 | F25 | Pb/U tracer fractionation | Linear law, Pb 202/205 and U 233/235 double spike; `OGTripoli/source/TripoliWorkProduct.cs:1074` | Not applied by the researched export path; `Tripoli/TripoliCore/src/main/java/org/cirdles/tripoli/sessions/analysis/outputs/etRedux/MeasuredUserFunction.java:63` | not done | E/D: age app currently owns it; Java measured-export path is not evidence of tracer correction. Decision prominently in roadmap; no corrected ratios may silently enter /1. [P7](tripoli-parity-roadmap.md#phase-p7-tracer-fractionation-and-interference-capability-l-d1-gate). [filament evidence](contract-idtims-fractions-v1.md#purpose). |
 | F26 | BaPO2/Tl correction | Combined interference/fractionation solution; `OGTripoli/source/TripoliWorkProduct.cs:2038` | No implementation in researched path | not done | E/D: validated IC/tracer inputs and applied-correction provenance needed; no Java equivalent established. [P7](tripoli-parity-roadmap.md#phase-p7-tracer-fractionation-and-interference-capability-l-d1-gate). [filament evidence](raw-reduction.md). |
 | F27 | Live acquisition watching | Live newest-file and cycle-folder workflows; `OGTripoli/source/forms/fmrMainTripoli.cs:6371` | IsoLinx LiveData ingestion; `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/TripoliGUIController.java:884` | partial | E/P/G/D: P4 manual completed-folder Refresh and explicit completion attestation only. No watcher/newest-file workflow, provisional sculpting or automatic new-cycle rules; D10 and lifecycle captures remain open. [P4 evidence](p4-calibration-history.md). |
@@ -67,8 +67,8 @@ all detailed subfeatures are in [the inventory](tripoli-inventory.md).
 | F33 Annotations/notations | `OGTripoli/source/forms/fmrMainTripoli.cs:4047` | `Tripoli/TripoliApp/src/main/resources/org/cirdles/tripoli/gui/SessionManager.fxml:74` | done | G: D2 plain session/work-product/fraction/sample notes, edited as plain text and roundtripped in optional native session presentation metadata. No freehand/per-plot markup. [Implementation](../src/rawtims_gui/diagnostics.py). |
 | F34 Custom report builder/templates | `OGTripoli/source/TripoliWorkProduct.cs:2901` | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/reports/ReportBuilderController.java:781` | done | E/G: P2 processed-analysis report columns, categories, order/visibility, preview/custom CSV and save/load/delete named method templates with global fallback. Full-model fields/Template 1 are separately F87. Preferences never change numerical defaults. [Implementation](../src/rawtims_gui/report_builder.py). |
 | F35 Per-user/session/analysis defaults | `OGTripoli/source/TripoliRegistry.cs:30` | `Tripoli/TripoliApp/src/main/resources/org/cirdles/tripoli/gui/settings/SettingsWindow.fxml:437` | partial | E/G: P2 report preference cascade analysis > session > method > global > built in, effective-source display and restore inherited. Session/analysis preferences roundtrip in presentation metadata. Broader reduction/default cascades remain outside P2; no numerical-default change. [Implementation](../src/rawtims_gui/report_builder.py). |
-| F36 Instrument method/detector editor | `OGTripoli/source/RunParameters.cs:23` | `Tripoli/TripoliApp/src/main/resources/org/cirdles/tripoli/gui/AnalysesManager.fxml:233` | partial | E/G/D: staged supported parameters + run info exist; Java tables are partly display, not evidence of unrestricted instrument authoring. Detailed method features F46-F49/F90. Roadmap P6. [filament evidence](raw-reduction.md#desktop-reduction-controls). |
-| F37 Plot styling and units | `OGTripoli/source/forms/frmRatioGraph.cs:2054` | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/SpeciesIntensityAnalysisPlot.java:234` | partial | G: P1 remembered per-function point colors/sizes plus existing themes/log/fit/layout; diagnostic recipe styling. E: physical counts/V/A conversion remains P6/F90 and requires verified metadata. [Implementation](../src/rawtims_gui/diagnostics.py). |
+| F36 Instrument method/detector editor | `OGTripoli/source/RunParameters.cs:23` | `Tripoli/TripoliApp/src/main/resources/org/cirdles/tripoli/gui/AnalysesManager.fxml:233` | partial | E/G/D: P6 immutable versioned method/detector/baseline/sequence model and read-only inspector; no method editor (D14). Existing supported parameter controls unchanged. [P6 evidence](p6-method-configuration.md). |
+| F37 Plot styling and units | `OGTripoli/source/forms/frmRatioGraph.cs:2054` | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/dataViews/plots/plotsControllers/ogTripoliPlots/analysisPlots/SpeciesIntensityAnalysisPlot.java:234` | partial | G/E: existing styling retained; P6 separate opt-in typed counts/s, V, A display on verified existing raw Faraday columns. Cached/ambiguous/multiplier conversions remain unavailable with reasons (F90). [P6 evidence](p6-method-configuration.md). |
 | F38 Help and demonstrations | `OGTripoli/source/forms/fmrMainTripoli.cs:5831` | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/TripoliGUIController.java:880` | done | G/docs: bundled guide, KD33 walkthrough (ui-panels.md) and numerical site (SITE.md); walkthrough needs read-only examples. Tripoli-specific video links are not parity requirements. [filament evidence](user-guide.md). |
 | F39 Periodic table and nuclide resource | No equivalent established | `Tripoli/TripoliApp/src/main/java/org/cirdles/tripoli/gui/TripoliGUIController.java:748` | not done | G + resource data: low lab priority; isotope/abundance source version must be identified. MCMC demos split to F60. Roadmap P9. [filament evidence](user-guide.md). |
 
@@ -114,8 +114,8 @@ P1 additionally closes F40 (graph PNG/native printing and four-graph sheets), F4
 (INCLUDE/IGNORE/HIDE with original cycle identities), F44 (saved recipes and
 intensity-scaled dots), F85 (plain notes/descriptions), and F93 (labeled display
 freeze). C3–C8 are implemented as presentation controls. C1/C2 remain unscheduled;
-the C8 reduction switch remains D7; P3 adds diagnostic comparison only. F22 raw model residuals and F37 physical
-unit conversion remain partial for P8 and P6 respectively. Source-semantic and
+the C8 reduction switch remains D7; P3 adds diagnostic comparison only. F22 raw model residuals and F37 wider physical
+unit coverage remain partial; P6 adds the verified raw-Faraday display subset. Source-semantic and
 synthetic acceptance tests are in [test_p1_window.py](../tests/test_p1_window.py).
 
 P3 closes the constrained existing-column expression editor/library and matching-identity
@@ -194,3 +194,14 @@ identities, masks and statistics to the committed completed workbook; metadata
 absent from the source dialect stays unavailable. D10 watches/provisional/final
 merge and real acquisition/calibration validation remain open. See
 [P4 source evidence, boundaries and specimen list](p4-calibration-history.md).
+
+P6 completes F89 for the pinned reference catalog/resource scope. F24/F36/F37/F46/F47/F48/F78/F90 remain **partial** with independent read-only method XML/model inspection, Java synthetic structural parsing, explicit literal-Java versus stored-oracle spline conventions, and verified raw-Faraday display conversion. No existing raw/workbook route or /1 export changes. D13/D14 and real method/Full/TIMSAD specimens remain open; see [P6 scope, source citations and specimen list](p6-method-configuration.md).
+
+| Row | Status | P6 scope and remaining limit |
+|---|---|---|
+| F46 | partial | Strict Phoenix XML import and Java name-only comparison; synthetic source-schema specimen only; real XML/Full pairing needed. |
+| F47 | partial | Immutable detector/amplifier/resistor records and reference setup; generic calibrated editing remains D14/specimen-gated. |
+| F48 | partial | Read-only baseline/on-peak/species cells; no integration allocation from methods. |
+| F78 | partial | Synthetic Version 1.00 structural parsing and isolated oracle K matrices; real Phoenix Full/TIMSAD readers remain D13/specimen-gated. |
+| F89 | done | Pinned Java Phoenix/UNKNOWN instrument geometry, synthetic detector setup and 3,365 nuclide/abundance records; reference provenance and limits disclosed. |
+| F90 | partial | Typed transient display on verified existing raw Faraday columns; cached, ambiguous and multiplier conversions unavailable with reasons. |

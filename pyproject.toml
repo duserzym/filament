@@ -43,6 +43,7 @@ where = ["src"]
 include = ["rawtims*", "rawtims_gui*"]
 
 [tool.setuptools.package-data]
+rawtims = ["resources/*.csv", "resources/NOTICE", "resources/LICENSE-APACHE-2.0"]
 rawtims_gui = ["studio/assets/icons/*.svg", "assets/*.png", "release-notes/*.md", "labupdate/*.md", "labupdate/VENDORED"]
 
 [tool.pytest.ini_options]

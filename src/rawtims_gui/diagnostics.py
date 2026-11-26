@@ -35,6 +35,8 @@ def build_menu(window):
     menu.addAction('Expressions / concatenation / block diagnostics…', lambda: show_composition(window))
     from rawtims_gui.history import show_history
     menu.addAction('Calibration history / completed folders…', lambda: show_history(window))
+    from rawtims_gui.method_inspector import show_method_inspector
+    menu.addAction('Method / instrument references / intensity units…', lambda: show_method_inspector(window))
     menu.addSeparator()
     for key, text in (('block_means', 'Block-mean overlay'), ('stats', 'Show plot statistics'),
                       ('frozen', 'Freeze displayed statistics'), ('inverted', 'Invert all displays')):
