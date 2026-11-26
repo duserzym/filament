@@ -61,3 +61,15 @@ TripoliCore/src/test/resources/org/cirdles/tripoli/core/matLab/bspline/
   bspline_matrix_A.txt, bspline_matrix_B.txt, bspline_answers.txt -> p6/.
 Unmodified public Apache-2.0 copies; original paths/digests in MANIFEST.toml.
 Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org.
+
+P8 deterministic model addition (2026-11-26)
+------------------------------------------
+CIRDLES/Tripoli 00dc94109f572c22bb3f357c0f7b1bb5347f62f5:
+TripoliCore/src/test/java/org/cirdles/tripoli/sessions/analysis/
+  massSpectrometerModels/dataModels/mcmc/SingleBlockModelUpdaterTest.java
+  -> p8/updater_M.json: numeric arrays and stored MATLAB-derived assertions
+  extracted into JSON (not a Java execution or unchanged source copy).
+Original source SHA-256 is retained in the JSON; derived file digest is in
+MANIFEST.toml. P8 reuses the unmodified P6 synthetic and spline resources.
+Copyright 2022 James Bowring, Noah McLean, Scott Burdick, and CIRDLES.org.
+Apache-2.0; see LICENSE-APACHE-2.0.

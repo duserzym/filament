@@ -576,3 +576,13 @@ its transient choices do not change data, masks, statistics, sessions or exports
 
 There is no method editor, Phoenix Full raw reader or TIMSAD decoder. See
 [P6 evidence, numerical conventions and required specimens](p6-method-configuration.md).
+
+## Deterministic MCMC1 research APIs (P8 first increment)
+
+The optional `rawtims.mcmc1` Python APIs can prepare the committed Java synthetic
+two-isotope datasets and inspect initialized observed/model/residual/noise vectors
+with linear or cubic intensity knots. They are headless research tools; no new
+menu, sampler, fitted Analysis values, session field or export is provided.
+Ordinary review and measured `idtims-fractions/1` exports keep their existing
+behavior. See [the API example, source behaviors and missing validation
+truth](p8-mcmc1-forward-model.md) before interpreting these diagnostics.

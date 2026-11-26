@@ -62,7 +62,11 @@ def test_open_paths_on_the_fixtures_folder():
                      "bspline_matrix_B.txt", "bspline_answers.txt", "synthetic_phoenix_method.xml"}
     for name in p6_inspection:
         assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[name]
-    assert set(reasons) == set(oracles) | processed_reports | p6_inspection | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", SYNTHETIC_FRACTIONS.name, 'ID_TIMS_DataImportTemplate.csv'}
+    # P8 adds an inert numeric oracle; preserve all existing refusals/counts.
+    p8_inspection = {"updater_M.json"}
+    for name in p8_inspection:
+        assert "not an IsoLinx .TIMSDP or IonVantage .xls run file" in reasons[name]
+    assert set(reasons) == set(oracles) | processed_reports | p6_inspection | p8_inspection | {"MANIFEST.toml", "LICENSE-APACHE-2.0", "NOTICE", SYNTHETIC_FRACTIONS.name, 'ID_TIMS_DataImportTemplate.csv'}
     assert reasons['ID_TIMS_DataImportTemplate.csv'] == 'could not be read (ValueError: Empty import template: add cycle data below the captions)'
 
 
