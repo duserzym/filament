@@ -68,6 +68,14 @@ All paths below are relative to the containing Tripoli source directory, prefixe
 
 For report oracles, reproduce the Java snapshot's **geometric statistics and Java oxide law** only in explicitly selected comparison mode. The normal filament legacy/isobar default must not be changed to agree with a known differing Java denominator ([oxide comparison](oxide-correction.md)). XML/TSV byte expectations should be generated from the named reference implementation and pinned; an input fixture alone is not a stored expected answer. Report fixtures do not validate missing raw acquisition semantics.
 
+## Decisions recorded 2026-11-25 (Yiming Zhang)
+
+- **D1 (F25):** opt-in fractionation preview in filament. The age app (IDTIMS_UPbRPy / UPb Studio) stays authoritative; the /1 fraction exports stay unchanged.
+- **First phase:** P1 review diagnostics and presentation.
+- **Plot controls in P1:** C3 block-mean overlay and C8 block zoom; C4 stats toggle and band sets; C6 Plot all and C7 INCLUDE/IGNORE/HIDE; C5 display-only inversion. C1 and C2 (mask copy and per-plot reset) are not scheduled. The C8 reduction switch goes with D7.
+- **D2 / D3:** the recommended defaults go into P1 (plain notes first; oxygen monitor only for verified UO2 assignments). Yiming can change either before P1 ships.
+- The other decisions (D4-D19) stay open until their phase comes up.
+
 ## Phase P1 Review diagnostics and presentation (M)
 
 **Rows:** F13, F21, F22, F32, F33, F37, F40, F42, F44, F85, F93.
