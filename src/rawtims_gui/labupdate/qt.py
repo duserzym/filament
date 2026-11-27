@@ -334,6 +334,7 @@ class WhatsNewCard(QtWidgets.QFrame):
         button.updater._note_buttons.add(button)
         self.setObjectName("WhatsNewCard")
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.setBackgroundRole(QtGui.QPalette.ColorRole.Button)
         self.setAutoFillBackground(True)
         layout = QtWidgets.QVBoxLayout(self)
         row = QtWidgets.QHBoxLayout()
@@ -381,7 +382,12 @@ class WhatsNewCard(QtWidgets.QFrame):
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
-        painter.fillRect(self.rect(), self.palette().brush(QtGui.QPalette.ColorRole.Window))
+        # Hosts supply their opaque panel colour through the Button palette role.
+        # Normalise alpha here so inherited glass palettes cannot reveal content.
+        surface = self.palette().color(QtGui.QPalette.ColorRole.Button)
+        surface.setAlpha(255)
+        painter.fillRect(self.rect(), surface)
+        painter.end()
         super().paintEvent(event)
 
     def keyPressEvent(self, event):
@@ -398,6 +404,7 @@ class UpdatePopover(QtWidgets.QFrame):
         super().__init__(button, QtCore.Qt.WindowType.Popup)
         self.button, self.updater = button, button.updater
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.setBackgroundRole(QtGui.QPalette.ColorRole.Button)
         self.setAutoFillBackground(True)
         self.setFixedWidth(370)
         self.setStyleSheet("""
@@ -466,7 +473,12 @@ class UpdatePopover(QtWidgets.QFrame):
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
-        painter.fillRect(self.rect(), self.palette().brush(QtGui.QPalette.ColorRole.Window))
+        # Hosts supply their opaque panel colour through the Button palette role.
+        # Normalise alpha here so inherited glass palettes cannot reveal content.
+        surface = self.palette().color(QtGui.QPalette.ColorRole.Button)
+        surface.setAlpha(255)
+        painter.fillRect(self.rect(), surface)
+        painter.end()
         super().paintEvent(event)
 
     def _show_whats_new(self):
