@@ -1,6 +1,7 @@
 Vendored from duserzym/UPbRPy GUI/labupdate at 13b1ff2 on 2026-11-20. Do not edit; change the canonical copy and recopy.
+qt.py recopied from duserzym/UPbRPy GUI/labupdate at 6110e05 on 2026-11-27 (opaque update popover); other files unchanged from the pin above.
 
-SHA256 manifest (all canonical files): Local appearance patch: opaque update popup surfaces, copied from canonical GUI/labupdate/qt.py (uncommitted popover-opaque worktree). Base pin above is unchanged.
+SHA256 manifest (all canonical files):
 e27213a44da2ecfa10b194a638ecd4dd489539545d06b8f636d45ad8ea5d2155  API.md
 53b9d0278e8226146d5f85f7063ae82e7032f2099171163c2e9c3184f0304666  SOURCE.md
 adf2e9ec7a54d5fb83d63c5b17ba1f58b57165f18751025fcd174e2a5127ff84  __init__.py
