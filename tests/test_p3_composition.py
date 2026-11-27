@@ -5,7 +5,6 @@ operator/block/matrix expectations below independently transcribe source formula
 no Java runtime-generated answer is claimed. All other inputs are synthetic or
 already committed Tripoli fixtures; no lab data are discovered at runtime.
 """
-import copy
 import json
 import math
 from dataclasses import replace
@@ -17,6 +16,7 @@ from reader_fixtures import SYNTHETIC_U, TIMSDP_FILES, TRIPOLI, read
 from test_p2_exchange import synthetic
 
 from rawtims.analysis import Analysis
+from rawtims.readers import open_run
 from rawtims.block_diagnostics import (
     java_snapshot_block_diagnostic,
     member_block_indices,
@@ -141,7 +141,7 @@ def test_committed_block_split_and_reassembly(stem):
     concat oracle exists). Reassembly must preserve every cycle, block, elapsed
     time, invalid flag, shared/per-column rejection and member provenance.
     """
-    a = Analysis(copy.deepcopy(read(TIMSDP_FILES[stem])))
+    a = Analysis(open_run(TIMSDP_FILES[stem]))
     a.set_setting('synced',False)
     a.toggle_cycles([1,3], [a.keys[-1]],False)
     a.toggle_block(int(a.blocks[-1]),False)
@@ -374,7 +374,7 @@ def test_split_acquisition_objects_reassemble_committed_fixture():
     Metamorphic split of committed fixture A into two new acquisition objects;
     original source hash, cycle IDs, masks and blocks survive reassembly.
     """
-    original = Analysis(copy.deepcopy(read(TIMSDP_FILES['GHR1 230921 F08b-216'])))
+    original = Analysis(open_run(TIMSDP_FILES['GHR1 230921 F08b-216']))
     first_block = original.blocks[len(original.blocks)//2]
     selections = [np.flatnonzero(original.run.block < first_block), np.flatnonzero(original.run.block >= first_block)]
     pieces = []
