@@ -3,6 +3,9 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+
+pytest.importorskip("PySide6")
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from rawtims_gui.labupdate.config import UpdateConfig
